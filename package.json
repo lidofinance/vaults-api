@@ -21,6 +21,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@ethersproject/providers": "^5.8.0",
     "@fastify/static": "^6.6.0",
     "@lido-nestjs/contracts": "^9.8.0",
     "@lido-nestjs/logger": "^1.0.1",
