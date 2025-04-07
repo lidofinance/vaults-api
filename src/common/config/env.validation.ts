@@ -54,6 +54,10 @@ export class EnvironmentVariables {
   @IsEnum(LogFormat)
   @Transform(({ value }) => value || LogFormat.json)
   LOG_FORMAT: LogFormat;
+
+  @IsOptional()
+  @IsString()
+  CUSTOM_NETWORK_FILE_NAME: string;
 }
 
 export function validate(config: Record<string, unknown>) {

@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@fastify/static": "^6.6.0",
+    "@lido-nestjs/contracts": "^9.8.0",
     "@lido-nestjs/logger": "^1.0.1",
     "@nestjs/cache-manager": "^2.1.0",
     "@nestjs/common": "^9.2.1",
