@@ -5,4 +5,9 @@ export class Statistic {
     example: Number(Date.now()),
   })
   timestamp: number;
+
+  @ApiProperty({
+    required: false,
+  })
+  lidoLocatorContract?: string;
 }

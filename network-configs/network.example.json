@@ -1,0 +1,8 @@
+{
+  "contracts": {
+    "lidoLocator": "0x0.."
+  },
+  "apis": {
+    "someApiBasePath": ""
+  }
+}
