@@ -1,7 +1,7 @@
 {
-  "name": "lido-api-template",
+  "name": "lido-vaults-api",
   "version": "0.0.1",
-  "description": "Lido API Template",
+  "description": "Lido Vaults API",
   "author": "Lido team",
   "private": true,
   "license": "MIT",
@@ -25,6 +25,7 @@
     "@fastify/static": "^6.6.0",
     "@lido-nestjs/contracts": "^9.8.0",
     "@lido-nestjs/logger": "^1.0.1",
+    "@lidofinance/lsv-cli": "1.0.0-alpha.23",
     "@nestjs/cache-manager": "^2.1.0",
     "@nestjs/common": "^9.2.1",
     "@nestjs/config": "^2.2.0",

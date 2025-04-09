@@ -1,4 +1,4 @@
-## Lido API Template
+## Lido Vaults API
 
 > 🚧 CI and deploy
 > 
@@ -12,6 +12,18 @@
 ```bash
 $ yarn install
 ```
+
+Copy and fill it:
+```bash
+$ cp lsv-cli-config-sepolia.example.json lsv-cli-config-sepolia.json
+```
+
+Copy and fill it:
+```bash
+$ cp sample.env .env
+```
+
+⚠️ **Note:** There are two config files that duplicate each other — this is a current requirement of `lsv-cli`. This will likely be fixed in a future version.
 
 ## Running the app
 
