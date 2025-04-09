@@ -9,10 +9,10 @@ export class ProofController {
   constructor(private readonly lsvService: LsvService) {}
 
   @Version('1')
-  @Get('/create/:validatorIndex')
+  @Get('/make/:validatorIndex')
   @ApiResponse({
     status: 200,
-    description: 'Created proof',
+    description: 'Made the proof',
     type: Proof,
   })
   async create(@Param('validatorIndex') validatorIndex: number) {
