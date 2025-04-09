@@ -15,7 +15,7 @@ $ yarn install
 
 Copy and fill it:
 ```bash
-$ cp lsv-cli-config-sepolia.example.json lsv-cli-config-sepolia.json
+$ cp configs/lsv-cli-config-sepolia.example.json configs/lsv-cli-config-sepolia.json
 ```
 
 Copy and fill it:
