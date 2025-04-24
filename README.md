@@ -15,15 +15,8 @@ $ yarn install
 
 Copy and fill it:
 ```bash
-$ cp configs/lsv-cli-config-sepolia.example.json configs/lsv-cli-config-sepolia.json
-```
-
-Copy and fill it:
-```bash
 $ cp sample.env .env
 ```
-
-⚠️ **Note:** There are two config files that duplicate each other — this is a current requirement of `lsv-cli`. This will likely be fixed in a future version.
 
 ## Running the app
 
