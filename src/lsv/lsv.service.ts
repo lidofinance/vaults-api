@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { createPDGProof } from '@lidofinance/lsv-cli/dist/utils';
+import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof';
 
 import { ConfigService } from '../common/config';
 
@@ -9,7 +9,9 @@ export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_
 export class LsvService {
   constructor(protected readonly configService: ConfigService) {}
 
-  async createProof(validatorIndex: number) {
+  async createProof(
+    validatorIndex: number,
+  ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
     try {
       return await createPDGProof(validatorIndex, this.configService.get('CL_URL'));
     } catch (error) {
