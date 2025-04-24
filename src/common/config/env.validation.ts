@@ -1,5 +1,5 @@
 import { plainToClass, Transform } from 'class-transformer';
-import { IsEnum, IsNumber, IsString, IsOptional, validateSync, Min } from 'class-validator';
+import { IsArray, ArrayMinSize, IsEnum, IsNumber, IsString, IsOptional, validateSync, Min } from 'class-validator';
 import { Environment, LogLevel, LogFormat } from './interfaces';
 
 const toNumber =
@@ -59,8 +59,10 @@ export class EnvironmentVariables {
   @IsString()
   CUSTOM_NETWORK_FILE_NAME: string;
 
-  @IsString()
-  CL_URL: string;
+  @IsArray()
+  @ArrayMinSize(1)
+  @Transform(({ value }) => value.split(','))
+  CL_API_URLS: string[] = null;
 }
 
 export function validate(config: Record<string, unknown>) {

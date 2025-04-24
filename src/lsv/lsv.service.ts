@@ -13,7 +13,7 @@ export class LsvService {
     validatorIndex: number,
   ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
     try {
-      return await createPDGProof(validatorIndex, this.configService.get('CL_URL'));
+      return await createPDGProof(validatorIndex, this.configService.get('CL_API_URLS')[0]);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
         console.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
