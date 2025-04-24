@@ -1,8 +1,0 @@
-{
-  "rpcLink": "<you_must_put_it_here>",
-  "privateKey": "0x<you_must_put_it_here>",
-  "chainId": 11155111,
-  "lidoLocator": "0x8f6254332f69557A72b0DA2D5F0Bc07d4CA991E7",
-  "accounting": "0xd497Be005638efCf09F6BFC8DAFBBB0BB72cD991",
-  "clLink": "<you_must_put_it_here_with_slash_at_the_end/>"
-}

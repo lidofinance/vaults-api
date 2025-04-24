@@ -5,9 +5,6 @@
 # Env
 .env
 
-# LSV CLI
-configs/lsv-cli-config-*
-
 # Logs
 logs
 *.log

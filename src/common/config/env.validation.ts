@@ -58,6 +58,9 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   CUSTOM_NETWORK_FILE_NAME: string;
+
+  @IsString()
+  CL_URL: string;
 }
 
 export function validate(config: Record<string, unknown>) {
