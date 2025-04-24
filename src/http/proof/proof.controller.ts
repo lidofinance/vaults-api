@@ -1,12 +1,14 @@
-import { Controller, Get, Param, Version } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { Controller, Get, Param, Version, ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BadRequestException } from '@nestjs/common';
 
 import { LsvService, VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR } from 'lsv/lsv.service';
-import { Proof } from './entities';
+import { ProofDto } from './dto';
 
 @Controller('proof')
 @ApiTags('Proof')
+@UseInterceptors(ClassSerializerInterceptor)
 export class ProofController {
   constructor(private readonly lsvService: LsvService) {}
 
@@ -15,7 +17,7 @@ export class ProofController {
   @ApiResponse({
     status: 200,
     description: 'Made the proof',
-    type: Proof,
+    type: ProofDto,
   })
   async create(@Param('validatorIndex') validatorIndex: number) {
     const proof = await this.lsvService.createProof(validatorIndex);
@@ -24,7 +26,6 @@ export class ProofController {
       throw new BadRequestException(`Validator index ${validatorIndex} is out of range`);
     }
 
-    // TODO: to be changed in future PRs
-    return JSON.parse(JSON.stringify(proof, (_, value) => (typeof value === 'bigint' ? value.toString() : value)));
+    return plainToInstance(ProofDto, proof);
   }
 }

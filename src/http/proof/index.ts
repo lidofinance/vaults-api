@@ -1,3 +1,3 @@
-export * from './entities';
+export * from './dto';
 export * from './proof.controller';
 export * from './proof.module';

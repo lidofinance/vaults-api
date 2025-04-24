@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 const proofExample = [
@@ -55,12 +56,13 @@ const proofExample = [
   "0x502e10e99cb98ecfbc008de6d0b4975ba0becdcb75d08c4490bd2c408c583a79"
 ];
 
-export class Proof {
+export class ProofDto {
   @ApiProperty({
     type: 'string',
     example: '1744180332',
     description: 'Timestamp as a stringified bigint',
   })
+  @Transform(({ value }) => value?.toString())
   childBlockTimestamp: bigint;
 
   @ApiProperty({
@@ -68,6 +70,7 @@ export class Proof {
     example: '1',
     description: 'Validator index as a stringified bigint',
   })
+  @Transform(({ value }) => value?.toString())
   validatorIndex: bigint;
 
   @ApiProperty({
