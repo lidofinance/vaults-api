@@ -72,6 +72,9 @@ export class EnvironmentVariables {
   @IsNumber()
   @Transform(({ value }) => Number(value))
   CHAIN_ID: number = null;
+
+  @IsString()
+  IPFS_GATEWAY: string;
 }
 
 export function validate(config: Record<string, unknown>) {

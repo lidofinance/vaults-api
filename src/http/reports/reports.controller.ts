@@ -1,37 +1,64 @@
 import { Controller, Get, Param, Version, ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
+import { Inject, LoggerService } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
-// import { BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
+import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+
+import { fetchAndVerifyFile } from '@lidofinance/lsv-cli/dist/utils/ipfs';
+import { getVaultReport, getReportProofByCid } from '@lidofinance/lsv-cli/dist/utils/report';
 
 import { LsvService } from 'lsv/lsv.service';
-import {
-  VaultHubContractService,
-  // type LatestReportData,
-} from 'common/contracts/modules/vault-hub-contract/vault-hub-contract.service';
+import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract/vault-hub-contract.service';
+import { ConfigService } from 'common/config';
+
+import { ReportParamsDto } from './dto';
+import { reportByVaultExample } from './example';
 
 @Controller('reports')
 @ApiTags('Reports')
 @UseInterceptors(ClassSerializerInterceptor)
 export class ReportsController {
-  constructor(private readonly lsvService: LsvService, private readonly vaultHubService: VaultHubContractService) {}
+  constructor(
+    @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
+    protected readonly configService: ConfigService,
+    private readonly lsvService: LsvService,
+    private readonly vaultHubService: VaultHubContractService,
+  ) {}
 
   @Version('1')
-  @Get('/reports/:vault')
+  @Get('/:vault')
   @ApiResponse({
     status: 200,
-    description: '<TOOO>',
+    description: 'Report data for a vault',
+    schema: {
+      example: reportByVaultExample,
+    },
   })
-  async create(@Param('vault') vault: string) {
-    console.log(vault);
+  async create(@Param() params: ReportParamsDto) {
+    const vault = params.vault;
 
-    const report = await this.vaultHubService.getLatestReportData();
-    console.log('report:', report);
+    const latestReportData = await this.vaultHubService.getLatestReportData();
 
-    // const proof = await this.lsvService.createProof(validatorIndex);
-    //
-    // if (proof === VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR) {
-    //   throw new BadRequestException(`Validator index ${validatorIndex} is out of range`);
-    // }
+    try {
+      // TODO: disable logger inside fetchAndVerifyFile
+      await fetchAndVerifyFile(latestReportData.reportCid, this.configService.get('IPFS_GATEWAY'));
+    } catch (error) {
+      this.logger.error(`Failed to verify report CID: ${error.message}`);
+      throw new BadRequestException(`Failed to verify report!`);
+    }
 
-    return 1;
+    const vaultReport = await getVaultReport(vault, latestReportData.reportCid, this.configService.get('IPFS_GATEWAY'));
+    const reportProof = await getReportProofByCid(vault, vaultReport.proofsCID);
+
+    try {
+      // TODO: disable logger inside fetchAndVerifyFile
+      await fetchAndVerifyFile(vaultReport.proofsCID, this.configService.get('IPFS_GATEWAY'));
+    } catch (error) {
+      this.logger.error(`Failed to verify report proofsCID: ${error.message}`);
+      throw new BadRequestException(`Failed to verify report!`);
+    }
+
+    // TODO: response can be changed
+    return { vaultReport, reportProof };
   }
 }
