@@ -63,6 +63,15 @@ export class EnvironmentVariables {
   @ArrayMinSize(1)
   @Transform(({ value }) => value.split(','))
   CL_API_URLS: string[] = null;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @Transform(({ value }) => value.split(','))
+  EL_RPC_URLS: string[] = null;
+
+  @IsNumber()
+  @Transform(({ value }) => Number(value))
+  CHAIN_ID: number = null;
 }
 
 export function validate(config: Record<string, unknown>) {
