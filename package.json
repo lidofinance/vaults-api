@@ -27,7 +27,7 @@
     "@lido-nestjs/logger": "^1.0.1",
     "@lidofinance/lsv-cli": "1.0.0-alpha.30",
     "@nestjs/cache-manager": "^2.1.0",
-    "@nestjs/common": "^9.2.1",
+    "@nestjs/common": "^10.4.16",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^9.2.1",
     "@nestjs/platform-fastify": "^9.2.1",
