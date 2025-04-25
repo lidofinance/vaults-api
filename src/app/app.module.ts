@@ -8,9 +8,10 @@ import { SentryInterceptor } from 'common/sentry';
 import { HealthModule } from 'common/health';
 import { AppService } from './app.service';
 import { HTTPModule } from '../http';
+import { LsvModule } from '../lsv';
 
 @Module({
-  imports: [HTTPModule, HealthModule, PrometheusModule, ConfigModule, ContractsModule],
+  imports: [HTTPModule, HealthModule, PrometheusModule, ConfigModule, ContractsModule, LsvModule],
   providers: [{ provide: APP_INTERCEPTOR, useClass: SentryInterceptor }, AppService],
 })
 export class AppModule {}
