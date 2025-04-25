@@ -28,4 +28,11 @@ export class PrometheusService {
     help: 'Build information',
     labelNames: ['name', 'version', 'env'],
   });
+
+  public elRpcRequestDuration = this.getOrCreateMetric('Histogram', {
+    name: METRICS_PREFIX + 'el_rpc_requests_duration_seconds',
+    help: 'EL RPC request duration',
+    buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5],
+    labelNames: ['result'],
+  });
 }

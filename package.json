@@ -24,6 +24,7 @@
     "@ethersproject/providers": "^5.8.0",
     "@fastify/static": "^6.6.0",
     "@lido-nestjs/contracts": "^9.8.0",
+    "@lido-nestjs/execution": "^1.9.3",
     "@lido-nestjs/logger": "^1.0.1",
     "@lidofinance/lsv-cli": "1.0.0-alpha.30",
     "@nestjs/cache-manager": "^2.1.0",
