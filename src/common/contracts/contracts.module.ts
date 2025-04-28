@@ -1,22 +1,24 @@
 import { LidoContractModule, LidoLocatorContractModule } from '@lido-nestjs/contracts';
 import { Global, Module } from '@nestjs/common';
-import { getDefaultProvider } from '@ethersproject/providers';
+import { ExecutionProvider } from 'common/execution-provider';
 import { ConfigService } from '../config';
+import { VaultHubContractModule } from './modules/vault-hub-contract';
 
 @Global()
 @Module({
-  imports: [LidoContractModule, LidoLocatorContractModule].map((module) =>
-    module.forRootAsync({
-      async useFactory(config: ConfigService) {
-        // TODO: provider will be changed later (this one is used for testing only PoC)
-        const provider = getDefaultProvider('mainnet');
-
-        const addressMap = await config.getCustomConfigContractsAddressMap();
-        const address = addressMap ? addressMap.get(module.contractToken) : undefined;
-        return { provider, address };
-      },
-      inject: [ConfigService],
-    }),
-  ),
+  imports: [
+    ...[LidoContractModule, LidoLocatorContractModule].map((module) =>
+      module.forRootAsync({
+        async useFactory(provider: ExecutionProvider, config: ConfigService) {
+          const addressMap = await config.getCustomConfigContractsAddressMap();
+          const address = addressMap ? addressMap.get(module.contractToken) : undefined;
+          return { provider, address };
+        },
+        inject: [ExecutionProvider, ConfigService],
+      }),
+    ),
+    VaultHubContractModule,
+  ],
+  exports: [VaultHubContractModule],
 })
 export class ContractsModule {}

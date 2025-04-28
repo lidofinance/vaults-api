@@ -1,7 +1,7 @@
 {
-  "name": "lido-api-template",
+  "name": "lido-vaults-api",
   "version": "0.0.1",
-  "description": "Lido API Template",
+  "description": "Lido Vaults API",
   "author": "Lido team",
   "private": true,
   "license": "MIT",
@@ -24,15 +24,18 @@
     "@ethersproject/providers": "^5.8.0",
     "@fastify/static": "^6.6.0",
     "@lido-nestjs/contracts": "^9.8.0",
+    "@lido-nestjs/execution": "^1.9.3",
     "@lido-nestjs/logger": "^1.0.1",
-    "@nestjs/cache-manager": "^2.1.0",
-    "@nestjs/common": "^9.2.1",
+    "@lidofinance/lsv-cli": "1.0.0-alpha.30",
+    "@lidofinance/satanizer": "^0.32.0",
+    "@nestjs/cache-manager": "^2.2.2",
+    "@nestjs/common": "^10.4.4",
     "@nestjs/config": "^2.2.0",
-    "@nestjs/core": "^9.2.1",
-    "@nestjs/platform-fastify": "^9.2.1",
-    "@nestjs/swagger": "^6.1.4",
+    "@nestjs/core": "^10.4.4",
+    "@nestjs/platform-fastify": "^10.4.4",
+    "@nestjs/swagger": "^7.4.2",
     "@nestjs/terminus": "^9.1.4",
-    "@nestjs/throttler": "^3.1.0",
+    "@nestjs/throttler": "^6.0.0",
     "@sentry/node": "^7.29.0",
     "@willsoto/nestjs-prometheus": "^5.1.0",
     "cache-manager": "^5.2.3",
@@ -64,7 +67,7 @@
     "ts-loader": "^9.2.6",
     "ts-node": "^10.4.0",
     "tsconfig-paths": "^4.1.2",
-    "typescript": "^4.5.4"
+    "typescript": "^5.7.2"
   },
   "jest": {
     "moduleFileExtensions": [

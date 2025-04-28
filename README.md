@@ -1,4 +1,4 @@
-## Lido API Template
+## Lido Vaults API
 
 > 🚧 CI and deploy
 > 
@@ -11,6 +11,11 @@
 
 ```bash
 $ yarn install
+```
+
+Copy and fill it:
+```bash
+$ cp sample.env .env
 ```
 
 ## Running the app
