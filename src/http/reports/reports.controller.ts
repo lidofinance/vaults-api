@@ -34,7 +34,7 @@ export class ReportsController {
       example: reportByVaultExample,
     },
   })
-  async create(@Param() params: ReportParamsDto) {
+  async getLast(@Param() params: ReportParamsDto) {
     const vault = params.vault;
 
     const latestReportData = await this.vaultHubService.getLatestReportData();
