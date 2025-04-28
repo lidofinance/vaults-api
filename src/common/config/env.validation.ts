@@ -77,6 +77,8 @@ export class EnvironmentVariables {
   IPFS_GATEWAY: string;
 }
 
+export const ENV_KEYS = Object.keys(new EnvironmentVariables());
+
 export function validate(config: Record<string, unknown>) {
   const validatedConfig = plainToClass(EnvironmentVariables, config);
 

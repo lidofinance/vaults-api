@@ -1395,6 +1395,11 @@
     prompts "^2.4.2"
     viem "^2.21.37"
 
+"@lidofinance/satanizer@^0.32.0":
+  version "0.32.0"
+  resolved "https://registry.yarnpkg.com/@lidofinance/satanizer/-/satanizer-0.32.0.tgz#3ea01a94b7b5c58751a9e3030f6134c83cecefaf"
+  integrity sha512-gHoZM8l/AWWT1YyZf+4/IViAxGuALZNo29b4bWvmEGJw/Xv0ChRPP2/xLEugdk03T16r8vxww3j/tAYTTzGzQw==
+
 "@lodestar/params@^1.28.1":
   version "1.28.1"
   resolved "https://registry.yarnpkg.com/@lodestar/params/-/params-1.28.1.tgz#6b0a7de7209b5f0bd2f262041e69e8e1c5d5cce4"
