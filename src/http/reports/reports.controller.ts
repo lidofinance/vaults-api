@@ -14,7 +14,7 @@ import { ConfigService } from 'common/config';
 import { ReportParamsDto } from './dto';
 import { reportByVaultExample } from './example';
 
-@Controller('reports')
+@Controller('report')
 @ApiTags('Reports')
 @UseInterceptors(ClassSerializerInterceptor)
 export class ReportsController {
@@ -26,7 +26,7 @@ export class ReportsController {
   ) {}
 
   @Version('1')
-  @Get('/:vault')
+  @Get('/last/:vaultAddress')
   @ApiResponse({
     status: 200,
     description: 'Report data for a vault',
@@ -35,7 +35,7 @@ export class ReportsController {
     },
   })
   async getLast(@Param() params: ReportParamsDto) {
-    const vault = params.vault;
+    const vault = params.vaultAddress;
 
     const latestReportData = await this.vaultHubService.getLatestReportData();
 

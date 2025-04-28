@@ -1,6 +1,6 @@
 export const HTTP_PATHS = {
   1: {
     'proof/make': 'proof/make',
-    reports: 'reports',
+    'report/last': 'report/last',
   },
 };
