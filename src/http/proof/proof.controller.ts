@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { Controller, Get, Param, Version, ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BadRequestException } from '@nestjs/common';
 
 import { LsvService, VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR } from 'lsv/lsv.service';
@@ -14,6 +14,11 @@ export class ProofController {
 
   @Version('1')
   @Get('/make/:validatorIndex')
+  @ApiOperation({
+    summary: 'Make proof for a validator',
+    description:
+      'Makes a proof based on the provided validatorIndex and returns the result in the ProofDto format. ⚠️ This operation may take more than 45 seconds to complete.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Made the proof',
