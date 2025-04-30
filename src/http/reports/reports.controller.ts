@@ -5,7 +5,7 @@ import { BadRequestException } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import { fetchAndVerifyFile } from '@lidofinance/lsv-cli/dist/utils/ipfs';
-import { getVaultReport, getReportProofByCid } from '@lidofinance/lsv-cli/dist/utils/report';
+import { getVaultReport, getVaultReportProofByCid } from '@lidofinance/lsv-cli/dist/utils/report';
 
 import { LsvService } from 'lsv/lsv.service';
 import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract/vault-hub-contract.service';
@@ -48,7 +48,11 @@ export class ReportsController {
     }
 
     const vaultReport = await getVaultReport(vault, latestReportData.reportCid, this.configService.get('IPFS_GATEWAY'));
-    const reportProof = await getReportProofByCid(vault, vaultReport.proofsCID);
+    const reportProof = await getVaultReportProofByCid(
+      vault,
+      vaultReport.proofsCID,
+      this.configService.get('IPFS_GATEWAY'),
+    );
 
     try {
       // TODO: disable logger inside fetchAndVerifyFile
