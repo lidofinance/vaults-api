@@ -9,6 +9,9 @@ const toNumber =
     return Number(value);
   };
 
+const ensureTrailingSlashUrls = ({ value }: { value: string }) =>
+  value.split(',').map((url) => (url.endsWith('/') ? url : url + '/'));
+
 export class EnvironmentVariables {
   @IsEnum(Environment)
   NODE_ENV: Environment = Environment.development;
@@ -61,7 +64,7 @@ export class EnvironmentVariables {
 
   @IsArray()
   @ArrayMinSize(1)
-  @Transform(({ value }) => value.split(','))
+  @Transform(ensureTrailingSlashUrls)
   CL_API_URLS: string[] = null;
 
   @IsArray()
