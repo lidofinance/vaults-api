@@ -14,6 +14,15 @@ import { ConfigService } from 'common/config';
 import { ReportParamsDto } from './dto';
 import { reportByVaultExample } from './example';
 
+function bigintToString(obj: any): any {
+  if (typeof obj === 'bigint') return obj.toString();
+  if (Array.isArray(obj)) return obj.map(bigintToString);
+  if (obj !== null && typeof obj === 'object') {
+    return Object.fromEntries(Object.entries(obj).map(([key, val]) => [key, bigintToString(val)]));
+  }
+  return obj;
+}
+
 @Controller('report')
 @ApiTags('Reports')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -63,6 +72,10 @@ export class ReportsController {
     }
 
     // TODO: response can be changed
-    return { vaultReport, reportProof };
+    return {
+      vaultReport,
+      // TODO: temp hack
+      reportProof: bigintToString(reportProof),
+    };
   }
 }
