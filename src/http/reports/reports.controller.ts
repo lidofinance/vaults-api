@@ -38,7 +38,7 @@ export class ReportsController {
   @Get('/last/:vaultAddress')
   @ApiResponse({
     status: 200,
-    description: 'Report data for a vault',
+    description: 'Last report data for a vault',
     schema: {
       example: reportByVaultExample,
     },
@@ -74,7 +74,56 @@ export class ReportsController {
     // TODO: response can be changed
     return {
       vaultReport,
-      // TODO: temp hack
+      reportProof: bigintToString(reportProof),
+    };
+  }
+
+  @Version('1')
+  @Get('/previous/:vaultAddress')
+  @ApiResponse({
+    status: 200,
+    description: 'Previous report data for a vault',
+    schema: {
+      example: reportByVaultExample,
+    },
+  })
+  async getPrevious(@Param() params: ReportParamsDto) {
+    const vault = params.vaultAddress;
+
+    const latestReportData = await this.vaultHubService.getLatestReportData();
+
+    const lastVaultReport = await getVaultReport(
+      vault,
+      latestReportData.reportCid,
+      this.configService.get('IPFS_GATEWAY'),
+    );
+    if (!lastVaultReport.prevTreeCID) {
+      throw new BadRequestException(`Previous report CID not found in the latest report`);
+    }
+
+    const prevVaultReport = await getVaultReport(
+      vault,
+      lastVaultReport.prevTreeCID,
+      this.configService.get('IPFS_GATEWAY'),
+    );
+
+    const reportProof = await getVaultReportProofByCid(
+      vault,
+      prevVaultReport.proofsCID,
+      this.configService.get('IPFS_GATEWAY'),
+    );
+
+    try {
+      // TODO: disable logger inside fetchAndVerifyFile
+      await fetchAndVerifyFile(prevVaultReport.proofsCID, this.configService.get('IPFS_GATEWAY'));
+    } catch (error) {
+      this.logger.error(`Failed to verify report proofsCID: ${error.message}`);
+      throw new BadRequestException(`Failed to verify report!`);
+    }
+
+    // TODO: response can be changed
+    return {
+      vaultReport: prevVaultReport,
       reportProof: bigintToString(reportProof),
     };
   }
