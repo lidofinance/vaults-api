@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Version, ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Param, Version } from '@nestjs/common';
 import { Inject, LoggerService } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BadRequestException } from '@nestjs/common';
@@ -14,18 +14,8 @@ import { ConfigService } from 'common/config';
 import { ReportParamsDto } from './dto';
 import { reportByVaultExample } from './example';
 
-function bigintToString(obj: any): any {
-  if (typeof obj === 'bigint') return obj.toString();
-  if (Array.isArray(obj)) return obj.map(bigintToString);
-  if (obj !== null && typeof obj === 'object') {
-    return Object.fromEntries(Object.entries(obj).map(([key, val]) => [key, bigintToString(val)]));
-  }
-  return obj;
-}
-
 @Controller('report')
 @ApiTags('Reports')
-@UseInterceptors(ClassSerializerInterceptor)
 export class ReportsController {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
@@ -74,7 +64,7 @@ export class ReportsController {
     // TODO: response can be changed
     return {
       vaultReport,
-      reportProof: bigintToString(reportProof),
+      reportProof,
     };
   }
 
@@ -124,7 +114,7 @@ export class ReportsController {
     // TODO: response can be changed
     return {
       vaultReport: prevVaultReport,
-      reportProof: bigintToString(reportProof),
+      reportProof,
     };
   }
 }
