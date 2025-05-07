@@ -46,12 +46,16 @@ export class ReportsController {
       throw new BadRequestException(`Failed to verify report!`);
     }
 
-    const vaultReport = await getVaultReport(vault, latestReportData.reportCid, this.configService.get('IPFS_GATEWAY'));
-    const reportProof = await getVaultReportProofByCid(
+    const vaultReport = await getVaultReport({
       vault,
-      vaultReport.proofsCID,
-      this.configService.get('IPFS_GATEWAY'),
-    );
+      cid: latestReportData.reportCid,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
+    const reportProof = await getVaultReportProofByCid({
+      vault,
+      cid: vaultReport.proofsCID,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
 
     try {
       // TODO: disable logger inside fetchAndVerifyFile
@@ -82,26 +86,26 @@ export class ReportsController {
 
     const latestReportData = await this.vaultHubService.getLatestReportData();
 
-    const lastVaultReport = await getVaultReport(
+    const lastVaultReport = await getVaultReport({
       vault,
-      latestReportData.reportCid,
-      this.configService.get('IPFS_GATEWAY'),
-    );
+      cid: latestReportData.reportCid,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
     if (!lastVaultReport.prevTreeCID) {
       throw new BadRequestException(`Previous report CID not found in the latest report`);
     }
 
-    const prevVaultReport = await getVaultReport(
+    const prevVaultReport = await getVaultReport({
       vault,
-      lastVaultReport.prevTreeCID,
-      this.configService.get('IPFS_GATEWAY'),
-    );
+      cid: lastVaultReport.prevTreeCID,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
 
-    const reportProof = await getVaultReportProofByCid(
+    const reportProof = await getVaultReportProofByCid({
       vault,
-      prevVaultReport.proofsCID,
-      this.configService.get('IPFS_GATEWAY'),
-    );
+      cid: prevVaultReport.proofsCID,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
 
     try {
       // TODO: disable logger inside fetchAndVerifyFile

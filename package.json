@@ -26,7 +26,7 @@
     "@lido-nestjs/contracts": "^9.8.0",
     "@lido-nestjs/execution": "^1.9.3",
     "@lido-nestjs/logger": "^1.0.1",
-    "@lidofinance/lsv-cli": "1.0.0-alpha.44",
+    "@lidofinance/lsv-cli": "1.0.0-alpha.47",
     "@lidofinance/satanizer": "^0.32.0",
     "@nestjs/cache-manager": "^2.2.2",
     "@nestjs/common": "^10.4.4",
@@ -86,5 +86,6 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
