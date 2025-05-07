@@ -8,7 +8,6 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { ConfigService } from 'common/config';
 import { SWAGGER_URL } from 'http/common/swagger';
-import { BigIntToStringInterceptor } from 'http/common/interceptors/bigint-to-string.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }), {
@@ -33,7 +32,7 @@ async function bootstrap() {
   Sentry.init({ dsn: sentryDsn, release, environment });
 
   // interceptors
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)), new BigIntToStringInterceptor());
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // cors
   if (corsWhitelist !== '') {
