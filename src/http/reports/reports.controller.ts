@@ -1,11 +1,11 @@
-import { Controller, Get, Param, Version, ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Param, Version } from '@nestjs/common';
 import { Inject, LoggerService } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BadRequestException } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import { fetchAndVerifyFile } from '@lidofinance/lsv-cli/dist/utils/ipfs';
-import { getVaultReport, getReportProofByCid } from '@lidofinance/lsv-cli/dist/utils/report';
+import { getVaultReport, getVaultReportProofByCid } from '@lidofinance/lsv-cli/dist/utils/report';
 
 import { LsvService } from 'lsv/lsv.service';
 import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract/vault-hub-contract.service';
@@ -16,7 +16,6 @@ import { reportByVaultExample } from './example';
 
 @Controller('report')
 @ApiTags('Reports')
-@UseInterceptors(ClassSerializerInterceptor)
 export class ReportsController {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
@@ -29,7 +28,7 @@ export class ReportsController {
   @Get('/last/:vaultAddress')
   @ApiResponse({
     status: 200,
-    description: 'Report data for a vault',
+    description: 'Last report data for a vault',
     schema: {
       example: reportByVaultExample,
     },
@@ -47,8 +46,16 @@ export class ReportsController {
       throw new BadRequestException(`Failed to verify report!`);
     }
 
-    const vaultReport = await getVaultReport(vault, latestReportData.reportCid, this.configService.get('IPFS_GATEWAY'));
-    const reportProof = await getReportProofByCid(vault, vaultReport.proofsCID);
+    const vaultReport = await getVaultReport({
+      vault,
+      cid: latestReportData.reportCid,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
+    const reportProof = await getVaultReportProofByCid({
+      vault,
+      cid: vaultReport.proofsCID,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
 
     try {
       // TODO: disable logger inside fetchAndVerifyFile
@@ -59,6 +66,59 @@ export class ReportsController {
     }
 
     // TODO: response can be changed
-    return { vaultReport, reportProof };
+    return {
+      vaultReport,
+      reportProof,
+    };
+  }
+
+  @Version('1')
+  @Get('/previous/:vaultAddress')
+  @ApiResponse({
+    status: 200,
+    description: 'Previous report data for a vault',
+    schema: {
+      example: reportByVaultExample,
+    },
+  })
+  async getPrevious(@Param() params: ReportParamsDto) {
+    const vault = params.vaultAddress;
+
+    const latestReportData = await this.vaultHubService.getLatestReportData();
+
+    const lastVaultReport = await getVaultReport({
+      vault,
+      cid: latestReportData.reportCid,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
+    if (!lastVaultReport.prevTreeCID) {
+      throw new BadRequestException(`Previous report CID not found in the latest report`);
+    }
+
+    const prevVaultReport = await getVaultReport({
+      vault,
+      cid: lastVaultReport.prevTreeCID,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
+
+    const reportProof = await getVaultReportProofByCid({
+      vault,
+      cid: prevVaultReport.proofsCID,
+      gateway: this.configService.get('IPFS_GATEWAY'),
+    });
+
+    try {
+      // TODO: disable logger inside fetchAndVerifyFile
+      await fetchAndVerifyFile(prevVaultReport.proofsCID, this.configService.get('IPFS_GATEWAY'));
+    } catch (error) {
+      this.logger.error(`Failed to verify report proofsCID: ${error.message}`);
+      throw new BadRequestException(`Failed to verify report!`);
+    }
+
+    // TODO: response can be changed
+    return {
+      vaultReport: prevVaultReport,
+      reportProof,
+    };
   }
 }
