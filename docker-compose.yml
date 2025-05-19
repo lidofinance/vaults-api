@@ -5,7 +5,28 @@ services:
     container_name: main
     build: ./
     restart: always
+    env_file:
+      - .env
     environment:
       - PORT=3000
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres
     ports:
       - '3000:3000'
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
