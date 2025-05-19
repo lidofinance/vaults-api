@@ -36,6 +36,7 @@
     "@nestjs/swagger": "^7.4.2",
     "@nestjs/terminus": "^9.1.4",
     "@nestjs/throttler": "^6.0.0",
+    "@nestjs/typeorm": "^10.0.2",
     "@sentry/node": "^7.29.0",
     "@willsoto/nestjs-prometheus": "^5.1.0",
     "cache-manager": "^5.2.3",
@@ -43,10 +44,12 @@
     "class-validator": "^0.14.0",
     "ethers": "5.8.0",
     "fastify-swagger": "^5.2.0",
+    "pg": "^8.16.0",
     "prom-client": "^14.1.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
-    "rxjs": "^7.5.2"
+    "rxjs": "^7.5.2",
+    "typeorm": "^0.3.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.1.8",
