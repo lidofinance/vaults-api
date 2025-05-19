@@ -1,6 +1,8 @@
 import { ConfigService as ConfigServiceSource } from '@nestjs/config';
 import { LidoContractModule, LidoLocatorContractModule } from '@lido-nestjs/contracts';
 
+import { VAULT_VIEWER_CONTRACT } from 'common/contracts/contracts.constants';
+
 import { EnvironmentVariables } from './env.validation';
 import { findNetworkConfig } from './networks/utils/find-network-config';
 import { NetworkConfig } from './networks';
@@ -43,6 +45,7 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
     return new Map<symbol, string>([
       [LidoContractModule.contractToken, contracts.lido],
       [LidoLocatorContractModule.contractToken, contracts.lidoLocator],
+      [VAULT_VIEWER_CONTRACT, contracts.vaultViewer],
     ]);
   }
 }

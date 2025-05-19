@@ -32,5 +32,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  worker:
+    build: .
+    command: node dist/worker-entry.js
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:

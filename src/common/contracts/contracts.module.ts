@@ -3,6 +3,7 @@ import { Global, Module } from '@nestjs/common';
 import { ExecutionProvider } from 'common/execution-provider';
 import { ConfigService } from '../config';
 import { VaultHubContractModule } from './modules/vault-hub-contract';
+import { VaultViewerContractModule } from './modules/vault-viewer-contract';
 
 @Global()
 @Module({
@@ -18,7 +19,8 @@ import { VaultHubContractModule } from './modules/vault-hub-contract';
       }),
     ),
     VaultHubContractModule,
+    VaultViewerContractModule,
   ],
-  exports: [VaultHubContractModule],
+  exports: [VaultHubContractModule, VaultViewerContractModule],
 })
 export class ContractsModule {}

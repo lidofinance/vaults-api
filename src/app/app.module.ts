@@ -11,6 +11,7 @@ import { HealthModule } from 'common/health';
 
 import { HTTPModule } from '../http';
 import { LsvModule } from '../lsv';
+import { JobsModule } from '../jobs';
 import { AppService } from './app.service';
 
 @Module({
@@ -23,6 +24,7 @@ import { AppService } from './app.service';
     TypeOrmModule.forRoot(getTypeOrmConfig()),
     ContractsModule,
     LsvModule,
+    JobsModule,
   ],
   providers: [{ provide: APP_INTERCEPTOR, useClass: SentryInterceptor }, AppService],
 })
