@@ -1,3 +1,4 @@
+import { Cron } from '@nestjs/schedule';
 import { Injectable, Inject } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
@@ -17,6 +18,7 @@ export class VaultJobsService {
     await this.fetchAllVaults();
   }
 
+  @Cron('*/10 * * * * *') // every 10s (just for MVP)
   public async fetchAllVaults(): Promise<void> {
     this.logger.log('VaultJobsService started');
 

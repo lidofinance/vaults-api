@@ -1,22 +1,17 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app';
+import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+import { AppJobModule } from './app-job';
 import { JobsService } from './jobs';
 
 async function bootstrap() {
-  const app = await NestFactory.createApplicationContext(AppModule);
+  const app = await NestFactory.createApplicationContext(AppJobModule);
+
+  // logger
+  app.useLogger(app.get(LOGGER_PROVIDER));
 
   const jobsService = app.get(JobsService);
 
-  try {
-    await jobsService.initialize();
-    console.log('JobsService was started!');
-  } catch (error) {
-    console.error('Error while executing task in the JobsService:', error);
-    process.exit(1);
-  } finally {
-    await app.close();
-    process.exit(0);
-  }
+  await jobsService.initialize();
 }
 
 bootstrap();
