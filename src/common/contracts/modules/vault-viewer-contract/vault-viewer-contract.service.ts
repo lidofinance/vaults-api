@@ -13,8 +13,8 @@ export class VaultViewerContractService {
     this.contract = new Contract(address, VaultViewerAbi, provider);
   }
 
-  async getVaultHub(): Promise<string> {
-    const address = await this.contract.vaultHub();
-    return address;
+  async getVaultsConnectedBound(from: number, to: number): Promise<{ addresses: string[]; total: bigint }> {
+    const [addresses, total] = await this.contract.vaultsConnectedBound(from, to);
+    return { addresses, total };
   }
 }

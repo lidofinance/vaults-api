@@ -9,6 +9,8 @@ export const getTypeOrmConfig = (): TypeOrmModuleOptions => {
     password: process.env.POSTGRES_PASSWORD,
     database: process.env.POSTGRES_DATABASE,
     entities: ['dist/**/*.entity{.ts,.js}'],
+    migrationsTableName: 'migration',
+    migrations: ['dist/migration/*.js'],
     ssl: false,
   };
 };
