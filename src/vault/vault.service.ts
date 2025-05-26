@@ -40,6 +40,10 @@ export class VaultsService {
     return await this.vaultRepo.save(vault);
   }
 
+  async getVaultsCount(): Promise<number> {
+    return await this.vaultRepo.count();
+  }
+
   async getVaults(limit = 10, offset = 0): Promise<VaultEntity[]> {
     return await this.vaultRepo.find({
       take: limit,
