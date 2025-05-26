@@ -48,4 +48,12 @@ export class VaultsService {
       order: { id: 'ASC' },
     });
   }
+
+  async getVaultByAddress(address: string): Promise<VaultEntity> {
+    const vault = await this.vaultRepo.findOne({ where: { address } });
+    if (!vault) {
+      throw new NotFoundException(`Vault with address ${address} not found`);
+    }
+    return vault;
+  }
 }

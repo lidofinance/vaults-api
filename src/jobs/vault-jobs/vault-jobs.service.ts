@@ -3,6 +3,8 @@ import { Injectable, Inject } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
 import { VaultsService } from '../../vault';
+import { VaultsStateHourlyService } from '../../vaults-state-hourly';
+import { runInParallelBatches } from '../../common/utils/run-in-parallel-batches';
 
 @Injectable()
 export class VaultJobsService {
@@ -12,15 +14,18 @@ export class VaultJobsService {
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     private readonly vaultViewerContractService: VaultViewerContractService,
     private readonly vaultsService: VaultsService,
+    private readonly vaultsStateHourlyService: VaultsStateHourlyService,
   ) {}
 
   public async initialize(): Promise<void> {
-    await this.fetchAllVaults();
+    this.logger.log('VaultJobsService started');
+    // await this.fetchAllVaults();
+    await this.fetchAllVaultsStateHourly();
   }
 
   @Cron('*/10 * * * * *') // every 10s (just for MVP)
   public async fetchAllVaults(): Promise<void> {
-    this.logger.log('VaultJobsService started');
+    this.logger.log('fetchAllVaults started');
 
     // 1. First batch (0–99) + retrieve total
     const { addresses: initialBatch, total } = await this.vaultViewerContractService.getVaultsConnectedBound(
@@ -55,7 +60,7 @@ export class VaultJobsService {
     }
 
     // 3. Launch parallel getVaultsConnectedBound calls
-    await this.runInParallelBatches(
+    await runInParallelBatches(
       batches,
       async ({ from, to }) => {
         try {
@@ -80,15 +85,30 @@ export class VaultJobsService {
     );
   }
 
-  private async runInParallelBatches<T>(
-    items: T[],
-    task: (item: T) => Promise<void>,
-    batchSize: number,
-  ): Promise<void> {
-    for (let i = 0; i < items.length; i += batchSize) {
-      const batch = items.slice(i, i + batchSize);
-      this.logger.log(`Running parallel batch [${i}–${i + batch.length - 1}]`);
-      await Promise.all(batch.map(task));
+  public async fetchAllVaultsStateHourly(): Promise<void> {
+    this.logger.log('fetchAllVaultsStateHourly started');
+    const vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(0, 2);
+
+    for (const item of vaultsDataBatch) {
+      const vault = await this.vaultsService.getVaultByAddress(item.vault);
+
+      if (!vault) {
+        this.logger.warn(`Vault not found in DB: ${item.vault}`);
+        continue;
+      }
+
+      await this.vaultsStateHourlyService.add({
+        vault,
+        totalValue: item.totalValue.toString(),
+        stEthLiability: item.stEthLiability.toString(),
+        sharesLiability: item.liabilityShares.toString(),
+        healthFactor: 0, // TODO this.calculateHealthFactor(item),
+        forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
+        lidoTreasuryFee: item.lidoTreasuryFee.toString(),
+        nodeOperatorFee: item.nodeOperatorFee.toString(),
+        updatedAt: new Date(),
+        blockNumber: '0', // TODO
+      });
     }
   }
 }
