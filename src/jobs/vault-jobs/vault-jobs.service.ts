@@ -110,18 +110,18 @@ export class VaultJobsService {
           continue;
         }
 
-        // const healthFactor = calculateHealth({
-        //   totalValue: item.totalValue,
-        //   liabilitySharesInStethWei: item.stEthLiability,
-        //   forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
-        // });
+        const healthFactor = calculateHealth({
+          totalValue: item.totalValue,
+          liabilitySharesInStethWei: item.stEthLiability,
+          forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
+        });
 
         await this.vaultsStateHourlyService.add({
           vault,
           totalValue: item.totalValue.toString(),
           stEthLiability: item.stEthLiability.toString(),
           sharesLiability: item.liabilityShares.toString(),
-          healthFactor: 0, // healthFactor.healthRatio, // TODO: healthRatio18?
+          healthFactor: healthFactor.healthRatio,
           forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
           lidoTreasuryFee: item.lidoTreasuryFee.toString(),
           nodeOperatorFee: item.nodeOperatorFee.toString(),

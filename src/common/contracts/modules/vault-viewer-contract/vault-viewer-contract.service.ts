@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 
 import { ExecutionProvider } from 'common/execution-provider';
 import { VaultViewerAbi } from '../../abi/VaultViewer';
@@ -7,7 +7,7 @@ import { VaultViewerAbi } from '../../abi/VaultViewer';
 type VaultData = {
   vault: string;
   totalValue: bigint;
-  forcedRebalanceThreshold: bigint;
+  forcedRebalanceThreshold: number;
   liabilityShares: bigint;
   stEthLiability: bigint;
   lidoTreasuryFee: bigint;
@@ -31,14 +31,15 @@ export class VaultViewerContractService {
 
   async getVaultsDataBatch(from: number, to: number): Promise<VaultData[]> {
     const res = await this.contract.getVaultsDataBatch(from, to);
+
     return res.map((vaultData: any) => ({
       vault: vaultData.vault,
-      totalValue: BigNumber.from(vaultData.totalValue).toBigInt(),
-      forcedRebalanceThreshold: BigNumber.from(vaultData.forcedRebalanceThreshold).toBigInt(),
-      liabilityShares: BigNumber.from(vaultData.liabilityShares).toBigInt(),
-      stEthLiability: BigNumber.from(vaultData.stEthLiability).toBigInt(),
-      lidoTreasuryFee: BigNumber.from(vaultData.lidoTreasuryFee).toBigInt(),
-      nodeOperatorFee: BigNumber.from(vaultData.nodeOperatorFee).toBigInt(),
+      totalValue: res[0].totalValue.toBigInt(),
+      forcedRebalanceThreshold: vaultData.forcedRebalanceThreshold.toNumber(), // TODO: is it safe?
+      liabilityShares: vaultData.liabilityShares.toBigInt(),
+      stEthLiability: vaultData.stEthLiability.toBigInt(),
+      lidoTreasuryFee: vaultData.lidoTreasuryFee.toBigInt(),
+      nodeOperatorFee: vaultData.nodeOperatorFee.toBigInt(),
       isOwnerDashboard: vaultData.isOwnerDashboard,
     }));
   }
