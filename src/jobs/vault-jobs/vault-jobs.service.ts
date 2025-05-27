@@ -28,15 +28,16 @@ export class VaultJobsService {
 
   @Cron('0 0 * * *', { timeZone: 'UTC' }) // every day at 00:00 UTC
   public async fetchAllVaults(): Promise<void> {
-    this.logger.log('fetchAllVaults started');
+    this.logger.log('[fetchAllVaults] Started');
 
     // 1. First batch (0, batchSize - 1) + retrieve total
-    const { addresses: initialBatch, total } = await this.vaultViewerContractService.getVaultsConnectedBound(
+    const { addresses: initialBatch, leftoverVaults } = await this.vaultViewerContractService.getVaultsConnectedBound(
       0,
       this.batchSize - 1,
     );
 
-    this.logger.log(`[fetchAllVaults] Total vaults found: ${total}`);
+    const totalNumber = initialBatch.length + leftoverVaults;
+    this.logger.log(`[fetchAllVaults] Total vaults estimated: ${totalNumber}`);
 
     // Save first batch to DB
     await Promise.all(
@@ -50,10 +51,7 @@ export class VaultJobsService {
       }),
     );
 
-    // 2. Build remaining ranges: [100–199], [200–299], ...
-    const totalNumber = Number(total);
-    // TODO: it starts only if 'Vault count in DB' less that 'Vault count in contract'
-
+    // 2. Build remaining ranges, for example: [100–199], [200–299], ...
     const batches: Array<{ from: number; to: number }> = [];
 
     for (let i = this.batchSize; i < totalNumber; i += this.batchSize) {
@@ -68,31 +66,31 @@ export class VaultJobsService {
       async ({ from, to }) => {
         try {
           const { addresses } = await this.vaultViewerContractService.getVaultsConnectedBound(from, to);
-          this.logger.log(`Fetched range [${from}–${to}], received: ${addresses.length} vaults`);
+          this.logger.log(`[fetchAllVaults] Fetched range [${from}–${to}], received: ${addresses.length} vaults`);
 
           await Promise.all(
             addresses.map(async (address) => {
               try {
                 await this.vaultsService.addVault(address);
-                this.logger.log(`Vault ${address} saved!`);
+                this.logger.log(`[fetchAllVaults] Vault ${address} saved!`);
               } catch (err) {
-                this.logger.warn(`Vault ${address} not saved: ${err.message}`);
+                this.logger.warn(`[fetchAllVaults] Vault ${address} not saved: ${err.message}`);
               }
             }),
           );
         } catch (err) {
-          this.logger.error(`Failed to fetch range [${from}–${to}]: ${err.message}`);
+          this.logger.error(`[fetchAllVaults] Failed to fetch range [${from}–${to}]: ${err.message}`);
         }
       },
-      5, // max 5 ranges in parallel
+      5, // parallel limit
     );
 
-    this.logger.log('fetchAllVaults finished');
+    this.logger.log('[fetchAllVaults] Finished');
   }
 
   @Cron('5 * * * *', { timeZone: 'UTC' }) // every hour at minute 05 UTC (**:05)
   public async fetchAllVaultsStateHourly(): Promise<void> {
-    this.logger.log('fetchAllVaultsStateHourly started');
+    this.logger.log('[fetchAllVaultsStateHourly] Started');
 
     const batchSize = 50;
     const vaultsCount = await this.vaultsService.getVaultsCount();
@@ -141,6 +139,6 @@ export class VaultJobsService {
       }
     }
 
-    this.logger.log('fetchAllVaultsStateHourly finished');
+    this.logger.log('[fetchAllVaultsStateHourly] finished');
   }
 }
