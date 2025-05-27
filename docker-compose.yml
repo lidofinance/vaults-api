@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   main:
-    container_name: main
+    container_name: vaults-api-main
     build: ./
     restart: always
     env_file:
@@ -22,7 +22,7 @@ services:
 
   postgres:
     image: postgres:15
-    container_name: postgres
+    container_name: vaults-api-postgres
     restart: always
     environment:
       - POSTGRES_USER=postgres
@@ -34,6 +34,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   worker:
+    container_name: vaults-api-worker
     build: ./
     command: node dist/worker-entry.js
     env_file:
