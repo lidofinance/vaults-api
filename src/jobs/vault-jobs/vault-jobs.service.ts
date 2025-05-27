@@ -1,4 +1,4 @@
-// import { Cron } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { Injectable, Inject } from '@nestjs/common';
 import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 
@@ -20,31 +20,32 @@ export class VaultJobsService {
   ) {}
 
   public async initialize(): Promise<void> {
-    this.logger.log('VaultJobsService started');
-    // await this.fetchAllVaults();
+    this.logger.log('VaultJobsService initialization started');
+    await this.fetchAllVaults();
     await this.fetchAllVaultsStateHourly();
+    this.logger.log('VaultJobsService initialization finished');
   }
 
-  // @Cron('*/10 * * * * *') // every 10s (just for MVP)
+  @Cron('0 0 * * *', { timeZone: 'UTC' }) // every day at 00:00 UTC
   public async fetchAllVaults(): Promise<void> {
     this.logger.log('fetchAllVaults started');
 
-    // 1. First batch (0–99) + retrieve total
+    // 1. First batch (0, batchSize - 1) + retrieve total
     const { addresses: initialBatch, total } = await this.vaultViewerContractService.getVaultsConnectedBound(
       0,
       this.batchSize - 1,
     );
 
-    this.logger.log(`Total vaults found: ${total}`);
+    this.logger.log(`[fetchAllVaults] Total vaults found: ${total}`);
 
     // Save first batch to DB
     await Promise.all(
       initialBatch.map(async (address) => {
         try {
           await this.vaultsService.addVault(address);
-          this.logger.log(`Vault ${address} saved!`);
+          this.logger.log(`[fetchAllVaults] Vault ${address} saved!`);
         } catch (err) {
-          this.logger.warn(`Vault ${address} not saved: ${err.message}`);
+          this.logger.warn(`[fetchAllVaults] Vault ${address} not saved: ${err.message}`);
         }
       }),
     );
@@ -89,6 +90,7 @@ export class VaultJobsService {
     this.logger.log('fetchAllVaults finished');
   }
 
+  @Cron('5 * * * *', { timeZone: 'UTC' }) // every hour at minute 05 UTC (**:05)
   public async fetchAllVaultsStateHourly(): Promise<void> {
     this.logger.log('fetchAllVaultsStateHourly started');
 
@@ -97,7 +99,7 @@ export class VaultJobsService {
 
     for (let from = 0; from < vaultsCount; from += batchSize) {
       const to = Math.min(from + batchSize, vaultsCount);
-      this.logger.log(`Fetching vaults batch: ${from} to ${to}`);
+      this.logger.log(`[fetchAllVaultsStateHourly] Fetching vaults batch: ${from} to ${to}`);
 
       const vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(from, to);
 
@@ -106,28 +108,36 @@ export class VaultJobsService {
         try {
           vault = await this.vaultsService.getVaultByAddress(item.vault);
         } catch (err) {
-          this.logger.warn(`Vault not found in DB: ${item.vault}`);
+          this.logger.warn(`[fetchAllVaultsStateHourly] Vault not found in DB: ${item.vault}`);
           continue;
         }
 
-        const healthFactor = calculateHealth({
-          totalValue: item.totalValue,
-          liabilitySharesInStethWei: item.stEthLiability,
-          forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
-        });
+        try {
+          const healthFactor = calculateHealth({
+            totalValue: item.totalValue,
+            liabilitySharesInStethWei: item.stEthLiability,
+            forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
+          });
 
-        await this.vaultsStateHourlyService.add({
-          vault,
-          totalValue: item.totalValue.toString(),
-          stEthLiability: item.stEthLiability.toString(),
-          sharesLiability: item.liabilityShares.toString(),
-          healthFactor: healthFactor.healthRatio,
-          forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
-          lidoTreasuryFee: item.lidoTreasuryFee.toString(),
-          nodeOperatorFee: item.nodeOperatorFee.toString(),
-          updatedAt: new Date(),
-          blockNumber: '0', // TODO
-        });
+          await this.vaultsStateHourlyService.add({
+            vault,
+            totalValue: item.totalValue.toString(),
+            stEthLiability: item.stEthLiability.toString(),
+            sharesLiability: item.liabilityShares.toString(),
+            healthFactor: healthFactor.healthRatio,
+            forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
+            lidoTreasuryFee: item.lidoTreasuryFee.toString(),
+            nodeOperatorFee: item.nodeOperatorFee.toString(),
+            updatedAt: new Date(),
+            blockNumber: '0', // TODO
+            // efficiency: ___, TODO
+          });
+        } catch (err) {
+          this.logger.error(
+            `[fetchAllVaultsStateHourly] Failed to save vault to DB OR calculateHealth of vault ${item.vault}: ${err}`,
+          );
+          // continue
+        }
       }
     }
 
