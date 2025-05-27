@@ -1,5 +1,7 @@
 // import { Cron } from '@nestjs/schedule';
 import { Injectable, Inject } from '@nestjs/common';
+import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
+
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
 import { VaultsService } from '../../vault';
@@ -23,7 +25,7 @@ export class VaultJobsService {
     await this.fetchAllVaultsStateHourly();
   }
 
-  @Cron('*/10 * * * * *') // every 10s (just for MVP)
+  // @Cron('*/10 * * * * *') // every 10s (just for MVP)
   public async fetchAllVaults(): Promise<void> {
     this.logger.log('fetchAllVaults started');
 
@@ -108,12 +110,18 @@ export class VaultJobsService {
           continue;
         }
 
+        // const healthFactor = calculateHealth({
+        //   totalValue: item.totalValue,
+        //   liabilitySharesInStethWei: item.stEthLiability,
+        //   forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
+        // });
+
         await this.vaultsStateHourlyService.add({
           vault,
           totalValue: item.totalValue.toString(),
           stEthLiability: item.stEthLiability.toString(),
           sharesLiability: item.liabilityShares.toString(),
-          healthFactor: 0, // TODO calculateHealthFactor(item),
+          healthFactor: 0, // healthFactor.healthRatio, // TODO: healthRatio18?
           forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
           lidoTreasuryFee: item.lidoTreasuryFee.toString(),
           nodeOperatorFee: item.nodeOperatorFee.toString(),

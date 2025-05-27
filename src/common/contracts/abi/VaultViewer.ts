@@ -101,6 +101,11 @@ export const VaultViewerAbi = [
             "internalType": "uint256",
             "name": "nodeOperatorFee",
             "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isOwnerDashboard",
+            "type": "bool"
           }
         ],
         "internalType": "struct VaultViewer.VaultData[]",

@@ -12,6 +12,7 @@ type VaultData = {
   stEthLiability: bigint;
   lidoTreasuryFee: bigint;
   nodeOperatorFee: bigint;
+  isOwnerDashboard: boolean;
 };
 
 @Injectable()
@@ -38,6 +39,7 @@ export class VaultViewerContractService {
       stEthLiability: BigNumber.from(vaultData.stEthLiability).toBigInt(),
       lidoTreasuryFee: BigNumber.from(vaultData.lidoTreasuryFee).toBigInt(),
       nodeOperatorFee: BigNumber.from(vaultData.nodeOperatorFee).toBigInt(),
+      isOwnerDashboard: vaultData.isOwnerDashboard,
     }));
   }
 }
