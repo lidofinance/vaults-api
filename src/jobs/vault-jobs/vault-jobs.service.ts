@@ -4,6 +4,7 @@ import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculat
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
+import { ExecutionProviderService } from '../../common/execution-provider';
 import { VaultsService } from '../../vault';
 import { VaultsStateHourlyService } from '../../vaults-state-hourly';
 import { runInParallelBatches } from '../../common/utils/run-in-parallel-batches';
@@ -17,6 +18,7 @@ export class VaultJobsService {
     private readonly vaultViewerContractService: VaultViewerContractService,
     private readonly vaultsService: VaultsService,
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
+    private readonly executionProviderService: ExecutionProviderService,
   ) {}
 
   public async initialize(): Promise<void> {
@@ -101,13 +103,14 @@ export class VaultJobsService {
       this.logger.log(`[fetchAllVaultsStateHourly] Fetching vaults batch: ${from} to ${to}`);
 
       const vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(from, to);
+      const blockNumber = await this.executionProviderService.getBlockNumber();
 
       for (const item of vaultsDataBatch) {
         let vault;
         try {
-          vault = await this.vaultsService.getVaultByAddress(item.vault);
+          vault = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
         } catch (err) {
-          this.logger.warn(`[fetchAllVaultsStateHourly] Vault not found in DB: ${item.vault}`);
+          this.logger.error(`[fetchAllVaultsStateHourly] Failed to get or create vault: ${item.vault} — ${err}`);
           continue;
         }
 
@@ -128,8 +131,7 @@ export class VaultJobsService {
             lidoTreasuryFee: item.lidoTreasuryFee.toString(),
             nodeOperatorFee: item.nodeOperatorFee.toString(),
             updatedAt: new Date(),
-            blockNumber: '0', // TODO
-            // efficiency: ___, TODO
+            blockNumber,
           });
         } catch (err) {
           this.logger.error(

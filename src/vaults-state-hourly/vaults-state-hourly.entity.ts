@@ -39,6 +39,6 @@ export class VaultsStateHourlyEntity {
   @Column({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 
-  @Column({ name: 'block_number', type: 'bigint' })
-  blockNumber: string; // uint64 → bigint
+  @Column({ name: 'block_number', type: 'integer' })
+  blockNumber: number;
 }

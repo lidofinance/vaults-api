@@ -16,20 +16,18 @@ export class ExecutionProviderService {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
   ) {}
 
-  /**
-   * Returns network name
-   */
   public async getNetworkName(): Promise<string> {
     const network = await this.provider.getNetwork();
     const name = CHAINS[network.chainId]?.toLocaleLowerCase();
     return name || network.name;
   }
 
-  /**
-   * Returns current chain id
-   */
   public async getChainId(): Promise<number> {
     const { chainId } = await this.provider.getNetwork();
     return chainId;
+  }
+
+  public async getBlockNumber(): Promise<number> {
+    return await this.provider.getBlockNumber();
   }
 }

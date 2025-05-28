@@ -60,4 +60,13 @@ export class VaultsService {
     }
     return vault;
   }
+
+  async getOrCreateVaultByAddress(address: string): Promise<VaultEntity> {
+    let vault = await this.vaultRepo.findOne({ where: { address } });
+    if (!vault) {
+      vault = this.vaultRepo.create({ address });
+      vault = await this.vaultRepo.save(vault);
+    }
+    return vault;
+  }
 }
