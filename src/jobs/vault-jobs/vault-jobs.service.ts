@@ -21,6 +21,7 @@ export class VaultJobsService {
 
   public async initialize(): Promise<void> {
     this.logger.log('VaultJobsService initialization started');
+    // Order is important!
     await this.fetchAllVaults();
     await this.fetchAllVaultsStateHourly();
     this.logger.log('VaultJobsService initialization finished');
