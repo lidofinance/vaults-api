@@ -1,6 +1,9 @@
+import { CronExpressionParser } from 'cron-parser';
 import { Controller, Get, Query, DefaultValuePipe, ParseIntPipe, Version, Inject, LoggerService } from '@nestjs/common';
 import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+
+import { ConfigService } from 'common/config';
 import { VaultsService } from '../../vault';
 import { VaultsStateHourlyService } from '../../vaults-state-hourly';
 import { vaultsExample } from './example';
@@ -12,6 +15,7 @@ const offsetQueryDefault = 10;
 @ApiTags('Vaults')
 export class VaultsHttpController {
   constructor(
+    private readonly configService: ConfigService,
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     private readonly vaultsService: VaultsService,
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
@@ -48,10 +52,19 @@ export class VaultsHttpController {
     const addresses = vaults.map((v) => v.address);
 
     const latestVaultsHourlyStates = await this.vaultsStateHourlyService.getLastByVaultAddresses(addresses);
-    return latestVaultsHourlyStates.map((item) => ({
-      ...item,
-      // TODO: handler on the sql side?
-      healthFactor: item.healthFactor === Infinity ? 'Infinity' : item.healthFactor,
-    }));
+    return {
+      nextUpdateAt: this.getNextVaultsHourlyUpdate(),
+      vaults: latestVaultsHourlyStates.map((item) => ({
+        ...item,
+        // TODO: @Transform?
+        healthFactor: item.healthFactor === Infinity ? 'Infinity' : item.healthFactor,
+      })),
+    };
+  }
+
+  private getNextVaultsHourlyUpdate(): Date {
+    const options = { currentDate: new Date(), tz: this.configService.jobs['vaultsHourlyCronTZ'] };
+    const interval = CronExpressionParser.parse(this.configService.jobs['vaultsHourlyCron'], options);
+    return interval.next().toDate();
   }
 }
