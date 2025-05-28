@@ -69,7 +69,7 @@ export class VaultJobsService {
             forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
           });
 
-          await this.vaultsStateHourlyService.add({
+          await this.vaultsStateHourlyService.addOrUpdate({
             vault,
             totalValue: item.totalValue.toString(),
             stEthLiability: item.stEthLiability.toString(),

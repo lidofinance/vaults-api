@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { VaultEntity } from '../vault';
 
 @Entity('vaults_state_hourly')
+@Index('uniq_vault', ['vault'], { unique: true })
 export class VaultsStateHourlyEntity {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
