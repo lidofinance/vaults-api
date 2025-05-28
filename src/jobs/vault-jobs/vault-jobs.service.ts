@@ -37,8 +37,21 @@ export class VaultJobsService {
       const to = Math.min(from + batchSize, vaultsCount);
       this.logger.log(`[fetchAllVaultsStateHourly] Fetching vaults batch: ${from} to ${to}`);
 
-      const vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(from, to);
-      const blockNumber = await this.executionProviderService.getBlockNumber();
+      let vaultsDataBatch;
+      try {
+        vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(from, to);
+      } catch (err) {
+        this.logger.error(`[fetchAllVaultsStateHourly] Failed to fetch vaultsDataBatch (${from}-${to}): ${err}`);
+        continue;
+      }
+
+      let blockNumber: number;
+      try {
+        blockNumber = await this.executionProviderService.getBlockNumber();
+      } catch (err) {
+        this.logger.error(`[fetchAllVaultsStateHourly] Failed to fetch blockNumber for batch (${from}-${to}): ${err}`);
+        continue;
+      }
 
       for (const item of vaultsDataBatch) {
         let vault;
