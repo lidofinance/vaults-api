@@ -65,6 +65,7 @@ export class VaultsStateHourlyService {
         `state.steth_liability AS "stEthLiability"`,
         `state.health_factor AS "healthFactor"`,
         `state.updated_at AS "updatedAt"`,
+        `state.block_number AS "blockNumber"`,
       ])
       .where('vault.address IN (:...addresses)', { addresses })
       .andWhere((qb) => {

@@ -10,6 +10,7 @@ export const vaultsExample = {
       stEthLiability: '10042693599619345006',
       healthFactor: 17303.469941731633,
       updatedAt: '2025-05-27T19:12:16.489Z',
+      blockNumber: 489536,
     },
     {
       address: '0x194F2F85FfeB33433Cc4956460Da2f925FEA950C',
@@ -19,6 +20,7 @@ export const vaultsExample = {
       stEthLiability: '0',
       healthFactor: 'Infinity',
       updatedAt: '2025-05-27T19:12:16.491Z',
+      blockNumber: 489536,
     },
   ],
 };
