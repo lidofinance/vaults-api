@@ -36,7 +36,8 @@ export class VaultViewerContractService {
     return res.map((vaultData: any) => ({
       vault: vaultData.vault,
       totalValue: res[0].totalValue.toBigInt(),
-      forcedRebalanceThreshold: vaultData.forcedRebalanceThreshold.toNumber(), // TODO: is it safe?
+      // vaultData.forcedRebalanceThreshold is safe here, because it can't be more than 10_000
+      forcedRebalanceThreshold: vaultData.forcedRebalanceThreshold.toNumber(),
       liabilityShares: vaultData.liabilityShares.toBigInt(),
       stEthLiability: vaultData.stEthLiability.toBigInt(),
       lidoTreasuryFee: vaultData.lidoTreasuryFee.toBigInt(),
