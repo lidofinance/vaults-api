@@ -48,4 +48,12 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
       [VAULT_VIEWER_CONTRACT, contracts.vaultViewer],
     ]);
   }
+
+  public get jobs() {
+    return {
+      vaultsHourlyBatchSize: 50,
+      vaultsHourlyCron: '0 * * * *', // every hour at minute 00 UTC (**:00)
+      vaultsHourlyCronTZ: 'UTC',
+    };
+  }
 }
