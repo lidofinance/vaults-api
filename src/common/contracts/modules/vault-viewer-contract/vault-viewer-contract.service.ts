@@ -31,11 +31,10 @@ export class VaultViewerContractService {
   }
 
   async getVaultsDataBatch(from: number, to: number): Promise<VaultData[]> {
-    const res = await this.contract.getVaultsDataBatch(from, to);
-
-    return res.map((vaultData: any) => ({
+    const rawData = await this.contract.getVaultsDataBatch(from, to);
+    return rawData.map((vaultData: any) => ({
       vault: vaultData.vault,
-      totalValue: res[0].totalValue.toBigInt(),
+      totalValue: vaultData.totalValue.toBigInt(),
       // vaultData.forcedRebalanceThreshold is safe here, because it can't be more than 10_000
       forcedRebalanceThreshold: vaultData.forcedRebalanceThreshold.toNumber(),
       liabilityShares: vaultData.liabilityShares.toBigInt(),
