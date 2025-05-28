@@ -45,33 +45,13 @@ export class VaultsHttpController {
     @Query('offset', new DefaultValuePipe(offsetQueryDefault), ParseIntPipe) offset: number,
   ) {
     const vaults = await this.vaultsService.getVaults(limit, offset);
+    const addresses = vaults.map((v) => v.address);
 
-    const result = await Promise.all(
-      vaults.map(async (vault) => {
-        const vaultLatestHourlyState = await this.vaultsStateHourlyService.getLastByVaultAddress(vault.address);
-
-        if (!vaultLatestHourlyState) {
-          return {
-            address: vault.address,
-            ens: vault.ens,
-            customName: vault.customName,
-            totalValue: null,
-            stEthLiability: null,
-            healthFactor: null,
-          };
-        }
-
-        return {
-          address: vault.address,
-          ens: vault.ens,
-          customName: vault.customName,
-          totalValue: vaultLatestHourlyState.totalValue,
-          stEthLiability: vaultLatestHourlyState.stEthLiability,
-          healthFactor: vaultLatestHourlyState.healthFactor,
-        };
-      }),
-    );
-
-    return result;
+    const latestVaultsHourlyStates = await this.vaultsStateHourlyService.getLastByVaultAddresses(addresses);
+    return latestVaultsHourlyStates.map((item) => ({
+      ...item,
+      // TODO: handler on the sql side?
+      healthFactor: item.healthFactor === Infinity ? 'Infinity' : item.healthFactor,
+    }));
   }
 }

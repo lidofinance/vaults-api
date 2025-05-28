@@ -1,19 +1,21 @@
 // TODO: response can be changed
 export const vaultsExample = [
   {
-    address: '0xE312f1ed35c4dBd010A332118baAD69d45A0E302',
+    address: '0x4a4bf6853E3d82aefd71c9A60c506D6833173A4e',
+    ens: 'vault.eth',
+    customName: 'super vault',
+    totalValue: '2119188376037000000000',
+    stEthLiability: '10042693599619345006',
+    healthFactor: 17303.469941731633,
+    updatedAt: '2025-05-27T19:12:16.489Z',
+  },
+  {
+    address: '0x194F2F85FfeB33433Cc4956460Da2f925FEA950C',
     ens: null,
     customName: null,
     totalValue: '2119188376037000000000',
     stEthLiability: '0',
-    healthFactor: null,
-  },
-  {
-    address: '0x652b70E0Ae932896035d553fEaA02f37Ab34f7DC',
-    ens: null,
-    customName: null,
-    totalValue: '2119188376037000000000',
-    stEthLiability: '26615475455018685868',
-    healthFactor: 6529.037857269118,
+    healthFactor: 'Infinity',
+    updatedAt: '2025-05-27T19:12:16.491Z',
   },
 ];
