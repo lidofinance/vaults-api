@@ -47,8 +47,15 @@ export class VaultJobsService {
 
     const batchSize = this.configService.jobs['vaultsHourlyBatchSize'];
 
-    const vaultsCount = await this.vaultsService.getVaultsCount();
+    // 1. Get vaultsCount with first batch (0, batchSize - 1) + leftover
+    const { addresses: initialBatch, leftoverVaults } = await this.vaultViewerContractService.getVaultsConnectedBound(
+      0,
+      batchSize - 1,
+    );
+    const vaultsCount = initialBatch.length + leftoverVaults;
+    this.logger.log(`[fetchAllVaultsStateHourly] Total vaults: ${vaultsCount}`);
 
+    // 2. Starting to fetch vaults data
     for (let from = 0; from < vaultsCount; from += batchSize) {
       const to = Math.min(from + batchSize, vaultsCount);
       this.logger.log(`[fetchAllVaultsStateHourly] Fetching vaults batch: ${from} to ${to}`);
