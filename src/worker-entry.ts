@@ -9,9 +9,7 @@ async function bootstrap() {
   // logger
   app.useLogger(app.get(LOGGER_PROVIDER));
 
-  const jobsService = app.get(JobsService);
-
-  await jobsService.initialize();
+  app.get(JobsService);
 }
 
 bootstrap();

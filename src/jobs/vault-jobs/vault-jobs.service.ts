@@ -1,8 +1,10 @@
-import { Cron } from '@nestjs/schedule';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
 import { Injectable, Inject } from '@nestjs/common';
 import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { ConfigService } from 'common/config';
 import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
 import { ExecutionProviderService } from '../../common/execution-provider';
 import { VaultsService } from '../../vault';
@@ -10,9 +12,9 @@ import { VaultsStateHourlyService } from '../../vaults-state-hourly';
 
 @Injectable()
 export class VaultJobsService {
-  private readonly batchSize = 100;
-
   constructor(
+    private readonly configService: ConfigService,
+    private readonly schedulerRegistry: SchedulerRegistry,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     private readonly vaultViewerContractService: VaultViewerContractService,
     private readonly vaultsService: VaultsService,
@@ -20,17 +22,31 @@ export class VaultJobsService {
     private readonly executionProviderService: ExecutionProviderService,
   ) {}
 
-  public async initialize(): Promise<void> {
+  async onModuleInit() {
     this.logger.log('VaultJobsService initialization started');
+    // one-time execution on startup
     await this.fetchAllVaultsStateHourly();
+
+    const job = new CronJob(
+      this.configService.jobs['vaultsHourlyCron'],
+      async () => {
+        await this.fetchAllVaultsStateHourly();
+      },
+      null,
+      false,
+      this.configService.jobs['vaultsHourlyCronTZ'],
+    );
+
+    this.schedulerRegistry.addCronJob('vaults-hourly', job);
+    job.start();
     this.logger.log('VaultJobsService initialization finished');
   }
 
-  @Cron('0 * * * *', { timeZone: 'UTC' }) // every hour at minute 00 UTC (**:00)
   public async fetchAllVaultsStateHourly(): Promise<void> {
     this.logger.log('[fetchAllVaultsStateHourly] Started');
 
-    const batchSize = 50;
+    const batchSize = this.configService.jobs['vaultsHourlyBatchSize'];
+
     const vaultsCount = await this.vaultsService.getVaultsCount();
 
     for (let from = 0; from < vaultsCount; from += batchSize) {

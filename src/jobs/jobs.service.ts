@@ -8,8 +8,4 @@ export class JobsService {
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     private readonly vaultJobsService: VaultJobsService,
   ) {}
-
-  public async initialize(): Promise<void> {
-    await this.vaultJobsService.initialize();
-  }
 }
