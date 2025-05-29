@@ -4,7 +4,9 @@ import { Contract } from 'ethers';
 import { ExecutionProvider } from 'common/execution-provider';
 import { VaultViewerAbi } from '../../abi/VaultViewer';
 
-type VaultData = {
+export type Overrides = { blockTag?: number | string };
+
+export type VaultData = {
   vault: string;
   totalValue: bigint;
   forcedRebalanceThreshold: number;
@@ -24,14 +26,18 @@ export class VaultViewerContractService {
     this.contract = new Contract(address, VaultViewerAbi, provider);
   }
 
-  async getVaultsConnectedBound(from: number, to: number): Promise<{ addresses: string[]; leftoverVaults: number }> {
-    const [addresses, leftoverVaults] = await this.contract.vaultsConnectedBound(from, to);
+  async getVaultsConnectedBound(
+    from: number,
+    to: number,
+    overrides?: Overrides,
+  ): Promise<{ addresses: string[]; leftoverVaults: number }> {
+    const [addresses, leftoverVaults] = await this.contract.vaultsConnectedBound(from, to, overrides);
     // leftoverVaults.toNumber() is safe here!
     return { addresses, leftoverVaults: leftoverVaults.toNumber() };
   }
 
-  async getVaultsDataBatch(from: number, to: number): Promise<VaultData[]> {
-    const rawData = await this.contract.getVaultsDataBatch(from, to);
+  async getVaultsDataBatch(from: number, to: number, overrides?: Overrides): Promise<VaultData[]> {
+    const rawData = await this.contract.getVaultsDataBatch(from, to, overrides);
     return rawData.map((vaultData: any) => ({
       vault: vaultData.vault,
       totalValue: vaultData.totalValue.toBigInt(),
