@@ -28,7 +28,7 @@ export class VaultJobsService {
     this.logger.log('VaultJobsService initialization started');
 
     // subscribes to events
-    // this.subscribeToEvents();
+    this.subscribeToEvents();
 
     // one-time execution on startup
     await this.fetchAllVaultsStateHourly();
@@ -143,17 +143,19 @@ export class VaultJobsService {
     this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
 
     this.vaultHubContractService.contract.on(
-      'VaultConnected',
+      'VaultConnectionSet',
       async (
         vault: string,
         shareLimit: bigint,
         reserveRatioBP: bigint,
         forcedRebalanceThresholdBP: bigint,
-        infraFeeBP: bigint,
-        liquidityFeeBP: bigint,
-        reservationFeeBP: bigint,
+        treasuryFeeBP: bigint,
         event,
       ) => {
+        this.logger.log(
+          `[subscribeToEvents, event:VaultConnectionSet] Event received for vault ${vault} at block ${event.blockNumber}`,
+        );
+
         try {
           const blockNumber = event.blockNumber;
           const item = await this.vaultViewerContractService.getVaultDataByAddress(vault, {
@@ -180,6 +182,10 @@ export class VaultJobsService {
             updatedAt: new Date(),
             blockNumber,
           });
+
+          this.logger.log(
+            `[subscribeToEvents, event:VaultConnectionSet] State added/updated for vault ${vault} at block ${blockNumber}`,
+          );
         } catch (err) {
           this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
         }

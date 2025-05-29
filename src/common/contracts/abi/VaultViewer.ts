@@ -119,6 +119,67 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "getVaultsDataByAddress",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "vault",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalValue",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "forcedRebalanceThreshold",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "liabilityShares",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "stEthLiability",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lidoTreasuryFee",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "nodeOperatorFee",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isOwnerDashboard",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct VaultViewer.VaultData",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "contract IVault",
         "name": "vault",
         "type": "address"
