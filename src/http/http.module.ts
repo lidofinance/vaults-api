@@ -11,9 +11,10 @@ import { LoggerMiddleware, MetricsMiddleware } from './common/middleware';
 import { CacheModule, CacheControlHeadersInterceptor } from './common/cache';
 import { ProofModule } from './proof';
 import { ReportsModule } from './reports';
+import { VaultsHttpModule } from './vaults-http';
 
 @Module({
-  imports: [ProofModule, ReportsModule, CacheModule, ThrottlerModule],
+  imports: [ProofModule, ReportsModule, VaultsHttpModule, CacheModule, ThrottlerModule],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_INTERCEPTOR, useClass: CacheControlHeadersInterceptor },

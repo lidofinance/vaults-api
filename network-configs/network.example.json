@@ -1,6 +1,7 @@
 {
   "contracts": {
-    "lidoLocator": "0x0.."
+    "lidoLocator": "0x0..",
+    "vaultViewer": "0x0.."
   },
   "apis": {
     "someApiBasePath": ""
