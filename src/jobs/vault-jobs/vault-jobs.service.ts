@@ -28,7 +28,7 @@ export class VaultJobsService {
     this.logger.log('VaultJobsService initialization started');
 
     // subscribes to events
-    this.subscribeToEvents();
+    // this.subscribeToEvents();
 
     // one-time execution on startup
     await this.fetchAllVaultsStateHourly();
@@ -144,7 +144,7 @@ export class VaultJobsService {
 
     this.vaultHubContractService.contract.on(
       'VaultConnected',
-      (
+      async (
         vault: string,
         shareLimit: bigint,
         reserveRatioBP: bigint,
@@ -152,16 +152,37 @@ export class VaultJobsService {
         infraFeeBP: bigint,
         liquidityFeeBP: bigint,
         reservationFeeBP: bigint,
+        event,
       ) => {
-        console.log('[VaultConnected]', {
-          vault,
-          shareLimit,
-          reserveRatioBP,
-          forcedRebalanceThresholdBP,
-          infraFeeBP,
-          liquidityFeeBP,
-          reservationFeeBP,
-        });
+        try {
+          const blockNumber = event.blockNumber;
+          const item = await this.vaultViewerContractService.getVaultDataByAddress(vault, {
+            blockTag: blockNumber,
+          });
+
+          const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
+
+          const healthFactor = calculateHealth({
+            totalValue: item.totalValue,
+            liabilitySharesInStethWei: item.stEthLiability,
+            forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
+          });
+
+          await this.vaultsStateHourlyService.addOrUpdate({
+            vault: vaultDbEntity,
+            totalValue: item.totalValue.toString(),
+            stEthLiability: item.stEthLiability.toString(),
+            sharesLiability: item.liabilityShares.toString(),
+            healthFactor: healthFactor.healthRatio,
+            forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
+            lidoTreasuryFee: item.lidoTreasuryFee.toString(),
+            nodeOperatorFee: item.nodeOperatorFee.toString(),
+            updatedAt: new Date(),
+            blockNumber,
+          });
+        } catch (err) {
+          this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
+        }
       },
     );
   }

@@ -19,7 +19,7 @@ export type VaultData = {
 
 @Injectable()
 export class VaultViewerContractService {
-  private readonly contract: Contract;
+  public readonly contract: Contract;
 
   constructor(provider: ExecutionProvider, address: string) {
     if (!address) throw new Error('VaultViewer contract address is not defined');
@@ -38,7 +38,16 @@ export class VaultViewerContractService {
 
   async getVaultsDataBatch(from: number, to: number, overrides?: Overrides): Promise<VaultData[]> {
     const rawData = await this.contract.getVaultsDataBatch(from, to, overrides);
-    return rawData.map((vaultData: any) => ({
+    return rawData.map(this.transformVaultData);
+  }
+
+  async getVaultDataByAddress(vault: string, overrides?: Overrides): Promise<VaultData> {
+    const raw = await this.contract.getVaultsDataByAddress(vault, overrides);
+    return this.transformVaultData(raw);
+  }
+
+  private transformVaultData(vaultData: any): VaultData {
+    return {
       vault: vaultData.vault,
       totalValue: vaultData.totalValue.toBigInt(),
       // vaultData.forcedRebalanceThreshold is safe here, because it can't be more than 10_000
@@ -48,6 +57,6 @@ export class VaultViewerContractService {
       lidoTreasuryFee: vaultData.lidoTreasuryFee.toBigInt(),
       nodeOperatorFee: vaultData.nodeOperatorFee.toBigInt(),
       isOwnerDashboard: vaultData.isOwnerDashboard,
-    }));
+    };
   }
 }
