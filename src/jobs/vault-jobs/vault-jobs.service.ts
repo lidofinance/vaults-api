@@ -47,10 +47,19 @@ export class VaultJobsService {
 
     const batchSize = this.configService.jobs['vaultsHourlyBatchSize'];
 
+    let blockNumber: number;
+    try {
+      blockNumber = await this.executionProviderService.getBlockNumber();
+    } catch (err) {
+      this.logger.error(`[fetchAllVaultsStateHourly] Failed to fetch blockNumber for batch: ${err}`);
+      return;
+    }
+
     // 1. Get vaultsCount with first batch (0, batchSize - 1) + leftover
     const { addresses: initialBatch, leftoverVaults } = await this.vaultViewerContractService.getVaultsConnectedBound(
       0,
       batchSize - 1,
+      { blockTag: blockNumber },
     );
     const vaultsCount = initialBatch.length + leftoverVaults;
     this.logger.log(`[fetchAllVaultsStateHourly] Total vaults: ${vaultsCount}`);
@@ -62,17 +71,9 @@ export class VaultJobsService {
 
       let vaultsDataBatch;
       try {
-        vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(from, to);
+        vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(from, to, { blockTag: blockNumber });
       } catch (err) {
         this.logger.error(`[fetchAllVaultsStateHourly] Failed to fetch vaultsDataBatch (${from}-${to}): ${err}`);
-        continue;
-      }
-
-      let blockNumber: number;
-      try {
-        blockNumber = await this.executionProviderService.getBlockNumber();
-      } catch (err) {
-        this.logger.error(`[fetchAllVaultsStateHourly] Failed to fetch blockNumber for batch (${from}-${to}): ${err}`);
         continue;
       }
 
