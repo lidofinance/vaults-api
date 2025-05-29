@@ -143,6 +143,7 @@ export class VaultJobsService {
     this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
 
     this.vaultHubContractService.contract.on(
+      // TODO: change to 'VaultConnected' after the new VaultHub has been deployed
       'VaultConnectionSet',
       async (
         vault: string,
