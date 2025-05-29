@@ -56,11 +56,23 @@ export class VaultJobsService {
     }
 
     // 1. Get vaultsCount with first batch (0, batchSize - 1) + leftover
-    const { addresses: initialBatch, leftoverVaults } = await this.vaultViewerContractService.getVaultsConnectedBound(
-      0,
-      batchSize - 1,
-      { blockTag: blockNumber },
-    );
+    let initialBatch = [];
+    let leftoverVaults = 0;
+    try {
+      const result = await this.vaultViewerContractService.getVaultsConnectedBound(0, batchSize - 1, {
+        blockTag: blockNumber,
+      });
+      initialBatch = result.addresses;
+      leftoverVaults = result.leftoverVaults;
+    } catch (err: any) {
+      this.logger.error(
+        `[fetchAllVaultsStateHourly] Failed to fetch vaultsDataBatch (0 - ${
+          batchSize - 1
+        }) at block ${blockNumber}: ${err}`,
+      );
+      return;
+    }
+
     const vaultsCount = initialBatch.length + leftoverVaults;
     this.logger.log(`[fetchAllVaultsStateHourly] Total vaults: ${vaultsCount}`);
 
@@ -73,7 +85,9 @@ export class VaultJobsService {
       try {
         vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(from, to, { blockTag: blockNumber });
       } catch (err) {
-        this.logger.error(`[fetchAllVaultsStateHourly] Failed to fetch vaultsDataBatch (${from}-${to}): ${err}`);
+        this.logger.error(
+          `[fetchAllVaultsStateHourly] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
+        );
         continue;
       }
 
@@ -82,7 +96,9 @@ export class VaultJobsService {
         try {
           vault = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
         } catch (err) {
-          this.logger.error(`[fetchAllVaultsStateHourly] Failed to get or create vault: ${item.vault} — ${err}`);
+          this.logger.error(
+            `[fetchAllVaultsStateHourly] Failed to get or create vault: ${item.vault} — ${err} at block ${blockNumber}`,
+          );
           continue;
         }
 
