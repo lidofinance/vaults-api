@@ -143,17 +143,25 @@ export class VaultJobsService {
     this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
 
     this.vaultHubContractService.contract.on(
-      'VaultConnectionSet',
+      'VaultConnected',
       (
         vault: string,
         shareLimit: bigint,
         reserveRatioBP: bigint,
         forcedRebalanceThresholdBP: bigint,
-        treasuryFeeBP: bigint,
+        infraFeeBP: bigint,
+        liquidityFeeBP: bigint,
+        reservationFeeBP: bigint,
       ) => {
-        this.logger.log(
-          `[VaultConnectionSet] vault=${vault} shareLimit=${shareLimit} reserveRatioBP=${reserveRatioBP} forcedRebalanceThresholdBP=${forcedRebalanceThresholdBP} treasuryFeeBP=${treasuryFeeBP}`,
-        );
+        console.log('[VaultConnected]', {
+          vault,
+          shareLimit,
+          reserveRatioBP,
+          forcedRebalanceThresholdBP,
+          infraFeeBP,
+          liquidityFeeBP,
+          reservationFeeBP,
+        });
       },
     );
   }
