@@ -51,6 +51,7 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
 
   public get jobs() {
     return {
+      // TODO: move to the ENVs ???
       vaultsHourlyBatchSize: 50,
       vaultsHourlyCron: '0 * * * *', // every hour at minute 00 UTC (**:00)
       vaultsHourlyCronTZ: 'UTC',
