@@ -6,6 +6,7 @@ import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculat
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
 import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
+import { VaultHubContractService } from '../../common/contracts/modules/vault-hub-contract';
 import { ExecutionProviderService } from '../../common/execution-provider';
 import { VaultsService } from '../../vault';
 import { VaultsStateHourlyService } from '../../vaults-state-hourly';
@@ -17,6 +18,7 @@ export class VaultJobsService {
     private readonly schedulerRegistry: SchedulerRegistry,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     private readonly vaultViewerContractService: VaultViewerContractService,
+    private readonly vaultHubContractService: VaultHubContractService,
     private readonly vaultsService: VaultsService,
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
     private readonly executionProviderService: ExecutionProviderService,
@@ -24,6 +26,10 @@ export class VaultJobsService {
 
   async onModuleInit() {
     this.logger.log('VaultJobsService initialization started');
+
+    // subscribes to events
+    this.subscribeToEvents();
+
     // one-time execution on startup
     await this.fetchAllVaultsStateHourly();
 
@@ -131,5 +137,24 @@ export class VaultJobsService {
     }
 
     this.logger.log('[fetchAllVaultsStateHourly] finished');
+  }
+
+  private subscribeToEvents() {
+    this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
+
+    this.vaultHubContractService.contract.on(
+      'VaultConnectionSet',
+      (
+        vault: string,
+        shareLimit: bigint,
+        reserveRatioBP: bigint,
+        forcedRebalanceThresholdBP: bigint,
+        treasuryFeeBP: bigint,
+      ) => {
+        this.logger.log(
+          `[VaultConnectionSet] vault=${vault} shareLimit=${shareLimit} reserveRatioBP=${reserveRatioBP} forcedRebalanceThresholdBP=${forcedRebalanceThresholdBP} treasuryFeeBP=${treasuryFeeBP}`,
+        );
+      },
+    );
   }
 }

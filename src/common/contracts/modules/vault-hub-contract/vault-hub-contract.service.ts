@@ -12,7 +12,7 @@ export type LatestReportData = {
 
 @Injectable()
 export class VaultHubContractService {
-  private readonly contract: Contract;
+  public readonly contract: Contract;
 
   constructor(provider: ExecutionProvider, address: string) {
     if (!address) throw new Error('VaultHub contract address is not defined');
