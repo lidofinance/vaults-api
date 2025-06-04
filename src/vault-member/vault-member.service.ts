@@ -58,4 +58,17 @@ export class VaultsMemberService {
       }
     });
   }
+
+  async getVaultAddressesByRoleAndAddress(role: string, address: string): Promise<string[]> {
+    const members = await this.vaultMemberRepo.find({
+      where: { role, address },
+      relations: ['vault'],
+    });
+
+    if (members.length === 0) {
+      throw new NotFoundException(`No vaults found for address=${address} with role=${role}`);
+    }
+
+    return members.map((m) => m.vault.address);
+  }
 }

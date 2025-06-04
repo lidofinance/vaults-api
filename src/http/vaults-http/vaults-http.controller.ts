@@ -6,10 +6,11 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { ConfigService } from 'common/config';
 import { VaultsService } from '../../vault';
 import { VaultsStateHourlyService } from '../../vaults-state-hourly';
+import { VaultsMemberService } from '../../vault-member';
 import { vaultsExample } from './example';
 
 const limitQueryDefault = 10;
-const offsetQueryDefault = 10;
+const offsetQueryDefault = 0;
 
 @Controller('vaults')
 @ApiTags('Vaults')
@@ -19,6 +20,7 @@ export class VaultsHttpController {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     private readonly vaultsService: VaultsService,
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
+    private readonly vaultsMemberService: VaultsMemberService,
   ) {}
 
   @Version('1')
@@ -52,6 +54,41 @@ export class VaultsHttpController {
     const addresses = vaults.map((v) => v.address);
 
     const latestVaultsHourlyStates = await this.vaultsStateHourlyService.getLastByVaultAddresses(addresses);
+    return {
+      nextUpdateAt: this.getNextVaultsHourlyUpdate(),
+      vaults: latestVaultsHourlyStates.map((item) => ({
+        ...item,
+        // TODO: @Transform?
+        healthFactor: item.healthFactor === Infinity ? 'Infinity' : item.healthFactor,
+      })),
+    };
+  }
+
+  @Version('1')
+  @Get('/by-role-and-address')
+  @ApiQuery({
+    name: 'role',
+    required: true,
+    type: String,
+    description: 'Role constant string (e.g., vaults.Permissions.burn)',
+  })
+  @ApiQuery({
+    name: 'address',
+    required: true,
+    type: String,
+    description: 'Account address to filter vaults by',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Vaults with current state metrics',
+    schema: {
+      example: vaultsExample,
+    },
+  })
+  async getVaultsByRole(@Query('role') role: string, @Query('address') address: string) {
+    const vaultAddresses = await this.vaultsMemberService.getVaultAddressesByRoleAndAddress(role, address);
+
+    const latestVaultsHourlyStates = await this.vaultsStateHourlyService.getLastByVaultAddresses(vaultAddresses);
     return {
       nextUpdateAt: this.getNextVaultsHourlyUpdate(),
       vaults: latestVaultsHourlyStates.map((item) => ({
