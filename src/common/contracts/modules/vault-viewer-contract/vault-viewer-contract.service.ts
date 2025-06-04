@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { Contract } from 'ethers';
 
 import { ExecutionProvider } from 'common/execution-provider';
-import { ROLE_KEYS } from 'vault-member/vault-member.constants';
+import {
+  STAKING_VAULT_OWNER_ROLE,
+  STAKING_VAULT_NODE_OPERATOR_ROLE,
+  STAKING_VAULT_DEPOSITOR_ROLE,
+  ROLE_KEYS,
+} from 'vault-member/vault-member.constants';
 import { VaultViewerAbi } from '../../abi/VaultViewer';
 
 export type Overrides = { blockTag?: number | string };
@@ -50,9 +55,16 @@ export class VaultViewerContractService {
   }
 
   async getRoleMembers(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
-    const roleMembersRaw: string[][] = await this.contract.getRoleMembers(vaultAddress, roles, overrides);
+    const [owner, nodeOperator, depositor, roleMembersRaw]: [string, string, string, string[][]] =
+      await this.contract.getRoleMembers(vaultAddress, roles, overrides);
 
-    const roleMembersMap: RoleMembers = {};
+    const roleMembersMap: RoleMembers = {
+      // Although `owner`, `nodeOperator`, and `depositor` are always single addresses,
+      // we wrap them in arrays for consistency/general usage with other roles.
+      [STAKING_VAULT_OWNER_ROLE]: [owner],
+      [STAKING_VAULT_NODE_OPERATOR_ROLE]: [nodeOperator],
+      [STAKING_VAULT_DEPOSITOR_ROLE]: [depositor],
+    };
 
     for (let i = 0; i < ROLE_KEYS.length; i++) {
       const _members = roleMembersRaw[i] || [];

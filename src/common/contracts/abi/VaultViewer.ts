@@ -66,6 +66,21 @@ export const VaultViewerAbi = [
     "name": "getRoleMembers",
     "outputs": [
       {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "nodeOperator",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "depositor",
+        "type": "address"
+      },
+      {
         "internalType": "address[][]",
         "name": "members",
         "type": "address[][]"
@@ -94,6 +109,21 @@ export const VaultViewerAbi = [
           {
             "internalType": "address",
             "name": "vault",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "nodeOperator",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "depositor",
             "type": "address"
           },
           {

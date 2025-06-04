@@ -5,6 +5,10 @@ export const STAKING_VAULT_OWNER_ROLE = 'vaults.StakingVault.owner';
 export const STAKING_VAULT_NODE_OPERATOR_ROLE = 'vaults.StakingVault.nodeOperator';
 export const STAKING_VAULT_DEPOSITOR_ROLE = 'vaults.StakingVault.depositor';
 
+// DEFAULT_ADMIN_ROLE (bytes32(0))
+export const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
+export const DASHBOARD_OWNER_ROLE = 'vaults.Dashboard.owner';
+
 // Everything below are roles in AccessControlEnumerable (AccessControl) contract
 export const DASHBOARD_RECOVER_ASSETS_ROLE = 'vaults.Dashboard.RecoverAssets';
 
@@ -38,9 +42,12 @@ export const PERMISSIONS_VOLUNTARY_DISCONNECT_ROLE = 'vaults.Permissions.volunta
 export const PERMISSIONS_WITHDRAW_ROLE = 'vaults.Permissions.withdraw';
 
 export const ROLE_KEYS = [
+  DASHBOARD_OWNER_ROLE,
   DASHBOARD_RECOVER_ASSETS_ROLE,
+
   NODE_OPERATOR_FEE_NODE_OPERATOR_MANAGER_ROLE,
   NODE_OPERATOR_FEE_REWARDS_ADJUST_ROLE,
+
   PERMISSIONS_BURN_ROLE,
   PERMISSIONS_DEFAULT_ADMIN_ROLE,
   PERMISSIONS_FUND_ROLE,
@@ -68,13 +75,16 @@ export const ROLE_KEYS = [
   PERMISSIONS_WITHDRAW_ROLE,
 ] as const;
 
-export const ROLE_BYTES32 = ROLE_KEYS.map((key) => utils.keccak256(utils.toUtf8Bytes(key)));
+export const ROLE_BYTES32 = ROLE_KEYS.map((key) =>
+  key === DASHBOARD_OWNER_ROLE ? DEFAULT_ADMIN_ROLE : utils.keccak256(utils.toUtf8Bytes(key)),
+);
 
 export const ALL_ROLE_VALUES = [
   STAKING_VAULT_OWNER_ROLE,
   STAKING_VAULT_NODE_OPERATOR_ROLE,
   STAKING_VAULT_DEPOSITOR_ROLE,
 
+  DASHBOARD_OWNER_ROLE,
   DASHBOARD_RECOVER_ASSETS_ROLE,
 
   NODE_OPERATOR_FEE_NODE_OPERATOR_MANAGER_ROLE,
