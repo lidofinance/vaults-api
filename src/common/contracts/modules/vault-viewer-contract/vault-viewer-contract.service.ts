@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Contract } from 'ethers';
 
 import { ExecutionProvider } from 'common/execution-provider';
+import { ROLE_KEYS } from 'vault-member/vault-member.constants';
 import { VaultViewerAbi } from '../../abi/VaultViewer';
 
 export type Overrides = { blockTag?: number | string };
@@ -16,6 +17,8 @@ export type VaultData = {
   nodeOperatorFee: bigint;
   isOwnerDashboard: boolean;
 };
+
+export type RoleMembers = Record<string, string[]>;
 
 @Injectable()
 export class VaultViewerContractService {
@@ -44,6 +47,21 @@ export class VaultViewerContractService {
   async getVaultDataByAddress(vault: string, overrides?: Overrides): Promise<VaultData> {
     const raw = await this.contract.getVaultsDataByAddress(vault, overrides);
     return this.transformVaultData(raw);
+  }
+
+  async getRoleMembers(vaultAddress: string, roles: string[]): Promise<RoleMembers> {
+    const roleMembersRaw: string[][] = await this.contract.getRoleMembers(vaultAddress, roles);
+
+    const roleMembersMap: RoleMembers = {};
+
+    for (let i = 0; i < ROLE_KEYS.length; i++) {
+      const _members = roleMembersRaw[i] || [];
+      if (_members.length > 0) {
+        roleMembersMap[ROLE_KEYS[i]] = _members;
+      }
+    }
+
+    return roleMembersMap;
   }
 
   private transformVaultData(vaultData: any): VaultData {
