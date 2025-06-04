@@ -49,8 +49,8 @@ export class VaultViewerContractService {
     return this.transformVaultData(raw);
   }
 
-  async getRoleMembers(vaultAddress: string, roles: string[]): Promise<RoleMembers> {
-    const roleMembersRaw: string[][] = await this.contract.getRoleMembers(vaultAddress, roles);
+  async getRoleMembers(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
+    const roleMembersRaw: string[][] = await this.contract.getRoleMembers(vaultAddress, roles, overrides);
 
     const roleMembersMap: RoleMembers = {};
 

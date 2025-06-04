@@ -5,7 +5,7 @@ import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
 import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
 import { VaultHubContractService } from '../../common/contracts/modules/vault-hub-contract';
-// import { ExecutionProviderService } from '../../common/execution-provider';
+import { ExecutionProviderService } from '../../common/execution-provider';
 import { VaultsService } from '../../vault';
 import { ROLE_BYTES32 } from '../../vault-member/vault-member.constants';
 import { VaultsMemberService } from '../../vault-member';
@@ -22,7 +22,7 @@ export class VaultMemberJobsService {
     private readonly vaultHubContractService: VaultHubContractService,
     private readonly vaultsService: VaultsService,
     private readonly vaultsMemberService: VaultsMemberService,
-    // private readonly executionProviderService: ExecutionProviderService,
+    private readonly executionProviderService: ExecutionProviderService,
   ) {}
 
   async onModuleInit() {
@@ -41,6 +41,14 @@ export class VaultMemberJobsService {
     const totalVaults = await this.vaultsService.getVaultsCount();
     this.logger.log(`[fetchAllVaultsRoleMembers] Total vaults: ${totalVaults}`);
 
+    let blockNumber: number;
+    try {
+      blockNumber = await this.executionProviderService.getBlockNumber();
+    } catch (err) {
+      this.logger.error(`[fetchAllVaultsAndStateHourly] Failed to fetch blockNumber for batch: ${err}`);
+      return;
+    }
+
     for (let offset = 0; offset < totalVaults; offset += this.BATCH_SIZE) {
       const vaultEntities = await this.vaultsService.getVaults(this.BATCH_SIZE, offset);
       if (vaultEntities.length === 0) break;
@@ -50,7 +58,9 @@ export class VaultMemberJobsService {
       for (const vault of vaultEntities) {
         const vaultAddr = vault.address;
         try {
-          const roleMembersMap = await this.vaultViewerContractService.getRoleMembers(vaultAddr, ROLE_BYTES32);
+          const roleMembersMap = await this.vaultViewerContractService.getRoleMembers(vaultAddr, ROLE_BYTES32, {
+            blockTag: blockNumber,
+          });
           await this.vaultsMemberService.setMembersForVault(vaultAddr, roleMembersMap);
         } catch (err) {
           this.logger.error(
