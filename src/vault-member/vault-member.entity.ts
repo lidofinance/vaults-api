@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, CreateDateColumn } from 'typeorm';
 import { VaultEntity } from '../vault';
 
 @Entity('vault_member')
@@ -17,5 +17,6 @@ export class VaultMemberEntity {
   @Column({ type: 'varchar', length: 255 })
   role: string;
 
-  // TODO: created_at
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt: Date;
 }
