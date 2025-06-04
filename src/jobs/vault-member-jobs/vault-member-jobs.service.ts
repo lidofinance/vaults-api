@@ -7,8 +7,8 @@ import { VaultViewerContractService } from '../../common/contracts/modules/vault
 import { VaultHubContractService } from '../../common/contracts/modules/vault-hub-contract';
 // import { ExecutionProviderService } from '../../common/execution-provider';
 import { VaultsService } from '../../vault';
-// import { VaultsStateHourlyService } from '../../vaults-state-hourly';
 import { ROLE_BYTES32 } from '../../vault-member/vault-member.constants';
+import { VaultsMemberService } from '../../vault-member';
 
 @Injectable()
 export class VaultMemberJobsService {
@@ -21,7 +21,7 @@ export class VaultMemberJobsService {
     private readonly vaultViewerContractService: VaultViewerContractService,
     private readonly vaultHubContractService: VaultHubContractService,
     private readonly vaultsService: VaultsService,
-    // private readonly vaultsStateHourlyService: VaultsStateHourlyService,
+    private readonly vaultsMemberService: VaultsMemberService,
     // private readonly executionProviderService: ExecutionProviderService,
   ) {}
 
@@ -51,7 +51,7 @@ export class VaultMemberJobsService {
         const vaultAddr = vault.address;
         try {
           const roleMembersMap = await this.vaultViewerContractService.getRoleMembers(vaultAddr, ROLE_BYTES32);
-          // console.log('roleMembersMap:', roleMembersMap);
+          await this.vaultsMemberService.setMembersForVault(vaultAddr, roleMembersMap);
         } catch (err) {
           this.logger.error(
             `[fetchAllVaultsRoleMembers] Error fetching role members for vault ${vaultAddr}: ${err.message}`,

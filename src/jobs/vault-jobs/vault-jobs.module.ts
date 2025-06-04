@@ -5,12 +5,20 @@ import { VaultsService } from 'vault/vault.service';
 import { VaultsStateHourlyService } from 'vaults-state-hourly/vaults-state-hourly.service';
 import { VaultsStateHourlyEntity } from 'vaults-state-hourly/vaults-state-hourly.entity';
 
-import { VaultJobsService } from './vault-jobs.service';
+import { VaultsMemberService } from 'vault-member/vault-member.service';
+import { VaultMemberEntity } from 'vault-member/vault-member.entity';
+
+import { VaultMemberJobsService } from '../vault-member-jobs';
 import { VaultViewerContractModule } from '../../common/contracts/modules/vault-viewer-contract';
 
+import { VaultJobsService } from './vault-jobs.service';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([VaultEntity, VaultsStateHourlyEntity]), VaultViewerContractModule],
-  providers: [VaultJobsService, VaultsService, VaultsStateHourlyService],
+  imports: [
+    TypeOrmModule.forFeature([VaultEntity, VaultsStateHourlyEntity, VaultMemberEntity]),
+    VaultViewerContractModule,
+  ],
+  providers: [VaultJobsService, VaultMemberJobsService, VaultsService, VaultsStateHourlyService, VaultsMemberService],
   exports: [VaultJobsService, VaultsStateHourlyService],
 })
 export class VaultJobsModule {}

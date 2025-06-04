@@ -10,6 +10,7 @@ import { VaultHubContractService } from '../../common/contracts/modules/vault-hu
 import { ExecutionProviderService } from '../../common/execution-provider';
 import { VaultsService } from '../../vault';
 import { VaultsStateHourlyService } from '../../vaults-state-hourly';
+import { VaultMemberJobsService } from '../vault-member-jobs';
 
 @Injectable()
 export class VaultJobsService {
@@ -22,6 +23,7 @@ export class VaultJobsService {
     private readonly vaultsService: VaultsService,
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
     private readonly executionProviderService: ExecutionProviderService,
+    private readonly vaultMemberJobsService: VaultMemberJobsService,
   ) {}
 
   async onModuleInit() {
@@ -31,12 +33,16 @@ export class VaultJobsService {
     this.subscribeToEvents();
 
     // one-time execution on startup
-    await this.fetchAllVaultsStateHourly();
+    // TODO
+    // await this.fetchAllVaultsAndStateHourly();
+    await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
 
     const job = new CronJob(
       this.configService.jobs['vaultsHourlyCron'],
       async () => {
-        await this.fetchAllVaultsStateHourly();
+        // TODO
+        // await this.fetchAllVaultsAndStateHourly();
+        await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
       },
       null,
       false,
@@ -48,8 +54,8 @@ export class VaultJobsService {
     this.logger.log('VaultJobsService initialization finished');
   }
 
-  public async fetchAllVaultsStateHourly(): Promise<void> {
-    this.logger.log('[fetchAllVaultsStateHourly] Started');
+  public async fetchAllVaultsAndStateHourly(): Promise<void> {
+    this.logger.log('[fetchAllVaultsAndStateHourly] Started');
 
     const batchSize = this.configService.jobs['vaultsHourlyBatchSize'];
 
@@ -57,7 +63,7 @@ export class VaultJobsService {
     try {
       blockNumber = await this.executionProviderService.getBlockNumber();
     } catch (err) {
-      this.logger.error(`[fetchAllVaultsStateHourly] Failed to fetch blockNumber for batch: ${err}`);
+      this.logger.error(`[fetchAllVaultsAndStateHourly] Failed to fetch blockNumber for batch: ${err}`);
       return;
     }
 
@@ -72,7 +78,7 @@ export class VaultJobsService {
       leftoverVaults = result.leftoverVaults;
     } catch (err: any) {
       this.logger.error(
-        `[fetchAllVaultsStateHourly] Failed to fetch vaultsDataBatch (0 - ${
+        `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsDataBatch (0 - ${
           batchSize - 1
         }) at block ${blockNumber}: ${err}`,
       );
@@ -80,19 +86,19 @@ export class VaultJobsService {
     }
 
     const vaultsCount = initialBatch.length + leftoverVaults;
-    this.logger.log(`[fetchAllVaultsStateHourly] Total vaults: ${vaultsCount}`);
+    this.logger.log(`[fetchAllVaultsAndStateHourly] Total vaults: ${vaultsCount}`);
 
     // 2. Starting to fetch vaults data
     for (let from = 0; from < vaultsCount; from += batchSize) {
       const to = Math.min(from + batchSize, vaultsCount);
-      this.logger.log(`[fetchAllVaultsStateHourly] Fetching vaults batch: ${from} to ${to}`);
+      this.logger.log(`[fetchAllVaultsAndStateHourly] Fetching vaults batch: ${from} to ${to}`);
 
       let vaultsDataBatch;
       try {
         vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(from, to, { blockTag: blockNumber });
       } catch (err) {
         this.logger.error(
-          `[fetchAllVaultsStateHourly] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
+          `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
         );
         continue;
       }
@@ -103,7 +109,7 @@ export class VaultJobsService {
           vault = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
         } catch (err) {
           this.logger.error(
-            `[fetchAllVaultsStateHourly] Failed to get or create vault: ${item.vault} — ${err} at block ${blockNumber}`,
+            `[fetchAllVaultsAndStateHourly] Failed to get or create vault: ${item.vault} — ${err} at block ${blockNumber}`,
           );
           continue;
         }
@@ -129,14 +135,14 @@ export class VaultJobsService {
           });
         } catch (err) {
           this.logger.error(
-            `[fetchAllVaultsStateHourly] Failed to save vault to DB OR calculateHealth of vault ${item.vault}: ${err}`,
+            `[fetchAllVaultsAndStateHourly] Failed to save vault to DB OR calculateHealth of vault ${item.vault}: ${err}`,
           );
           // continue
         }
       }
     }
 
-    this.logger.log('[fetchAllVaultsStateHourly] finished');
+    this.logger.log('[fetchAllVaultsAndStateHourly] finished');
   }
 
   private subscribeToEvents() {

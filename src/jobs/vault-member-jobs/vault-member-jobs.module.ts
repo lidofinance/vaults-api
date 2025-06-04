@@ -7,9 +7,10 @@ import { VaultsMemberService } from 'vault-member/vault-member.service';
 
 import { VaultMemberJobsService } from './vault-member-jobs.service';
 import { VaultViewerContractModule } from '../../common/contracts/modules/vault-viewer-contract';
+import { VaultMembersModule } from '../../vault-member';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([VaultEntity, VaultMemberEntity]), VaultViewerContractModule],
+  imports: [VaultMembersModule, TypeOrmModule.forFeature([VaultEntity, VaultMemberEntity]), VaultViewerContractModule],
   providers: [VaultMemberJobsService, VaultsService, VaultsMemberService],
   exports: [VaultMemberJobsService],
 })
