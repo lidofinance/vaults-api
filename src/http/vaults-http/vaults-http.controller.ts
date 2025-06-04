@@ -4,6 +4,7 @@ import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import { ConfigService } from 'common/config';
+import { ALL_ROLE_VALUES } from '../../vault-member/vault-member.constants';
 import { VaultsService } from '../../vault';
 import { VaultsStateHourlyService } from '../../vaults-state-hourly';
 import { VaultsMemberService } from '../../vault-member';
@@ -69,8 +70,9 @@ export class VaultsHttpController {
   @ApiQuery({
     name: 'role',
     required: true,
-    type: String,
-    description: 'Role constant string (e.g., vaults.Permissions.burn)',
+    enum: ALL_ROLE_VALUES,
+    enumName: 'RoleOptions',
+    description: 'Role constant string. Must be one of the allowed values.',
   })
   @ApiQuery({
     name: 'address',
