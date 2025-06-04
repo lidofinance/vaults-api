@@ -87,7 +87,7 @@ export class VaultsHttpController {
       example: vaultsExample,
     },
   })
-  async getVaultsByRole(@Query('role') role: string, @Query('address') address: string) {
+  async getVaultsByRoleAndAddress(@Query('role') role: string, @Query('address') address: string) {
     const vaultAddresses = await this.vaultsMemberService.getVaultAddressesByRoleAndAddress(role, address);
 
     const latestVaultsHourlyStates = await this.vaultsStateHourlyService.getLastByVaultAddresses(vaultAddresses);
