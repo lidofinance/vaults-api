@@ -14,11 +14,11 @@ import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import { ConfigService } from 'common/config';
-import { VaultsService } from '../../vault';
-import { VaultsStateHourlyService } from '../../vaults-state-hourly';
-import { SortFieldsEnum } from '../../vaults-state-hourly/sort-fields.enum';
+import { VaultsService } from 'vault';
+import { VaultsQueryService, SortFieldsEnum, DirectionEnum } from 'vaults-query';
+import { VaultsStateHourlyService } from 'vaults-state-hourly';
+import { ALL_ROLE_VALUES } from 'vault-member';
 
-import { DirectionEnum } from '../../vaults-state-hourly/direction.enum';
 import { vaultsExample } from './example';
 
 const limitQueryDefault = 10;
@@ -34,6 +34,7 @@ export class VaultsHttpController {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     private readonly vaultsService: VaultsService,
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
+    private readonly vaultsQueryService: VaultsQueryService,
   ) {}
 
   @Version('1')
@@ -80,7 +81,73 @@ export class VaultsHttpController {
     @Query('direction', new DefaultValuePipe(defaultDirection), new ParseEnumPipe(DirectionEnum))
     direction: DirectionEnum,
   ) {
-    const vaults = await this.vaultsStateHourlyService.getVaultsSorted(limit, offset, sortBy, direction);
+    const vaults = await this.vaultsQueryService.getVaults(limit, offset, sortBy, direction);
+    return {
+      nextUpdateAt: this.getNextVaultsHourlyUpdate(),
+      vaults,
+    };
+  }
+
+  @Version('1')
+  @Get('/by-role-and-address')
+  @ApiQuery({
+    name: 'role',
+    required: true,
+    enum: ALL_ROLE_VALUES,
+    enumName: 'RoleOptions',
+    description: 'Role constant string. Must be one of the allowed values.',
+  })
+  @ApiQuery({
+    name: 'address',
+    required: true,
+    type: String,
+    description: 'Account address to filter vaults by',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    example: limitQueryDefault,
+    description: 'Number of vaults to return',
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    type: Number,
+    example: offsetQueryDefault,
+    description: 'Offset from the beginning of sorted list',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    enum: SortFieldsEnum,
+    example: defaultSortBy,
+    description: 'Field by which to sort vaults',
+  })
+  @ApiQuery({
+    name: 'direction',
+    required: false,
+    enum: DirectionEnum,
+    example: defaultDirection,
+    description: 'Sort direction',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Vaults with latest state metrics',
+    schema: {
+      example: vaultsExample,
+    },
+  })
+  async getVaultsByRoleAndAddress(
+    @Query('role') role: string,
+    @Query('address') address: string,
+    @Query('limit', new DefaultValuePipe(limitQueryDefault), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(offsetQueryDefault), ParseIntPipe) offset: number,
+    @Query('sortBy', new DefaultValuePipe(defaultSortBy), new ParseEnumPipe(SortFieldsEnum)) sortBy: SortFieldsEnum,
+    @Query('direction', new DefaultValuePipe(defaultDirection), new ParseEnumPipe(DirectionEnum))
+    direction: DirectionEnum,
+  ) {
+    const vaults = await this.vaultsQueryService.getVaults(limit, offset, sortBy, direction, role, address);
     return {
       nextUpdateAt: this.getNextVaultsHourlyUpdate(),
       vaults,

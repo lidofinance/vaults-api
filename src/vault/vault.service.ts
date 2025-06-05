@@ -30,6 +30,15 @@ export class VaultsService {
     return await this.vaultRepo.save(vault);
   }
 
+  async getVaults(limit = 10, offset = 0): Promise<VaultEntity[]> {
+    return await this.vaultRepo.find({
+      take: limit,
+      skip: offset,
+      // ASC (ascending order) - 1 → 2 → 3 → 4 → ...
+      order: { id: 'ASC' },
+    });
+  }
+
   async getVaultsCount(): Promise<number> {
     return await this.vaultRepo.count();
   }
