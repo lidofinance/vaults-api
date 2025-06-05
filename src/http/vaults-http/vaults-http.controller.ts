@@ -80,6 +80,20 @@ export class VaultsHttpController {
     type: String,
     description: 'Account address to filter vaults by',
   })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    example: limitQueryDefault,
+    description: 'Number of vaults to return',
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    type: Number,
+    example: offsetQueryDefault,
+    description: 'Offset from the beginning of the vault list',
+  })
   @ApiResponse({
     status: 200,
     description: 'Vaults with current state metrics',
@@ -87,8 +101,18 @@ export class VaultsHttpController {
       example: vaultsExample,
     },
   })
-  async getVaultsByRoleAndAddress(@Query('role') role: string, @Query('address') address: string) {
-    const vaultAddresses = await this.vaultsMemberService.getVaultAddressesByRoleAndAddress(role, address);
+  async getVaultsByRoleAndAddress(
+    @Query('role') role: string,
+    @Query('address') address: string,
+    @Query('limit', new DefaultValuePipe(limitQueryDefault), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(offsetQueryDefault), ParseIntPipe) offset: number,
+  ) {
+    const vaultAddresses = await this.vaultsMemberService.getVaultAddressesByRoleAndAddress(
+      role,
+      address,
+      limit,
+      offset,
+    );
 
     const latestVaultsHourlyStates = await this.vaultsStateHourlyService.getLastByVaultAddresses(vaultAddresses);
     return {

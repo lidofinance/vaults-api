@@ -59,16 +59,32 @@ export class VaultsMemberService {
     });
   }
 
-  async getVaultAddressesByRoleAndAddress(role: string, address: string): Promise<string[]> {
-    const members = await this.vaultMemberRepo.find({
-      where: { role, address },
-      relations: ['vault'],
-    });
+  async getVaultAddressesByRoleAndAddress(
+    role: string,
+    address: string,
+    limit: number,
+    offset: number,
+  ): Promise<string[]> {
+    // SELECT address with limit, offset
+    const subQuery = this.vaultMemberRepo
+      .createQueryBuilder('member')
+      .innerJoin('member.vault', 'vault')
+      .where('member.role = :role', { role })
+      .andWhere('member.address = :address', { address })
+      .select('vault.address', 'address')
+      .offset(offset)
+      .limit(limit);
 
-    if (members.length === 0) {
-      throw new NotFoundException(`No vaults found for address=${address} with role=${role}`);
-    }
+    // SELECT as addresses[]
+    const qb = this.vaultMemberRepo.manager
+      .createQueryBuilder()
+      // Only PostgreSQL!!!
+      .select('array_agg(sub.address)', 'addresses')
+      .from(`(${subQuery.getQuery()})`, 'sub')
+      .setParameters(subQuery.getParameters());
 
-    return members.map((m) => m.vault.address);
+    const rawResult = await qb.getRawOne<{ addresses: string[] }>();
+
+    return rawResult?.addresses ?? [];
   }
 }
