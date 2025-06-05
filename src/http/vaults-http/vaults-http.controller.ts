@@ -52,6 +52,14 @@ export class VaultsHttpController {
     @Query('offset', new DefaultValuePipe(offsetQueryDefault), ParseIntPipe) offset: number,
   ) {
     const vaults = await this.vaultsService.getVaults(limit, offset);
+
+    if (vaults.length === 0) {
+      return {
+        nextUpdateAt: this.getNextVaultsHourlyUpdate(),
+        vaults: [],
+      };
+    }
+
     const addresses = vaults.map((v) => v.address);
 
     const latestVaultsHourlyStates = await this.vaultsStateHourlyService.getLastByVaultAddresses(addresses);
@@ -113,6 +121,13 @@ export class VaultsHttpController {
       limit,
       offset,
     );
+
+    if (vaultAddresses.length === 0) {
+      return {
+        nextUpdateAt: this.getNextVaultsHourlyUpdate(),
+        vaults: [],
+      };
+    }
 
     const latestVaultsHourlyStates = await this.vaultsStateHourlyService.getLastByVaultAddresses(vaultAddresses);
     return {
