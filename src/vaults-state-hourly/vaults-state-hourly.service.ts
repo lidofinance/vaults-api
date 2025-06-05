@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { VaultsStateHourlyEntity } from './vaults-state-hourly.entity';
 
