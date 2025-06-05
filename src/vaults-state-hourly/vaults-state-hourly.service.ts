@@ -68,8 +68,11 @@ export class VaultsStateHourlyService {
         `state.total_value AS "totalValue"`,
         `state.steth_liability AS "stEthLiability"`,
         // `state.shares_liability AS "sharesLiability"`,
-        // TODO: state.health_factor === Infinity ? 'Infinity' : state.health_factor,
-        `state.health_factor AS "healthFactor"`,
+        // Only PostgreSQL!!!
+        `CASE
+          WHEN state.health_factor = 'Infinity' THEN 'Infinity'
+          ELSE state.health_factor::text
+        END AS "healthFactor"`,
         // `state.forced_rebalance_threshold AS "forcedRebalanceThreshold"`,
         // `state.lido_treasury_fee AS "lidoTreasuryFee"`,
         // `state.node_operator_fee AS "nodeOperatorFee"`,
@@ -77,7 +80,6 @@ export class VaultsStateHourlyService {
         `state.block_number AS "blockNumber"`,
       ])
       // The field in the database is named in snake_case, in TypeScript it is camelCase
-      // TODO: state.health_factor === Infinity ? 'Infinity' : state.health_factor,
       .orderBy(`state."${this.toSnakeCaseColumn(sortBy)}"`, direction)
       .limit(limit)
       .offset(offset);

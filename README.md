@@ -9,6 +9,8 @@
 
 ## Installation
 
+TODO: use only PostgreSQL as DB!
+
 ```bash
 $ yarn install
 ```
