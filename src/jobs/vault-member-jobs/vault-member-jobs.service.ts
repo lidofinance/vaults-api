@@ -3,12 +3,12 @@ import { Injectable, Inject } from '@nestjs/common';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
-import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
-import { VaultHubContractService } from '../../common/contracts/modules/vault-hub-contract';
-import { ExecutionProviderService } from '../../common/execution-provider';
-import { VaultsService } from '../../vault';
-import { ROLE_BYTES32 } from '../../vault-member/vault-member.constants';
-import { VaultsMemberService } from '../../vault-member';
+import { VaultViewerContractService, RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
+import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
+import { ExecutionProviderService } from 'common/execution-provider';
+import { VaultsService } from 'vault';
+import { VaultsMemberService } from 'vault-member';
+import { ROLE_BYTES32 } from 'vault-member/vault-member.constants';
 
 @Injectable()
 export class VaultMemberJobsService {
@@ -34,7 +34,6 @@ export class VaultMemberJobsService {
     this.logger.log('VaultMemberJobsService initialization finished');
   }
 
-  // TODO: naming
   public async fetchAllVaultsRoleMembers(): Promise<void> {
     this.logger.log('[fetchAllVaultsRoleMembers] Started');
 
@@ -53,19 +52,25 @@ export class VaultMemberJobsService {
       const vaultEntities = await this.vaultsService.getVaults(this.BATCH_SIZE, offset);
       if (vaultEntities.length === 0) break;
 
-      this.logger.log(`[fetchAllVaultsRoleMembers] Processing vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      this.logger.log(`[fetchAllVaultsRoleMembers] Fetching vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      const vaultAddresses = vaultEntities.map((vault) => vault.address);
 
-      for (const vault of vaultEntities) {
-        const vaultAddr = vault.address;
+      let batchResults: Array<{ vault: string; roleMembersMap: RoleMembers }>;
+      try {
+        batchResults = await this.vaultViewerContractService.getRoleMembersBatch(vaultAddresses, ROLE_BYTES32, {
+          blockTag: blockNumber,
+        });
+      } catch (err) {
+        this.logger.error(`[fetchAllVaultsRoleMembers] Error fetching batch role members: ${err.message}`);
+        continue;
+      }
+
+      this.logger.log(`[fetchAllVaultsRoleMembers] Saving vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      for (const { vault, roleMembersMap } of batchResults) {
         try {
-          const roleMembersMap = await this.vaultViewerContractService.getRoleMembers(vaultAddr, ROLE_BYTES32, {
-            blockTag: blockNumber,
-          });
-          await this.vaultsMemberService.setMembersForVault(vaultAddr, roleMembersMap);
+          await this.vaultsMemberService.setMembersForVault(vault, roleMembersMap);
         } catch (err) {
-          this.logger.error(
-            `[fetchAllVaultsRoleMembers] Error fetching role members for vault ${vaultAddr}: ${err.message}`,
-          );
+          this.logger.error(`[fetchAllVaultsRoleMembers] Error saving role members for vault ${vault}: ${err.message}`);
         }
       }
     }

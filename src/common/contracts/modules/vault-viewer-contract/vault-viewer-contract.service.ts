@@ -25,6 +25,21 @@ export type VaultData = {
 
 export type RoleMembers = Record<string, string[]>;
 
+export type RawVaultRoleMembers = [
+  string, // owner
+  string, // nodeOperator
+  string, // depositor
+  string[][], // members
+];
+
+export type RawVaultRoleMembersWithVault = [
+  string, // vault
+  string, // owner
+  string, // nodeOperator
+  string, // depositor
+  string[][], // members
+];
+
 @Injectable()
 export class VaultViewerContractService {
   public readonly contract: Contract;
@@ -44,19 +59,22 @@ export class VaultViewerContractService {
     return { addresses, leftoverVaults: leftoverVaults.toNumber() };
   }
 
-  async getVaultsDataBatch(from: number, to: number, overrides?: Overrides): Promise<VaultData[]> {
-    const rawData = await this.contract.getVaultsDataBatch(from, to, overrides);
-    return rawData.map(this.transformVaultData);
+  async getVaultData(vault: string, overrides?: Overrides): Promise<VaultData> {
+    const raw = await this.contract.getVaultData(vault, overrides);
+    return VaultViewerContractService.transformVaultData(raw);
   }
 
-  async getVaultDataByAddress(vault: string, overrides?: Overrides): Promise<VaultData> {
-    const raw = await this.contract.getVaultsDataByAddress(vault, overrides);
-    return this.transformVaultData(raw);
+  async getVaultsDataBound(from: number, to: number, overrides?: Overrides): Promise<VaultData[]> {
+    const rawData = await this.contract.getVaultsDataBound(from, to, overrides);
+    return rawData.map(VaultViewerContractService.transformVaultData);
   }
 
   async getRoleMembers(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
-    const [owner, nodeOperator, depositor, roleMembersRaw]: [string, string, string, string[][]] =
-      await this.contract.getRoleMembers(vaultAddress, roles, overrides);
+    const [owner, nodeOperator, depositor, membersRaw]: RawVaultRoleMembers = await this.contract.getRoleMembers(
+      vaultAddress,
+      roles,
+      overrides,
+    );
 
     const roleMembersMap: RoleMembers = {
       // Although `owner`, `nodeOperator`, and `depositor` are always single addresses,
@@ -67,24 +85,54 @@ export class VaultViewerContractService {
     };
 
     for (let i = 0; i < ROLE_KEYS.length; i++) {
-      const _members = roleMembersRaw[i] || [];
-      if (_members.length > 0) {
-        roleMembersMap[ROLE_KEYS[i]] = _members;
+      const members = membersRaw[i] || [];
+      if (members.length > 0) {
+        roleMembersMap[ROLE_KEYS[i]] = members;
       }
     }
 
     return roleMembersMap;
   }
 
-  private transformVaultData(vaultData: any): VaultData {
+  async getRoleMembersBatch(
+    vaultAddresses: string[],
+    roles: string[],
+    overrides?: Overrides,
+  ): Promise<Array<{ vault: string; roleMembersMap: RoleMembers }>> {
+    const raw: RawVaultRoleMembersWithVault[] = await this.contract.getRoleMembersBatch(
+      vaultAddresses,
+      roles,
+      overrides,
+    );
+
+    return raw.map(([vault, owner, nodeOperator, depositor, membersRaw]) => {
+      const roleMembersMap: RoleMembers = {
+        // Although `owner`, `nodeOperator`, and `depositor` are always single addresses,
+        // we wrap them in arrays for consistency/general usage with other roles.
+        [STAKING_VAULT_OWNER_ROLE]: [owner],
+        [STAKING_VAULT_NODE_OPERATOR_ROLE]: [nodeOperator],
+        [STAKING_VAULT_DEPOSITOR_ROLE]: [depositor],
+      };
+
+      for (let i = 0; i < ROLE_KEYS.length; i++) {
+        const members = membersRaw[i] || [];
+        if (members.length > 0) {
+          roleMembersMap[ROLE_KEYS[i]] = members;
+        }
+      }
+
+      return { vault, roleMembersMap };
+    });
+  }
+
+  private static transformVaultData(vaultData: any): VaultData {
     return {
-      vault: vaultData.vault,
+      vault: vaultData.socket.vault,
       totalValue: vaultData.totalValue.toBigInt(),
-      // vaultData.forcedRebalanceThreshold is safe here, because it can't be more than 10_000
-      forcedRebalanceThreshold: vaultData.forcedRebalanceThreshold.toNumber(),
-      liabilityShares: vaultData.liabilityShares.toBigInt(),
+      forcedRebalanceThreshold: vaultData.socket.forcedRebalanceThresholdBP,
+      liabilityShares: vaultData.socket.liabilityShares.toBigInt(),
       stEthLiability: vaultData.stEthLiability.toBigInt(),
-      lidoTreasuryFee: vaultData.lidoTreasuryFee.toBigInt(),
+      lidoTreasuryFee: vaultData.socket.treasuryFeeBP,
       nodeOperatorFee: vaultData.nodeOperatorFee.toBigInt(),
       isOwnerDashboard: vaultData.isOwnerDashboard,
     };

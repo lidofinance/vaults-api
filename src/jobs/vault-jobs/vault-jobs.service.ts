@@ -93,7 +93,7 @@ export class VaultJobsService {
 
       let vaultsDataBatch;
       try {
-        vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(from, to, { blockTag: blockNumber });
+        vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBound(from, to, { blockTag: blockNumber });
       } catch (err) {
         this.logger.error(
           `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
@@ -163,7 +163,7 @@ export class VaultJobsService {
 
         try {
           const blockNumber = event.blockNumber;
-          const item = await this.vaultViewerContractService.getVaultDataByAddress(vault, {
+          const item = await this.vaultViewerContractService.getVaultData(vault, {
             blockTag: blockNumber,
           });
 
