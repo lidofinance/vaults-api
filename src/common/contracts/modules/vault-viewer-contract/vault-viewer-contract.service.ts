@@ -76,22 +76,7 @@ export class VaultViewerContractService {
       overrides,
     );
 
-    const roleMembersMap: RoleMembers = {
-      // Although `owner`, `nodeOperator`, and `depositor` are always single addresses,
-      // we wrap them in arrays for consistency/general usage with other roles.
-      [STAKING_VAULT_OWNER_ROLE]: [owner],
-      [STAKING_VAULT_NODE_OPERATOR_ROLE]: [nodeOperator],
-      [STAKING_VAULT_DEPOSITOR_ROLE]: [depositor],
-    };
-
-    for (let i = 0; i < ROLE_KEYS.length; i++) {
-      const members = membersRaw[i] || [];
-      if (members.length > 0) {
-        roleMembersMap[ROLE_KEYS[i]] = members;
-      }
-    }
-
-    return roleMembersMap;
+    return VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, depositor, membersRaw);
   }
 
   async getRoleMembersBatch(
@@ -105,24 +90,10 @@ export class VaultViewerContractService {
       overrides,
     );
 
-    return raw.map(([vault, owner, nodeOperator, depositor, membersRaw]) => {
-      const roleMembersMap: RoleMembers = {
-        // Although `owner`, `nodeOperator`, and `depositor` are always single addresses,
-        // we wrap them in arrays for consistency/general usage with other roles.
-        [STAKING_VAULT_OWNER_ROLE]: [owner],
-        [STAKING_VAULT_NODE_OPERATOR_ROLE]: [nodeOperator],
-        [STAKING_VAULT_DEPOSITOR_ROLE]: [depositor],
-      };
-
-      for (let i = 0; i < ROLE_KEYS.length; i++) {
-        const members = membersRaw[i] || [];
-        if (members.length > 0) {
-          roleMembersMap[ROLE_KEYS[i]] = members;
-        }
-      }
-
-      return { vault, roleMembersMap };
-    });
+    return raw.map(([vault, owner, nodeOperator, depositor, membersRaw]) => ({
+      vault,
+      roleMembersMap: VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, depositor, membersRaw),
+    }));
   }
 
   private static transformVaultData(vaultData: any): VaultData {
@@ -136,5 +107,27 @@ export class VaultViewerContractService {
       nodeOperatorFee: vaultData.nodeOperatorFee.toBigInt(),
       isOwnerDashboard: vaultData.isOwnerDashboard,
     };
+  }
+
+  private static transformRoleMembersMap(
+    owner: string,
+    nodeOperator: string,
+    depositor: string,
+    membersRaw: string[][],
+  ): RoleMembers {
+    const map: RoleMembers = {
+      [STAKING_VAULT_OWNER_ROLE]: [owner],
+      [STAKING_VAULT_NODE_OPERATOR_ROLE]: [nodeOperator],
+      [STAKING_VAULT_DEPOSITOR_ROLE]: [depositor],
+    };
+
+    for (let i = 0; i < ROLE_KEYS.length; i++) {
+      const m = membersRaw[i] || [];
+      if (m.length > 0) {
+        map[ROLE_KEYS[i]] = m;
+      }
+    }
+
+    return map;
   }
 }
