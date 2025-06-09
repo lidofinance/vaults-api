@@ -12,8 +12,6 @@ import { ROLE_BYTES32 } from 'vault-member/vault-member.constants';
 
 @Injectable()
 export class VaultMemberJobsService {
-  private readonly BATCH_SIZE = 10;
-
   constructor(
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
@@ -40,6 +38,8 @@ export class VaultMemberJobsService {
     const totalVaults = await this.vaultsService.getVaultsCount();
     this.logger.log(`[fetchAllVaultsRoleMembers] Total vaults: ${totalVaults}`);
 
+    const batchSize = this.configService.jobs['vaultMembersBatchSize'];
+
     let blockNumber: number;
     try {
       blockNumber = await this.executionProviderService.getBlockNumber();
@@ -48,8 +48,8 @@ export class VaultMemberJobsService {
       return;
     }
 
-    for (let offset = 0; offset < totalVaults; offset += this.BATCH_SIZE) {
-      const vaultEntities = await this.vaultsService.getVaults(this.BATCH_SIZE, offset);
+    for (let offset = 0; offset < totalVaults; offset += batchSize) {
+      const vaultEntities = await this.vaultsService.getVaults(batchSize, offset);
       if (vaultEntities.length === 0) break;
 
       this.logger.log(`[fetchAllVaultsRoleMembers] Fetching vaults ${offset}..${offset + vaultEntities.length - 1}`);

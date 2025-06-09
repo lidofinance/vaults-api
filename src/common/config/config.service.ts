@@ -6,6 +6,7 @@ import { VAULT_VIEWER_CONTRACT } from 'common/contracts/contracts.constants';
 import { EnvironmentVariables } from './env.validation';
 import { findNetworkConfig } from './networks/utils/find-network-config';
 import { NetworkConfig } from './networks';
+import {VaultMemberJobsService} from "../../jobs/vault-member-jobs";
 
 export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
   networkConfig: NetworkConfig;
@@ -55,6 +56,7 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
       vaultsHourlyBatchSize: 50,
       vaultsHourlyCron: '0 * * * *', // every hour at minute 00 UTC (**:00)
       vaultsHourlyCronTZ: 'UTC',
+      vaultMembersBatchSize: 10,
     };
   }
 }
