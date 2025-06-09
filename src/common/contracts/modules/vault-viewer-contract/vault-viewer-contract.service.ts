@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { Contract } from 'ethers';
 
 import { ExecutionProvider } from 'common/execution-provider';
+import { VaultViewerAbi } from 'common/contracts/abi/VaultViewer';
 import {
   STAKING_VAULT_OWNER_ROLE,
   STAKING_VAULT_NODE_OPERATOR_ROLE,
   STAKING_VAULT_DEPOSITOR_ROLE,
   ROLE_KEYS,
 } from 'vault-member/vault-member.constants';
-import { VaultViewerAbi } from '../../abi/VaultViewer';
 
 export type Overrides = { blockTag?: number | string };
 
