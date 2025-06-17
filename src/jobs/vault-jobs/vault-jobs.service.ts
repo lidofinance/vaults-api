@@ -11,6 +11,7 @@ import { ExecutionProviderService } from '../../common/execution-provider';
 import { VaultsService } from '../../vault';
 import { VaultsStateHourlyService } from '../../vaults-state-hourly';
 import { VaultMemberJobsService } from '../vault-member-jobs';
+import { ReportJobsService } from '../report-jobs';
 
 @Injectable()
 export class VaultJobsService {
@@ -24,6 +25,7 @@ export class VaultJobsService {
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
     private readonly executionProviderService: ExecutionProviderService,
     private readonly vaultMemberJobsService: VaultMemberJobsService,
+    private readonly reportJobsService: ReportJobsService,
   ) {}
 
   async onModuleInit() {
@@ -33,14 +35,16 @@ export class VaultJobsService {
     this.subscribeToEvents();
 
     // one-time execution on startup
-    await this.fetchAllVaultsAndStateHourly();
-    await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
+    // await this.fetchAllVaultsAndStateHourly();
+    // await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
+    await this.reportJobsService.fetchAllReports();
 
     const job = new CronJob(
       this.configService.jobs['vaultsHourlyCron'],
       async () => {
-        await this.fetchAllVaultsAndStateHourly();
-        await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
+        // await this.fetchAllVaultsAndStateHourly();
+        // await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
+        await this.reportJobsService.fetchAllReports();
       },
       null,
       false,
