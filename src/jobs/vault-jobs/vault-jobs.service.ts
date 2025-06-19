@@ -31,7 +31,7 @@ export class VaultJobsService {
     this.logger.log('VaultJobsService initialization started');
 
     // subscribes to events
-    // this.subscribeToEvents();
+    this.subscribeToEvents();
 
     // one-time execution on startup
     await this.fetchAllVaultsAndStateHourly();
