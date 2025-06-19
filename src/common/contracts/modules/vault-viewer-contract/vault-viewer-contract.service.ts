@@ -15,11 +15,15 @@ export type Overrides = { blockTag?: number | string };
 export type VaultData = {
   vault: string;
   totalValue: bigint;
-  forcedRebalanceThreshold: number;
   liabilityShares: bigint;
-  stEthLiability: bigint;
-  lidoTreasuryFee: bigint;
-  nodeOperatorFee: bigint;
+  liabilityStETH: bigint;
+  shareLimit: bigint;
+  reserveRatioBP: number;
+  forcedRebalanceThresholdBP: number;
+  infraFeeBP: number;
+  liquidityFeeBP: number;
+  reservationFeeBP: number;
+  nodeOperatorFeeRate: bigint;
   isOwnerDashboard: boolean;
 };
 
@@ -98,13 +102,17 @@ export class VaultViewerContractService {
 
   private static transformVaultData(vaultData: any): VaultData {
     return {
-      vault: vaultData.socket.vault,
+      vault: vaultData.vaultAddress,
       totalValue: vaultData.totalValue.toBigInt(),
-      forcedRebalanceThreshold: vaultData.socket.forcedRebalanceThresholdBP,
-      liabilityShares: vaultData.socket.liabilityShares.toBigInt(),
-      stEthLiability: vaultData.stEthLiability.toBigInt(),
-      lidoTreasuryFee: vaultData.socket.treasuryFeeBP,
-      nodeOperatorFee: vaultData.nodeOperatorFee.toBigInt(),
+      liabilityShares: vaultData.record.liabilityShares.toBigInt(),
+      liabilityStETH: vaultData.liabilityStETH.toBigInt(),
+      shareLimit: vaultData.connection.shareLimit.toBigInt(),
+      reserveRatioBP: vaultData.connection.reserveRatioBP,
+      forcedRebalanceThresholdBP: vaultData.connection.forcedRebalanceThresholdBP,
+      infraFeeBP: vaultData.connection.infraFeeBP,
+      liquidityFeeBP: vaultData.connection.liquidityFeeBP,
+      reservationFeeBP: vaultData.connection.reservationFeeBP,
+      nodeOperatorFeeRate: vaultData.nodeOperatorFeeRate.toBigInt(),
       isOwnerDashboard: vaultData.isOwnerDashboard,
     };
   }

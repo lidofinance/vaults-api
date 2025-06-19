@@ -19,23 +19,35 @@ export class VaultsStateHourlyEntity {
   // @Transform(({ value }) => value !== null ? value.toString() : null, { toPlainOnly: true })
   totalValue: string; // bigint/numeric
 
-  @Column({ name: 'steth_liability', type: 'numeric', precision: 78, scale: 0 })
-  stEthLiability: string;
+  @Column({ name: 'liability_steth', type: 'numeric', precision: 78, scale: 0 })
+  liabilityStETH: string;
 
-  @Column({ name: 'shares_liability', type: 'numeric', precision: 78, scale: 0 })
-  sharesLiability: string;
+  @Column({ name: 'liability_shares', type: 'numeric', precision: 78, scale: 0 })
+  liabilityShares: string;
 
   @Column({ name: 'health_factor', type: 'float8' })
   healthFactor: number; // float8, ±Infinity support
 
-  @Column({ name: 'forced_rebalance_threshold', type: 'numeric', precision: 78, scale: 0 })
-  forcedRebalanceThreshold: string;
+  @Column({ name: 'share_limit', type: 'numeric', precision: 78, scale: 0 })
+  shareLimit: string;
 
-  @Column({ name: 'lido_treasury_fee', type: 'numeric', precision: 78, scale: 0 })
-  lidoTreasuryFee: string;
+  @Column({ name: 'reserve_ratio_bp', type: 'integer' })
+  reserveRatioBP: string;
 
-  @Column({ name: 'node_operator_fee', type: 'numeric', precision: 78, scale: 0 })
-  nodeOperatorFee: string;
+  @Column({ name: 'forced_rebalance_threshold_bp', type: 'integer' })
+  forcedRebalanceThresholdBP: string;
+
+  @Column({ name: 'infra_fee_bp', type: 'integer' })
+  infraFeeBP: string;
+
+  @Column({ name: 'liquidity_fee_bp', type: 'integer' })
+  liquidityFeeBP: string;
+
+  @Column({ name: 'reservation_fee_bp', type: 'integer' })
+  reservationFeeBP: string;
+
+  @Column({ name: 'node_operator_fee_rate', type: 'numeric', precision: 78, scale: 0 })
+  nodeOperatorFeeRate: string;
 
   @Column({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;

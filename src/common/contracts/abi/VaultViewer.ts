@@ -2,7 +2,7 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
-        "internalType": "address",
+        "internalType": "address payable",
         "name": "_vaultHubAddress",
         "type": "address"
       }
@@ -153,21 +153,31 @@ export const VaultViewerAbi = [
       {
         "components": [
           {
+            "internalType": "address",
+            "name": "vaultAddress",
+            "type": "address"
+          },
+          {
             "components": [
               {
                 "internalType": "address",
-                "name": "vault",
+                "name": "owner",
                 "type": "address"
-              },
-              {
-                "internalType": "uint96",
-                "name": "liabilityShares",
-                "type": "uint96"
               },
               {
                 "internalType": "uint96",
                 "name": "shareLimit",
                 "type": "uint96"
+              },
+              {
+                "internalType": "uint96",
+                "name": "vaultIndex",
+                "type": "uint96"
+              },
+              {
+                "internalType": "bool",
+                "name": "pendingDisconnect",
+                "type": "bool"
               },
               {
                 "internalType": "uint16",
@@ -181,22 +191,88 @@ export const VaultViewerAbi = [
               },
               {
                 "internalType": "uint16",
-                "name": "treasuryFeeBP",
+                "name": "infraFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "liquidityFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "reservationFeeBP",
                 "type": "uint16"
               },
               {
                 "internalType": "bool",
-                "name": "pendingDisconnect",
+                "name": "isBeaconDepositsManuallyPaused",
                 "type": "bool"
+              }
+            ],
+            "internalType": "struct VaultHub.VaultConnection",
+            "name": "connection",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint112",
+                    "name": "totalValue",
+                    "type": "uint112"
+                  },
+                  {
+                    "internalType": "int112",
+                    "name": "inOutDelta",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "uint32",
+                    "name": "timestamp",
+                    "type": "uint32"
+                  }
+                ],
+                "internalType": "struct VaultHub.Report",
+                "name": "report",
+                "type": "tuple"
+              },
+              {
+                "internalType": "uint128",
+                "name": "locked",
+                "type": "uint128"
               },
               {
                 "internalType": "uint96",
-                "name": "feeSharesCharged",
+                "name": "liabilityShares",
                 "type": "uint96"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "int112",
+                    "name": "value",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "int112",
+                    "name": "valueOnRefSlot",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "uint32",
+                    "name": "refSlot",
+                    "type": "uint32"
+                  }
+                ],
+                "internalType": "struct RefSlotCache.Int112WithRefSlotCache",
+                "name": "inOutDelta",
+                "type": "tuple"
               }
             ],
-            "internalType": "struct VaultHub.VaultSocket",
-            "name": "socket",
+            "internalType": "struct VaultHub.VaultRecord",
+            "name": "record",
             "type": "tuple"
           },
           {
@@ -206,12 +282,12 @@ export const VaultViewerAbi = [
           },
           {
             "internalType": "uint256",
-            "name": "stEthLiability",
+            "name": "liabilityStETH",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "nodeOperatorFee",
+            "name": "nodeOperatorFeeRate",
             "type": "uint256"
           },
           {
@@ -246,21 +322,31 @@ export const VaultViewerAbi = [
       {
         "components": [
           {
+            "internalType": "address",
+            "name": "vaultAddress",
+            "type": "address"
+          },
+          {
             "components": [
               {
                 "internalType": "address",
-                "name": "vault",
+                "name": "owner",
                 "type": "address"
-              },
-              {
-                "internalType": "uint96",
-                "name": "liabilityShares",
-                "type": "uint96"
               },
               {
                 "internalType": "uint96",
                 "name": "shareLimit",
                 "type": "uint96"
+              },
+              {
+                "internalType": "uint96",
+                "name": "vaultIndex",
+                "type": "uint96"
+              },
+              {
+                "internalType": "bool",
+                "name": "pendingDisconnect",
+                "type": "bool"
               },
               {
                 "internalType": "uint16",
@@ -274,22 +360,88 @@ export const VaultViewerAbi = [
               },
               {
                 "internalType": "uint16",
-                "name": "treasuryFeeBP",
+                "name": "infraFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "liquidityFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "reservationFeeBP",
                 "type": "uint16"
               },
               {
                 "internalType": "bool",
-                "name": "pendingDisconnect",
+                "name": "isBeaconDepositsManuallyPaused",
                 "type": "bool"
+              }
+            ],
+            "internalType": "struct VaultHub.VaultConnection",
+            "name": "connection",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint112",
+                    "name": "totalValue",
+                    "type": "uint112"
+                  },
+                  {
+                    "internalType": "int112",
+                    "name": "inOutDelta",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "uint32",
+                    "name": "timestamp",
+                    "type": "uint32"
+                  }
+                ],
+                "internalType": "struct VaultHub.Report",
+                "name": "report",
+                "type": "tuple"
+              },
+              {
+                "internalType": "uint128",
+                "name": "locked",
+                "type": "uint128"
               },
               {
                 "internalType": "uint96",
-                "name": "feeSharesCharged",
+                "name": "liabilityShares",
                 "type": "uint96"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "int112",
+                    "name": "value",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "int112",
+                    "name": "valueOnRefSlot",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "uint32",
+                    "name": "refSlot",
+                    "type": "uint32"
+                  }
+                ],
+                "internalType": "struct RefSlotCache.Int112WithRefSlotCache",
+                "name": "inOutDelta",
+                "type": "tuple"
               }
             ],
-            "internalType": "struct VaultHub.VaultSocket",
-            "name": "socket",
+            "internalType": "struct VaultHub.VaultRecord",
+            "name": "record",
             "type": "tuple"
           },
           {
@@ -299,12 +451,12 @@ export const VaultViewerAbi = [
           },
           {
             "internalType": "uint256",
-            "name": "stEthLiability",
+            "name": "liabilityStETH",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "nodeOperatorFee",
+            "name": "nodeOperatorFeeRate",
             "type": "uint256"
           },
           {
@@ -401,25 +553,6 @@ export const VaultViewerAbi = [
         "internalType": "contract VaultHub",
         "name": "",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "contract IStakingVault",
-        "name": "_vault",
-        "type": "address"
-      }
-    ],
-    "name": "vaultState",
-    "outputs": [
-      {
-        "internalType": "enum VaultViewer.VaultState",
-        "name": "",
-        "type": "uint8"
       }
     ],
     "stateMutability": "view",

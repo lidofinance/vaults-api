@@ -1,15 +1,16 @@
-import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { Injectable, Inject } from '@nestjs/common';
 import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 
-import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
-import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
-import { VaultHubContractService } from '../../common/contracts/modules/vault-hub-contract';
-import { ExecutionProviderService } from '../../common/execution-provider';
-import { VaultsService } from '../../vault';
-import { VaultsStateHourlyService } from '../../vaults-state-hourly';
+import { ExecutionProviderService } from 'common/execution-provider';
+import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { VaultViewerContractService } from 'common/contracts/modules/vault-viewer-contract';
+import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
+import { VaultsService } from 'vault';
+import { VaultsStateHourlyService } from 'vaults-state-hourly';
+
 import { VaultMemberJobsService } from '../vault-member-jobs';
 
 @Injectable()
@@ -30,7 +31,7 @@ export class VaultJobsService {
     this.logger.log('VaultJobsService initialization started');
 
     // subscribes to events
-    this.subscribeToEvents();
+    // this.subscribeToEvents();
 
     // one-time execution on startup
     await this.fetchAllVaultsAndStateHourly();
@@ -76,7 +77,7 @@ export class VaultJobsService {
       leftoverVaults = result.leftoverVaults;
     } catch (err: any) {
       this.logger.error(
-        `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsDataBatch (0 - ${
+        `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsConnectedBound (0 - ${
           batchSize - 1
         }) at block ${blockNumber}: ${err}`,
       );
@@ -115,19 +116,23 @@ export class VaultJobsService {
         try {
           const healthFactor = calculateHealth({
             totalValue: item.totalValue,
-            liabilitySharesInStethWei: item.stEthLiability,
-            forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
+            liabilitySharesInStethWei: item.liabilityStETH,
+            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
           });
 
           await this.vaultsStateHourlyService.addOrUpdate({
             vault,
             totalValue: item.totalValue.toString(),
-            stEthLiability: item.stEthLiability.toString(),
-            sharesLiability: item.liabilityShares.toString(),
+            liabilityShares: item.liabilityShares.toString(),
+            liabilityStETH: item.liabilityStETH.toString(),
             healthFactor: healthFactor.healthRatio,
-            forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
-            lidoTreasuryFee: item.lidoTreasuryFee.toString(),
-            nodeOperatorFee: item.nodeOperatorFee.toString(),
+            shareLimit: item.shareLimit.toString(),
+            reserveRatioBP: item.reserveRatioBP,
+            forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+            infraFeeBP: item.infraFeeBP,
+            liquidityFeeBP: item.liquidityFeeBP,
+            reservationFeeBP: item.reservationFeeBP,
+            nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
             updatedAt: new Date(),
             blockNumber,
           });
@@ -143,58 +148,63 @@ export class VaultJobsService {
     this.logger.log('[fetchAllVaultsAndStateHourly] finished');
   }
 
-  private subscribeToEvents() {
-    this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
-
-    this.vaultHubContractService.contract.on(
-      // TODO: change to 'VaultConnected' after the new VaultHub has been deployed
-      'VaultConnectionSet',
-      async (
-        vault: string,
-        shareLimit: bigint,
-        reserveRatioBP: bigint,
-        forcedRebalanceThresholdBP: bigint,
-        treasuryFeeBP: bigint,
-        event,
-      ) => {
-        this.logger.log(
-          `[subscribeToEvents, event:VaultConnectionSet] Event received for vault ${vault} at block ${event.blockNumber}`,
-        );
-
-        try {
-          const blockNumber = event.blockNumber;
-          const item = await this.vaultViewerContractService.getVaultData(vault, {
-            blockTag: blockNumber,
-          });
-
-          const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
-
-          const healthFactor = calculateHealth({
-            totalValue: item.totalValue,
-            liabilitySharesInStethWei: item.stEthLiability,
-            forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
-          });
-
-          await this.vaultsStateHourlyService.addOrUpdate({
-            vault: vaultDbEntity,
-            totalValue: item.totalValue.toString(),
-            stEthLiability: item.stEthLiability.toString(),
-            sharesLiability: item.liabilityShares.toString(),
-            healthFactor: healthFactor.healthRatio,
-            forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
-            lidoTreasuryFee: item.lidoTreasuryFee.toString(),
-            nodeOperatorFee: item.nodeOperatorFee.toString(),
-            updatedAt: new Date(),
-            blockNumber,
-          });
-
-          this.logger.log(
-            `[subscribeToEvents, event:VaultConnectionSet] State added/updated for vault ${vault} at block ${blockNumber}`,
-          );
-        } catch (err) {
-          this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
-        }
-      },
-    );
-  }
+  // private subscribeToEvents() {
+  //   this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
+  //
+  //   this.vaultHubContractService.contract.on(
+  //     'VaultConnected',
+  //     async (
+  //       vault: string,
+  //       shareLimit: bigint,
+  //       reserveRatioBP: bigint,
+  //       forcedRebalanceThresholdBP: bigint,
+  //       infraFeeBP: bigint,
+  //       liquidityFeeBP: bigint,
+  //       reservationFeeBP: bigint,
+  //       event,
+  //     ) => {
+  //       this.logger.log(
+  //         `[subscribeToEvents, event:VaultConnectionSet] Event received for vault ${vault} at block ${event.blockNumber}`,
+  //       );
+  //
+  //       try {
+  //         const blockNumber = event.blockNumber;
+  //         const item = await this.vaultViewerContractService.getVaultData(vault, {
+  //           blockTag: blockNumber,
+  //         });
+  //
+  //         const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
+  //
+  //         const healthFactor = calculateHealth({
+  //           totalValue: item.totalValue,
+  //           liabilitySharesInStethWei: item.liabilityStETH,
+  //           forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+  //         });
+  //
+  //         // await this.vaultsStateHourlyService.addOrUpdate({
+  //         //   vault: vaultDbEntity,
+  //         //   totalValue: item.totalValue.toString(),
+  //         //   liabilityShares: item.liabilityShares.toString(),
+  //         //   liabilityStETH: item.liabilityStETH.toString(),
+  //         //   healthFactor: healthFactor.healthRatio,
+  //         //   shareLimit: item.shareLimit,
+  //         //   reserveRatioBP: item.reserveRatioBP,
+  //         //   forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+  //         //   infraFeeBP: item.infraFeeBP,
+  //         //   liquidityFeeBP: item.liquidityFeeBP,
+  //         //   reservationFeeBP: item.reservationFeeBP,
+  //         //   nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
+  //         //   updatedAt: new Date(),
+  //         //   blockNumber,
+  //         // });
+  //
+  //         this.logger.log(
+  //           `[subscribeToEvents, event:VaultConnectionSet] State added/updated for vault ${vault} at block ${blockNumber}`,
+  //         );
+  //       } catch (err) {
+  //         this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
+  //       }
+  //     },
+  //   );
+  // }
 }
