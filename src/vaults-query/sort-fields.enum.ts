@@ -1,11 +1,9 @@
 export enum SortFieldsEnum {
   totalValue = 'totalValue',
-  stEthLiability = 'stEthLiability',
-  // sharesLiability = 'sharesLiability',
+  liabilityStETH = 'liabilityStETH',
+  liabilityShares = 'liabilityShares',
   healthFactor = 'healthFactor',
-  // forcedRebalanceThreshold = 'forcedRebalanceThreshold',
-  // lidoTreasuryFee = 'lidoTreasuryFee',
-  // nodeOperatorFee = 'nodeOperatorFee',
+  // forcedRebalanceThresholdBP = 'forcedRebalanceThresholdBP',
   blockNumber = 'blockNumber',
 }
 

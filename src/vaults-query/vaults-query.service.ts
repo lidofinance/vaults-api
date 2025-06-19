@@ -28,12 +28,16 @@ export class VaultsQueryService {
       ens: string | null;
       customName: string | null;
       totalValue: string;
-      stEthLiability: string;
-      // sharesLiability: string;
+      liabilityStETH: string;
+      liabilityShares: string;
       healthFactor: number;
-      // forcedRebalanceThreshold: string;
-      // lidoTreasuryFee: string;
-      // nodeOperatorFee: string;
+      shareLimit: string;
+      reserveRatioBP: number;
+      forcedRebalanceThresholdBP: number;
+      infraFeeBP: number;
+      liquidityFeeBP: number;
+      reservationFeeBP: number;
+      nodeOperatorFeeRate: string;
       updatedAt: Date;
       blockNumber: number;
     }>
@@ -48,16 +52,20 @@ export class VaultsQueryService {
         `vault.ens AS "ens"`,
         `vault.custom_name AS "customName"`,
         `state.total_value AS "totalValue"`,
-        `state.steth_liability AS "stEthLiability"`,
-        // `state.shares_liability AS "sharesLiability"`,
+        `state.liability_steth AS "liabilityStETH"`,
+        `state.liability_shares AS "liabilityShares"`,
         // Only PostgreSQL!!!
         `CASE
           WHEN state.health_factor = 'Infinity' THEN 'Infinity'
           ELSE state.health_factor::text
         END AS "healthFactor"`,
-        // `state.forced_rebalance_threshold AS "forcedRebalanceThreshold"`,
-        // `state.lido_treasury_fee AS "lidoTreasuryFee"`,
-        // `state.node_operator_fee AS "nodeOperatorFee"`,
+        `state.share_limit AS "shareLimit"`,
+        `state.reserve_ratio_bp AS "reserveRatioBP"`,
+        `state.forced_rebalance_threshold_bp AS "forcedRebalanceThresholdBP"`,
+        `state.infra_fee_bp AS "infraFeeBP"`,
+        `state.liquidity_fee_bp AS "liquidityFeeBP"`,
+        `state.reservation_fee_bp AS "reservationFeeBP"`,
+        `state.node_operator_fee_rate AS "nodeOperatorFeeRate"`,
         `state.updated_at AS "updatedAt"`,
         `state.block_number AS "blockNumber"`,
       ]);
@@ -83,12 +91,16 @@ export class VaultsQueryService {
       ens: string | null;
       customName: string | null;
       totalValue: string;
-      stEthLiability: string;
-      // sharesLiability: string;
+      liabilityStETH: string;
+      liabilityShares: string;
       healthFactor: number;
-      // forcedRebalanceThreshold: string;
-      // lidoTreasuryFee: string;
-      // nodeOperatorFee: string;
+      shareLimit: string;
+      reserveRatioBP: number;
+      forcedRebalanceThresholdBP: number;
+      infraFeeBP: number;
+      liquidityFeeBP: number;
+      reservationFeeBP: number;
+      nodeOperatorFeeRate: string;
       updatedAt: Date;
       blockNumber: number;
     }>();
@@ -101,18 +113,14 @@ export class VaultsQueryService {
     switch (field) {
       case 'totalValue':
         return 'total_value';
-      case 'stEthLiability':
-        return 'steth_liability';
-      // case 'sharesLiability':
-      //   return 'shares_liability';
+      case 'liabilityStETH':
+        return 'liability_steth';
+      case 'liabilityShares':
+        return 'liability_shares';
       case 'healthFactor':
         return 'health_factor';
-      // case 'forcedRebalanceThreshold':
-      //   return 'forced_rebalance_threshold';
-      // case 'lidoTreasuryFee':
-      //   return 'lido_treasury_fee';
-      // case 'nodeOperatorFee':
-      //   return 'node_operator_fee';
+      // case 'forcedRebalanceThresholdBP':
+      //   return 'forced_rebalance_threshold_bp';
       case 'blockNumber':
         return 'block_number';
       default:
