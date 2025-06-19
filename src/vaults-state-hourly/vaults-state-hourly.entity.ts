@@ -32,19 +32,19 @@ export class VaultsStateHourlyEntity {
   shareLimit: string;
 
   @Column({ name: 'reserve_ratio_bp', type: 'integer' })
-  reserveRatioBP: string;
+  reserveRatioBP: number;
 
   @Column({ name: 'forced_rebalance_threshold_bp', type: 'integer' })
-  forcedRebalanceThresholdBP: string;
+  forcedRebalanceThresholdBP: number;
 
   @Column({ name: 'infra_fee_bp', type: 'integer' })
-  infraFeeBP: string;
+  infraFeeBP: number;
 
   @Column({ name: 'liquidity_fee_bp', type: 'integer' })
-  liquidityFeeBP: string;
+  liquidityFeeBP: number;
 
   @Column({ name: 'reservation_fee_bp', type: 'integer' })
-  reservationFeeBP: string;
+  reservationFeeBP: number;
 
   @Column({ name: 'node_operator_fee_rate', type: 'numeric', precision: 78, scale: 0 })
   nodeOperatorFeeRate: string;

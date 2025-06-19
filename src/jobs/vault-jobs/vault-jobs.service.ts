@@ -136,9 +136,10 @@ export class VaultJobsService {
             updatedAt: new Date(),
             blockNumber,
           });
+          this.logger.log(`[fetchAllVaultsAndStateHourly] Saved 'vaultsStateHourly' data to DB ${item.vault}`);
         } catch (err) {
           this.logger.error(
-            `[fetchAllVaultsAndStateHourly] Failed to save vault to DB OR calculateHealth of vault ${item.vault}: ${err}`,
+            `[fetchAllVaultsAndStateHourly] Failed to save 'vaultsStateHourly' data to DB OR calculateHealth of vault ${item.vault}: ${err}`,
           );
           // continue
         }
@@ -148,63 +149,66 @@ export class VaultJobsService {
     this.logger.log('[fetchAllVaultsAndStateHourly] finished');
   }
 
-  // private subscribeToEvents() {
-  //   this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
-  //
-  //   this.vaultHubContractService.contract.on(
-  //     'VaultConnected',
-  //     async (
-  //       vault: string,
-  //       shareLimit: bigint,
-  //       reserveRatioBP: bigint,
-  //       forcedRebalanceThresholdBP: bigint,
-  //       infraFeeBP: bigint,
-  //       liquidityFeeBP: bigint,
-  //       reservationFeeBP: bigint,
-  //       event,
-  //     ) => {
-  //       this.logger.log(
-  //         `[subscribeToEvents, event:VaultConnectionSet] Event received for vault ${vault} at block ${event.blockNumber}`,
-  //       );
-  //
-  //       try {
-  //         const blockNumber = event.blockNumber;
-  //         const item = await this.vaultViewerContractService.getVaultData(vault, {
-  //           blockTag: blockNumber,
-  //         });
-  //
-  //         const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
-  //
-  //         const healthFactor = calculateHealth({
-  //           totalValue: item.totalValue,
-  //           liabilitySharesInStethWei: item.liabilityStETH,
-  //           forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
-  //         });
-  //
-  //         // await this.vaultsStateHourlyService.addOrUpdate({
-  //         //   vault: vaultDbEntity,
-  //         //   totalValue: item.totalValue.toString(),
-  //         //   liabilityShares: item.liabilityShares.toString(),
-  //         //   liabilityStETH: item.liabilityStETH.toString(),
-  //         //   healthFactor: healthFactor.healthRatio,
-  //         //   shareLimit: item.shareLimit,
-  //         //   reserveRatioBP: item.reserveRatioBP,
-  //         //   forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
-  //         //   infraFeeBP: item.infraFeeBP,
-  //         //   liquidityFeeBP: item.liquidityFeeBP,
-  //         //   reservationFeeBP: item.reservationFeeBP,
-  //         //   nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
-  //         //   updatedAt: new Date(),
-  //         //   blockNumber,
-  //         // });
-  //
-  //         this.logger.log(
-  //           `[subscribeToEvents, event:VaultConnectionSet] State added/updated for vault ${vault} at block ${blockNumber}`,
-  //         );
-  //       } catch (err) {
-  //         this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
-  //       }
-  //     },
-  //   );
-  // }
+  private subscribeToEvents() {
+    this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
+
+    this.vaultHubContractService.contract.on(
+      'VaultConnected',
+      async (
+        vault: string,
+        shareLimit: bigint,
+        reserveRatioBP: bigint,
+        forcedRebalanceThresholdBP: bigint,
+        infraFeeBP: bigint,
+        liquidityFeeBP: bigint,
+        reservationFeeBP: bigint,
+        event,
+      ) => {
+        this.logger.log(
+          `[subscribeToEvents, event:VaultConnectionSet] Event received for vault ${vault} at block ${event.blockNumber}`,
+        );
+
+        try {
+          const blockNumber = event.blockNumber;
+          const item = await this.vaultViewerContractService.getVaultData(vault, {
+            blockTag: blockNumber,
+          });
+
+          const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
+
+          const healthFactor = calculateHealth({
+            totalValue: item.totalValue,
+            liabilitySharesInStethWei: item.liabilityStETH,
+            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+          });
+
+          await this.vaultsStateHourlyService.addOrUpdate({
+            vault: vaultDbEntity,
+            totalValue: item.totalValue.toString(),
+            liabilityShares: item.liabilityShares.toString(),
+            liabilityStETH: item.liabilityStETH.toString(),
+            healthFactor: healthFactor.healthRatio,
+            shareLimit: item.shareLimit.toString(),
+            reserveRatioBP: item.reserveRatioBP,
+            forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+            infraFeeBP: item.infraFeeBP,
+            liquidityFeeBP: item.liquidityFeeBP,
+            reservationFeeBP: item.reservationFeeBP,
+            nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
+            updatedAt: new Date(),
+            blockNumber,
+          });
+          this.logger.log(
+            `[fetchAllVaultsAndStateHourly] Saved 'vaultsStateHourly' data to DB for vault ${item.vault}`,
+          );
+
+          this.logger.log(
+            `[subscribeToEvents, event:VaultConnectionSet] State added/updated for vault ${vault} at block ${blockNumber}`,
+          );
+        } catch (err) {
+          this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
+        }
+      },
+    );
+  }
 }

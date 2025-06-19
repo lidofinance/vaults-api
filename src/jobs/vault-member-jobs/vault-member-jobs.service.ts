@@ -69,6 +69,7 @@ export class VaultMemberJobsService {
       for (const { vault, roleMembersMap } of batchResults) {
         try {
           await this.vaultsMemberService.setMembersForVault(vault, roleMembersMap);
+          this.logger.log(`[fetchAllVaultsRoleMembers] Saved 'membersForVault' data to DB for vault ${vault}`);
         } catch (err) {
           this.logger.error(`[fetchAllVaultsRoleMembers] Error saving role members for vault ${vault}: ${err.message}`);
         }
