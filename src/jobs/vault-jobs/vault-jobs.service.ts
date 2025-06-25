@@ -45,6 +45,7 @@ export class VaultJobsService {
       async () => {
         await this.fetchAllVaultsAndStateHourly();
         await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
+        // TODO: once an hour?
         await this.reportJobsService.fetchAllReports();
       },
       null,
