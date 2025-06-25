@@ -23,6 +23,9 @@ export class ReportLeafEntity {
   @Column({ type: 'numeric', precision: 78, scale: 0, name: 'liability_shares' })
   liabilityShares: string;
 
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'slashing_reserve' })
+  slashingReserve: string;
+
   @Column({ type: 'int', name: 'tree_index' })
   treeIndex: number;
 

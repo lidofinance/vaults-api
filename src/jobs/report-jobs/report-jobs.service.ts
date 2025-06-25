@@ -4,7 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
-import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
+import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { ReportService } from 'report';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class ReportJobsService {
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
-    private readonly vaultHubContractService: VaultHubContractService,
+    private readonly lazyOracleContractService: LazyOracleContractService,
     private readonly reportService: ReportService,
   ) {}
 
@@ -24,8 +24,7 @@ export class ReportJobsService {
   }
 
   async fetchReportFromIPFS(cid: string): Promise<any> {
-    // TODO: env
-    const url = `https://ipfs.io/ipfs/${cid}`;
+    const url = `${this.configService.get('IPFS_GATEWAY')}/${cid}`;
     const res = await fetch(url);
 
     if (!res.ok) {
@@ -36,7 +35,7 @@ export class ReportJobsService {
   }
 
   async fetchAllReports(): Promise<void> {
-    let cid: string | null = (await this.vaultHubContractService.getLatestReportData()).reportCid;
+    let cid: string | null = (await this.lazyOracleContractService.getLatestReportData()).reportCid;
 
     while (cid) {
       try {
@@ -46,7 +45,7 @@ export class ReportJobsService {
         const report = await this.reportService.saveReport(cid, reportData);
         console.log(`Saved the report for CID: ${cid}`);
 
-        await this.reportService.saveLeaves(report, reportData.values || []);
+        await this.reportService.saveLeaves(report, reportData || []);
         console.log(`Saved leaves for CID: ${cid}`);
 
         cid = reportData.prevTreeCID && reportData.prevTreeCID.trim() !== '' ? reportData.prevTreeCID : null;

@@ -27,7 +27,6 @@ export class ReportService {
       refSlot: reportData.refSlot,
       blockNumber: reportData.blockNumber,
       timestamp: reportData.timestamp,
-      proofsCID: reportData.proofsCID,
       prevTreeCID: reportData.prevTreeCID || null,
       tree: reportData.tree,
     });
@@ -35,25 +34,35 @@ export class ReportService {
     return await this.reportRepo.save(report);
   }
 
-  async saveLeaves(report: ReportEntity, values: any[]): Promise<void> {
+  async saveLeaves(report: ReportEntity, reportData: any): Promise<void> {
+    // reportData is json (see example: https://ipfs.io/ipfs/QmPCBnLZzQsaUgzLfhTxiQTU8nRe3siG29feWYEQN2e5W1)
+    const values = reportData?.values;
+    const extraValues = reportData?.extraValues;
+
     if (!values || values.length === 0) return;
 
     const leafChunks = chunk(values, LEAF_BATCH_SIZE);
 
     for (const batch of leafChunks) {
-      const leaves = batch.map((entry) =>
-        this.reportLeafRepo.create({
-          report,
-          vaultAddress: entry.value[0],
-          totalValueWei: BigInt(entry.value[1]).toString(),
-          inOutDelta: BigInt(entry.value[2]).toString(),
-          fee: BigInt(entry.value[3]).toString(),
-          liabilityShares: BigInt(entry.value[4]).toString(),
-          treeIndex: entry.treeIndex,
-        }),
-      );
+      const leaves = batch.map((entry: any) => {
+        const [vaultAddress, totalValueWei, fee, liabilityShares, slashingReserve] = entry.value;
 
-      await this.reportLeafRepo.save(leaves);
+        const treeIndex = entry.treeIndex;
+        const inOutDelta = extraValues?.[vaultAddress]?.inOutDelta ?? '0';
+
+        return this.reportLeafRepo.create({
+          report,
+          vaultAddress,
+          totalValueWei: BigInt(totalValueWei).toString(),
+          inOutDelta: BigInt(inOutDelta).toString(),
+          fee: BigInt(fee).toString(),
+          liabilityShares: BigInt(liabilityShares).toString(),
+          slashingReserve: BigInt(slashingReserve).toString(),
+          treeIndex,
+        });
+      });
+
+      await this.reportLeafRepo.upsert(leaves, ['report', 'vaultAddress']);
     }
   }
 }
