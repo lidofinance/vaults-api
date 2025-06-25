@@ -36,15 +36,15 @@ export class VaultJobsService {
     this.subscribeToEvents();
 
     // one-time execution on startup
-    // await this.fetchAllVaultsAndStateHourly();
-    // await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
+    await this.fetchAllVaultsAndStateHourly();
+    await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
     await this.reportJobsService.fetchAllReports();
 
     const job = new CronJob(
       this.configService.jobs['vaultsHourlyCron'],
       async () => {
-        // await this.fetchAllVaultsAndStateHourly();
-        // await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
+        await this.fetchAllVaultsAndStateHourly();
+        await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
         await this.reportJobsService.fetchAllReports();
       },
       null,
