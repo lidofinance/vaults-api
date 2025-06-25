@@ -2,8 +2,8 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
-        "internalType": "address payable",
-        "name": "_vaultHubAddress",
+        "internalType": "address",
+        "name": "_vaultHub",
         "type": "address"
       }
     ],
@@ -51,6 +51,19 @@ export const VaultViewerAbi = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "VAULT_HUB",
+    "outputs": [
+      {
+        "internalType": "contract VaultHub",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -66,24 +79,31 @@ export const VaultViewerAbi = [
     "name": "getRoleMembers",
     "outputs": [
       {
-        "internalType": "address",
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "nodeOperator",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "depositor",
-        "type": "address"
-      },
-      {
-        "internalType": "address[][]",
-        "name": "members",
-        "type": "address[][]"
+        "components": [
+          {
+            "internalType": "address",
+            "name": "vault",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "nodeOperator",
+            "type": "address"
+          },
+          {
+            "internalType": "address[][]",
+            "name": "members",
+            "type": "address[][]"
+          }
+        ],
+        "internalType": "struct VaultViewer.VaultMembers",
+        "name": "roleMembers",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -122,17 +142,12 @@ export const VaultViewerAbi = [
             "type": "address"
           },
           {
-            "internalType": "address",
-            "name": "depositor",
-            "type": "address"
-          },
-          {
             "internalType": "address[][]",
             "name": "members",
             "type": "address[][]"
           }
         ],
-        "internalType": "struct VaultViewer.VaultRoleMembers[]",
+        "internalType": "struct VaultViewer.VaultMembers[]",
         "name": "result",
         "type": "tuple[]"
       }
@@ -289,11 +304,6 @@ export const VaultViewerAbi = [
             "internalType": "uint256",
             "name": "nodeOperatorFeeRate",
             "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "isOwnerDashboard",
-            "type": "bool"
           }
         ],
         "internalType": "struct VaultViewer.VaultData",
@@ -458,16 +468,16 @@ export const VaultViewerAbi = [
             "internalType": "uint256",
             "name": "nodeOperatorFeeRate",
             "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "isOwnerDashboard",
-            "type": "bool"
           }
         ],
         "internalType": "struct VaultViewer.VaultData[]",
         "name": "vaultsData",
         "type": "tuple[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "leftover",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -476,7 +486,7 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
-        "internalType": "contract IVault",
+        "internalType": "contract IStakingVault",
         "name": "vault",
         "type": "address"
       },
@@ -524,7 +534,7 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
-        "internalType": "contract IVault",
+        "internalType": "contract IStakingVault",
         "name": "vault",
         "type": "address"
       },
@@ -546,19 +556,6 @@ export const VaultViewerAbi = [
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "vaultHub",
-    "outputs": [
-      {
-        "internalType": "contract VaultHub",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -569,7 +566,7 @@ export const VaultViewerAbi = [
     "name": "vaultsByOwner",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       }
@@ -598,7 +595,7 @@ export const VaultViewerAbi = [
     "name": "vaultsByOwnerBound",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       },
@@ -627,7 +624,7 @@ export const VaultViewerAbi = [
     "name": "vaultsByRole",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       }
@@ -661,7 +658,7 @@ export const VaultViewerAbi = [
     "name": "vaultsByRoleBound",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       },
@@ -679,7 +676,7 @@ export const VaultViewerAbi = [
     "name": "vaultsConnected",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       }
@@ -703,7 +700,7 @@ export const VaultViewerAbi = [
     "name": "vaultsConnectedBound",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       },

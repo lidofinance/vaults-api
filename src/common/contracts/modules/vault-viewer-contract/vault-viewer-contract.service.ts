@@ -36,14 +36,6 @@ export type RawVaultRoleMembers = [
   string[][], // members
 ];
 
-export type RawVaultRoleMembersWithVault = [
-  string, // vault
-  string, // owner
-  string, // nodeOperator
-  string, // depositor
-  string[][], // members
-];
-
 @Injectable()
 export class VaultViewerContractService {
   public readonly contract: Contract;
@@ -68,19 +60,26 @@ export class VaultViewerContractService {
     return VaultViewerContractService.transformVaultData(raw);
   }
 
-  async getVaultsDataBound(from: number, to: number, overrides?: Overrides): Promise<VaultData[]> {
-    const rawData = await this.contract.getVaultsDataBound(from, to, overrides);
-    return rawData.map(VaultViewerContractService.transformVaultData);
+  async getVaultsDataBound(
+    from: number,
+    to: number,
+    overrides?: Overrides,
+  ): Promise<{ vaultsDataBatch: VaultData[]; leftover: number }> {
+    const [rawVaultsData, leftover] = await this.contract.getVaultsDataBound(from, to, overrides);
+    return {
+      vaultsDataBatch: rawVaultsData.map(VaultViewerContractService.transformVaultData),
+      leftover,
+    };
   }
 
   async getRoleMembers(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
-    const [owner, nodeOperator, depositor, membersRaw]: RawVaultRoleMembers = await this.contract.getRoleMembers(
+    const [, owner, nodeOperator, membersRaw]: RawVaultRoleMembers = await this.contract.getRoleMembers(
       vaultAddress,
       roles,
       overrides,
     );
 
-    return VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, depositor, membersRaw);
+    return VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, membersRaw);
   }
 
   async getRoleMembersBatch(
@@ -88,15 +87,11 @@ export class VaultViewerContractService {
     roles: string[],
     overrides?: Overrides,
   ): Promise<Array<{ vault: string; roleMembersMap: RoleMembers }>> {
-    const raw: RawVaultRoleMembersWithVault[] = await this.contract.getRoleMembersBatch(
-      vaultAddresses,
-      roles,
-      overrides,
-    );
+    const raw: RawVaultRoleMembers[] = await this.contract.getRoleMembersBatch(vaultAddresses, roles, overrides);
 
-    return raw.map(([vault, owner, nodeOperator, depositor, membersRaw]) => ({
+    return raw.map(([vault, owner, nodeOperator, membersRaw]) => ({
       vault,
-      roleMembersMap: VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, depositor, membersRaw),
+      roleMembersMap: VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, membersRaw),
     }));
   }
 
@@ -117,16 +112,10 @@ export class VaultViewerContractService {
     };
   }
 
-  private static transformRoleMembersMap(
-    owner: string,
-    nodeOperator: string,
-    depositor: string,
-    membersRaw: string[][],
-  ): RoleMembers {
+  private static transformRoleMembersMap(owner: string, nodeOperator: string, membersRaw: string[][]): RoleMembers {
     const map: RoleMembers = {
       [STAKING_VAULT_OWNER_ROLE]: [owner],
       [STAKING_VAULT_NODE_OPERATOR_ROLE]: [nodeOperator],
-      [STAKING_VAULT_DEPOSITOR_ROLE]: [depositor],
     };
 
     for (let i = 0; i < ROLE_KEYS.length; i++) {

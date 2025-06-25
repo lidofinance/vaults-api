@@ -94,7 +94,9 @@ export class VaultJobsService {
 
       let vaultsDataBatch;
       try {
-        vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBound(from, to, { blockTag: blockNumber });
+        vaultsDataBatch = (
+          await this.vaultViewerContractService.getVaultsDataBound(from, to, { blockTag: blockNumber })
+        ).vaultsDataBatch;
       } catch (err) {
         this.logger.error(
           `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
@@ -150,7 +152,7 @@ export class VaultJobsService {
   }
 
   private subscribeToEvents() {
-    this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
+    this.logger.log('[subscribeToEvents] Subscribing to VaultConnected event');
 
     this.vaultHubContractService.contract.on(
       'VaultConnected',
@@ -165,7 +167,7 @@ export class VaultJobsService {
         event,
       ) => {
         this.logger.log(
-          `[subscribeToEvents, event:VaultConnectionSet] Event received for vault ${vault} at block ${event.blockNumber}`,
+          `[subscribeToEvents, event:VaultConnected] Event received for vault ${vault} at block ${event.blockNumber}`,
         );
 
         try {
@@ -203,7 +205,7 @@ export class VaultJobsService {
           );
 
           this.logger.log(
-            `[subscribeToEvents, event:VaultConnectionSet] State added/updated for vault ${vault} at block ${blockNumber}`,
+            `[subscribeToEvents, event:VaultConnected] State added/updated for vault ${vault} at block ${blockNumber}`,
           );
         } catch (err) {
           this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
