@@ -1,13 +1,12 @@
 import { Module } from '@nestjs/common';
 
-// TODO: remove?
-import { VaultHubContractModule } from 'common/contracts/modules/vault-hub-contract';
 import { ReportModule } from 'report';
+import { ContractsModule } from 'common/contracts';
 
 import { ReportStatisticJobsService } from './report-statistic-jobs.service';
 
 @Module({
-  imports: [VaultHubContractModule, ReportModule],
+  imports: [ReportModule, ContractsModule],
   providers: [ReportStatisticJobsService],
   exports: [ReportStatisticJobsService],
 })
