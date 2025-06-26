@@ -1,4 +1,3 @@
-import { CronJob } from 'cron';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Injectable, Inject } from '@nestjs/common';
 import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
@@ -11,9 +10,6 @@ import { VaultHubContractService } from 'common/contracts/modules/vault-hub-cont
 import { VaultsService } from 'vault';
 import { VaultsStateHourlyService } from 'vaults-state-hourly';
 
-import { VaultMemberJobsService } from '../vault-member-jobs';
-import { ReportJobsService } from '../report-jobs';
-
 @Injectable()
 export class VaultJobsService {
   constructor(
@@ -25,8 +21,6 @@ export class VaultJobsService {
     private readonly vaultsService: VaultsService,
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
     private readonly executionProviderService: ExecutionProviderService,
-    private readonly vaultMemberJobsService: VaultMemberJobsService,
-    private readonly reportJobsService: ReportJobsService,
   ) {}
 
   async onModuleInit() {
@@ -35,26 +29,6 @@ export class VaultJobsService {
     // subscribes to events
     this.subscribeToEvents();
 
-    // one-time execution on startup
-    await this.fetchAllVaultsAndStateHourly();
-    await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
-    await this.reportJobsService.fetchAllReports();
-
-    const job = new CronJob(
-      this.configService.jobs['vaultsHourlyCron'],
-      async () => {
-        await this.fetchAllVaultsAndStateHourly();
-        await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
-        // TODO: once an hour?
-        await this.reportJobsService.fetchAllReports();
-      },
-      null,
-      false,
-      this.configService.jobs['vaultsHourlyCronTZ'],
-    );
-
-    this.schedulerRegistry.addCronJob('vaults-hourly', job);
-    job.start();
     this.logger.log('VaultJobsService initialization finished');
   }
 
