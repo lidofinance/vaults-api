@@ -19,7 +19,9 @@ export class ReportJobsService {
 
   async onModuleInit() {
     this.logger.log('ReportJobsService initialization started');
-    // ...
+
+    // TODO: add event here (ReportCreated)
+
     this.logger.log('VaultJobsService initialization finished');
   }
 
