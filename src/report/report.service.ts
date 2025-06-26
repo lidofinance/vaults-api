@@ -51,8 +51,6 @@ export class ReportService {
     const values = reportData?.values;
     const extraValues = reportData?.extraValues;
 
-    if (!values || values.length === 0) return;
-
     const leafChunks = chunk(values, LEAF_BATCH_SIZE);
 
     for (const batch of leafChunks) {
