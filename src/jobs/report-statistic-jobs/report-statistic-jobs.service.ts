@@ -12,6 +12,7 @@ import { ReportEntity, ReportLeafEntity, ReportService } from 'report';
 @Injectable()
 export class ReportStatisticJobsService {
   private readonly BATCH_SIZE = 100;
+  private nodeOperatorFeeRateByVault = new Map<string, bigint>();
 
   constructor(
     private readonly configService: ConfigService,
@@ -77,9 +78,15 @@ export class ReportStatisticJobsService {
       const currentVaultReport = ReportStatisticJobsService.toVaultReport(currentReport, currLeaf);
       const previousVaultReport = ReportStatisticJobsService.toVaultReport(previousReport, prevLeaf);
 
-      const vaultState = await this.vaultsStateHourlyService.getByVaultAddress(vaultAddress);
-      const nodeOperatorFeeRate = BigInt(vaultState?.nodeOperatorFeeRate ?? 0);
-      console.log(`vaultAddress: ${vaultAddress}, nodeOperatorFeeRate: ${nodeOperatorFeeRate}`);
+      // nodeOperatorFeeRate cache
+      let nodeOperatorFeeRate: bigint;
+      if (this.nodeOperatorFeeRateByVault.has(vaultAddress)) {
+        nodeOperatorFeeRate = this.nodeOperatorFeeRateByVault.get(vaultAddress);
+      } else {
+        const vaultState = await this.vaultsStateHourlyService.getByVaultAddress(vaultAddress);
+        nodeOperatorFeeRate = BigInt(vaultState?.nodeOperatorFeeRate ?? 0);
+        this.nodeOperatorFeeRateByVault.set(vaultAddress, nodeOperatorFeeRate);
+      }
 
       const rebaseReward = calculateRebaseReward({
         shareRatePrev,
@@ -125,7 +132,8 @@ export class ReportStatisticJobsService {
       extraData: {
         inOutDelta: leaf.inOutDelta,
       },
-      leaf: leaf.id.toString(), // TODO
+      // TODO
+      leaf: leaf.id.toString(),
       refSlot: report.refSlot,
       blockNumber: report.blockNumber,
       timestamp: report.timestamp,
