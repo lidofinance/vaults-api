@@ -6,6 +6,7 @@ import { calculateRebaseReward } from '@lidofinance/lsv-cli/dist/utils/rebase-re
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
+import { VaultsStateHourlyService } from 'vaults-state-hourly';
 import { ReportEntity, ReportLeafEntity, ReportService } from 'report';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class ReportStatisticJobsService {
     @Inject(LIDO_CONTRACT_TOKEN) private readonly lidoContract: Lido,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     private readonly reportService: ReportService,
+    private readonly vaultsStateHourlyService: VaultsStateHourlyService,
   ) {}
 
   async onModuleInit() {
@@ -75,6 +77,10 @@ export class ReportStatisticJobsService {
       const currentVaultReport = ReportStatisticJobsService.toVaultReport(currentReport, currLeaf);
       const previousVaultReport = ReportStatisticJobsService.toVaultReport(previousReport, prevLeaf);
 
+      const vaultState = await this.vaultsStateHourlyService.getByVaultAddress(vaultAddress);
+      const nodeOperatorFeeRate = BigInt(vaultState?.nodeOperatorFeeRate ?? 0);
+      console.log(`vaultAddress: ${vaultAddress}, nodeOperatorFeeRate: ${nodeOperatorFeeRate}`);
+
       const rebaseReward = calculateRebaseReward({
         shareRatePrev,
         shareRateCurr,
@@ -84,7 +90,7 @@ export class ReportStatisticJobsService {
 
       const metrics = reportMetrics({
         reports: { current: currentVaultReport, previous: previousVaultReport },
-        nodeOperatorFeeRate: 10n, // TODO
+        nodeOperatorFeeRate,
         stEthLiabilityRebaseRewards: rebaseReward,
       });
 
