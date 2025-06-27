@@ -15,25 +15,21 @@ export type Overrides = { blockTag?: number | string };
 export type VaultData = {
   vault: string;
   totalValue: bigint;
-  forcedRebalanceThreshold: number;
   liabilityShares: bigint;
-  stEthLiability: bigint;
-  lidoTreasuryFee: bigint;
-  nodeOperatorFee: bigint;
+  liabilityStETH: bigint;
+  shareLimit: bigint;
+  reserveRatioBP: number;
+  forcedRebalanceThresholdBP: number;
+  infraFeeBP: number;
+  liquidityFeeBP: number;
+  reservationFeeBP: number;
+  nodeOperatorFeeRate: bigint;
   isOwnerDashboard: boolean;
 };
 
 export type RoleMembers = Record<string, string[]>;
 
 export type RawVaultRoleMembers = [
-  string, // owner
-  string, // nodeOperator
-  string, // depositor
-  string[][], // members
-];
-
-export type RawVaultRoleMembersWithVault = [
-  string, // vault
   string, // owner
   string, // nodeOperator
   string, // depositor
@@ -64,19 +60,26 @@ export class VaultViewerContractService {
     return VaultViewerContractService.transformVaultData(raw);
   }
 
-  async getVaultsDataBound(from: number, to: number, overrides?: Overrides): Promise<VaultData[]> {
-    const rawData = await this.contract.getVaultsDataBound(from, to, overrides);
-    return rawData.map(VaultViewerContractService.transformVaultData);
+  async getVaultsDataBound(
+    from: number,
+    to: number,
+    overrides?: Overrides,
+  ): Promise<{ vaultsDataBatch: VaultData[]; leftover: number }> {
+    const [rawVaultsData, leftover] = await this.contract.getVaultsDataBound(from, to, overrides);
+    return {
+      vaultsDataBatch: rawVaultsData.map(VaultViewerContractService.transformVaultData),
+      leftover,
+    };
   }
 
   async getRoleMembers(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
-    const [owner, nodeOperator, depositor, membersRaw]: RawVaultRoleMembers = await this.contract.getRoleMembers(
+    const [, owner, nodeOperator, membersRaw]: RawVaultRoleMembers = await this.contract.getRoleMembers(
       vaultAddress,
       roles,
       overrides,
     );
 
-    return VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, depositor, membersRaw);
+    return VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, membersRaw);
   }
 
   async getRoleMembersBatch(
@@ -84,41 +87,35 @@ export class VaultViewerContractService {
     roles: string[],
     overrides?: Overrides,
   ): Promise<Array<{ vault: string; roleMembersMap: RoleMembers }>> {
-    const raw: RawVaultRoleMembersWithVault[] = await this.contract.getRoleMembersBatch(
-      vaultAddresses,
-      roles,
-      overrides,
-    );
+    const raw: RawVaultRoleMembers[] = await this.contract.getRoleMembersBatch(vaultAddresses, roles, overrides);
 
-    return raw.map(([vault, owner, nodeOperator, depositor, membersRaw]) => ({
+    return raw.map(([vault, owner, nodeOperator, membersRaw]) => ({
       vault,
-      roleMembersMap: VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, depositor, membersRaw),
+      roleMembersMap: VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, membersRaw),
     }));
   }
 
   private static transformVaultData(vaultData: any): VaultData {
     return {
-      vault: vaultData.socket.vault,
+      vault: vaultData.vaultAddress,
       totalValue: vaultData.totalValue.toBigInt(),
-      forcedRebalanceThreshold: vaultData.socket.forcedRebalanceThresholdBP,
-      liabilityShares: vaultData.socket.liabilityShares.toBigInt(),
-      stEthLiability: vaultData.stEthLiability.toBigInt(),
-      lidoTreasuryFee: vaultData.socket.treasuryFeeBP,
-      nodeOperatorFee: vaultData.nodeOperatorFee.toBigInt(),
+      liabilityShares: vaultData.record.liabilityShares.toBigInt(),
+      liabilityStETH: vaultData.liabilityStETH.toBigInt(),
+      shareLimit: vaultData.connection.shareLimit.toBigInt(),
+      reserveRatioBP: vaultData.connection.reserveRatioBP,
+      forcedRebalanceThresholdBP: vaultData.connection.forcedRebalanceThresholdBP,
+      infraFeeBP: vaultData.connection.infraFeeBP,
+      liquidityFeeBP: vaultData.connection.liquidityFeeBP,
+      reservationFeeBP: vaultData.connection.reservationFeeBP,
+      nodeOperatorFeeRate: vaultData.nodeOperatorFeeRate.toBigInt(),
       isOwnerDashboard: vaultData.isOwnerDashboard,
     };
   }
 
-  private static transformRoleMembersMap(
-    owner: string,
-    nodeOperator: string,
-    depositor: string,
-    membersRaw: string[][],
-  ): RoleMembers {
+  private static transformRoleMembersMap(owner: string, nodeOperator: string, membersRaw: string[][]): RoleMembers {
     const map: RoleMembers = {
       [STAKING_VAULT_OWNER_ROLE]: [owner],
       [STAKING_VAULT_NODE_OPERATOR_ROLE]: [nodeOperator],
-      [STAKING_VAULT_DEPOSITOR_ROLE]: [depositor],
     };
 
     for (let i = 0; i < ROLE_KEYS.length; i++) {

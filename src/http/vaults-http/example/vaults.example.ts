@@ -1,26 +1,42 @@
 // TODO: response can be changed
 export const vaultsExample = {
-  nextUpdateAt: '2025-05-28T21:00:00.000Z',
-  vaults: [
+  nextUpdateAt: '2025-06-18T14:00:00.000Z',
+  "vaults": [
     {
-      address: '0x4a4bf6853E3d82aefd71c9A60c506D6833173A4e',
-      ens: 'vault.eth',
-      customName: 'super vault',
-      totalValue: '2119188376037000000000',
-      stEthLiability: '10042693599619345006',
-      healthFactor: 17303.469941731633,
-      updatedAt: '2025-05-27T19:12:16.489Z',
-      blockNumber: 489536,
+      "address": "0x7228FC874C1D08cAE68a558d7B650fc4862B1DB7",
+      "ens": null,
+      "customName": null,
+      "totalValue": "33010000000000000000",
+      "liabilityStETH": "3000468750000000000",
+      "liabilityShares": "3000000000000000000",
+      "healthFactor": "902.1323751497162",
+      "shareLimit": "500000000000000000000",
+      "reserveRatioBP": 2000,
+      "forcedRebalanceThresholdBP": 1800,
+      "infraFeeBP": 500,
+      "liquidityFeeBP": 400,
+      "reservationFeeBP": 100,
+      "nodeOperatorFeeRate": "100",
+      "updatedAt": "2025-06-19T12:55:17.378Z",
+      "blockNumber": 634997
     },
     {
-      address: '0x194F2F85FfeB33433Cc4956460Da2f925FEA950C',
-      ens: null,
-      customName: null,
-      totalValue: '2119188376037000000000',
-      stEthLiability: '0',
-      healthFactor: 'Infinity',
-      updatedAt: '2025-05-27T19:12:16.491Z',
-      blockNumber: 489536,
-    },
-  ],
+      "address": "0xF19A613D8560433CEe5238FEc243F75E125999e0",
+      "ens": null,
+      "customName": null,
+      "totalValue": "2999900000000000000",
+      "liabilityStETH": "500000000000000001",
+      "liabilityShares": "499921887205124200",
+      "healthFactor": "491.9836",
+      "shareLimit": "500000000000000000000",
+      "reserveRatioBP": 2000,
+      "forcedRebalanceThresholdBP": 1800,
+      "infraFeeBP": 500,
+      "liquidityFeeBP": 400,
+      "reservationFeeBP": 100,
+      "nodeOperatorFeeRate": "500",
+      "updatedAt": "2025-06-19T12:55:17.389Z",
+      "blockNumber": 634997
+    }
+  ]
 };

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Contract } from 'ethers';
 
 import { ExecutionProvider } from 'common/execution-provider';
-import { VaultHubAbi } from '../../abi/VaultHub';
+import { LazyOracleAbi } from '../../abi/LazyOracle';
 
 export type LatestReportData = {
   timestamp: bigint;
@@ -11,11 +11,22 @@ export type LatestReportData = {
 };
 
 @Injectable()
-export class VaultHubContractService {
+export class LazyOracleContractService {
   public readonly contract: Contract;
 
   constructor(provider: ExecutionProvider, address: string) {
     if (!address) throw new Error('VaultHub contract address is not defined');
-    this.contract = new Contract(address, VaultHubAbi, provider);
+    this.contract = new Contract(address, LazyOracleAbi, provider);
+  }
+
+  async getLatestReportData(): Promise<LatestReportData> {
+    const [timestamp, treeRoot, reportCid] = await this.contract.latestReportData();
+
+    return {
+      // BigNumber to bigint
+      timestamp: BigInt(timestamp),
+      treeRoot,
+      reportCid,
+    };
   }
 }

@@ -8,7 +8,7 @@ import { fetchAndVerifyFile } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 import { getVaultReport, getVaultReportProofByCid } from '@lidofinance/lsv-cli/dist/utils/report';
 
 import { LsvService } from 'lsv/lsv.service';
-import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract/vault-hub-contract.service';
+import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { ConfigService } from 'common/config';
 
 import { ReportParamsDto } from './dto';
@@ -21,7 +21,7 @@ export class ReportsController {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly configService: ConfigService,
     private readonly lsvService: LsvService,
-    private readonly vaultHubService: VaultHubContractService,
+    private readonly lazyOracleContractService: LazyOracleContractService,
   ) {}
 
   @Version('1')
@@ -36,7 +36,7 @@ export class ReportsController {
   async getLast(@Param() params: ReportParamsDto) {
     const vault = params.vaultAddress;
 
-    const latestReportData = await this.vaultHubService.getLatestReportData();
+    const latestReportData = await this.lazyOracleContractService.getLatestReportData();
 
     try {
       // TODO: disable logger inside fetchAndVerifyFile
@@ -84,7 +84,7 @@ export class ReportsController {
   async getPrevious(@Param() params: ReportParamsDto) {
     const vault = params.vaultAddress;
 
-    const latestReportData = await this.vaultHubService.getLatestReportData();
+    const latestReportData = await this.lazyOracleContractService.getLatestReportData();
 
     const lastVaultReport = await getVaultReport({
       vault,

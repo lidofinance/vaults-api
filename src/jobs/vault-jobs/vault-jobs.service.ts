@@ -1,16 +1,18 @@
-import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { Injectable, Inject } from '@nestjs/common';
 import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 
-import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
-import { VaultViewerContractService } from '../../common/contracts/modules/vault-viewer-contract';
-import { VaultHubContractService } from '../../common/contracts/modules/vault-hub-contract';
-import { ExecutionProviderService } from '../../common/execution-provider';
-import { VaultsService } from '../../vault';
-import { VaultsStateHourlyService } from '../../vaults-state-hourly';
+import { ExecutionProviderService } from 'common/execution-provider';
+import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { VaultViewerContractService } from 'common/contracts/modules/vault-viewer-contract';
+import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
+import { VaultsService } from 'vault';
+import { VaultsStateHourlyService } from 'vaults-state-hourly';
+
 import { VaultMemberJobsService } from '../vault-member-jobs';
+import { ReportJobsService } from '../report-jobs';
 
 @Injectable()
 export class VaultJobsService {
@@ -24,6 +26,7 @@ export class VaultJobsService {
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
     private readonly executionProviderService: ExecutionProviderService,
     private readonly vaultMemberJobsService: VaultMemberJobsService,
+    private readonly reportJobsService: ReportJobsService,
   ) {}
 
   async onModuleInit() {
@@ -35,12 +38,15 @@ export class VaultJobsService {
     // one-time execution on startup
     await this.fetchAllVaultsAndStateHourly();
     await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
+    await this.reportJobsService.fetchAllReports();
 
     const job = new CronJob(
       this.configService.jobs['vaultsHourlyCron'],
       async () => {
         await this.fetchAllVaultsAndStateHourly();
         await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
+        // TODO: once an hour?
+        await this.reportJobsService.fetchAllReports();
       },
       null,
       false,
@@ -76,7 +82,7 @@ export class VaultJobsService {
       leftoverVaults = result.leftoverVaults;
     } catch (err: any) {
       this.logger.error(
-        `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsDataBatch (0 - ${
+        `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsConnectedBound (0 - ${
           batchSize - 1
         }) at block ${blockNumber}: ${err}`,
       );
@@ -93,7 +99,9 @@ export class VaultJobsService {
 
       let vaultsDataBatch;
       try {
-        vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBound(from, to, { blockTag: blockNumber });
+        vaultsDataBatch = (
+          await this.vaultViewerContractService.getVaultsDataBound(from, to, { blockTag: blockNumber })
+        ).vaultsDataBatch;
       } catch (err) {
         this.logger.error(
           `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
@@ -115,25 +123,30 @@ export class VaultJobsService {
         try {
           const healthFactor = calculateHealth({
             totalValue: item.totalValue,
-            liabilitySharesInStethWei: item.stEthLiability,
-            forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
+            liabilitySharesInStethWei: item.liabilityStETH,
+            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
           });
 
           await this.vaultsStateHourlyService.addOrUpdate({
             vault,
             totalValue: item.totalValue.toString(),
-            stEthLiability: item.stEthLiability.toString(),
-            sharesLiability: item.liabilityShares.toString(),
+            liabilityShares: item.liabilityShares.toString(),
+            liabilityStETH: item.liabilityStETH.toString(),
             healthFactor: healthFactor.healthRatio,
-            forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
-            lidoTreasuryFee: item.lidoTreasuryFee.toString(),
-            nodeOperatorFee: item.nodeOperatorFee.toString(),
+            shareLimit: item.shareLimit.toString(),
+            reserveRatioBP: item.reserveRatioBP,
+            forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+            infraFeeBP: item.infraFeeBP,
+            liquidityFeeBP: item.liquidityFeeBP,
+            reservationFeeBP: item.reservationFeeBP,
+            nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
             updatedAt: new Date(),
             blockNumber,
           });
+          this.logger.log(`[fetchAllVaultsAndStateHourly] Saved 'vaultsStateHourly' data to DB ${item.vault}`);
         } catch (err) {
           this.logger.error(
-            `[fetchAllVaultsAndStateHourly] Failed to save vault to DB OR calculateHealth of vault ${item.vault}: ${err}`,
+            `[fetchAllVaultsAndStateHourly] Failed to save 'vaultsStateHourly' data to DB OR calculateHealth of vault ${item.vault}: ${err}`,
           );
           // continue
         }
@@ -144,21 +157,22 @@ export class VaultJobsService {
   }
 
   private subscribeToEvents() {
-    this.logger.log('[subscribeToEvents] Subscribing to VaultConnectionSet event');
+    this.logger.log('[subscribeToEvents] Subscribing to VaultConnected event');
 
     this.vaultHubContractService.contract.on(
-      // TODO: change to 'VaultConnected' after the new VaultHub has been deployed
-      'VaultConnectionSet',
+      'VaultConnected',
       async (
         vault: string,
         shareLimit: bigint,
         reserveRatioBP: bigint,
         forcedRebalanceThresholdBP: bigint,
-        treasuryFeeBP: bigint,
+        infraFeeBP: bigint,
+        liquidityFeeBP: bigint,
+        reservationFeeBP: bigint,
         event,
       ) => {
         this.logger.log(
-          `[subscribeToEvents, event:VaultConnectionSet] Event received for vault ${vault} at block ${event.blockNumber}`,
+          `[subscribeToEvents, event:VaultConnected] Event received for vault ${vault} at block ${event.blockNumber}`,
         );
 
         try {
@@ -171,25 +185,32 @@ export class VaultJobsService {
 
           const healthFactor = calculateHealth({
             totalValue: item.totalValue,
-            liabilitySharesInStethWei: item.stEthLiability,
-            forceRebalanceThresholdBP: item.forcedRebalanceThreshold,
+            liabilitySharesInStethWei: item.liabilityStETH,
+            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
           });
 
           await this.vaultsStateHourlyService.addOrUpdate({
             vault: vaultDbEntity,
             totalValue: item.totalValue.toString(),
-            stEthLiability: item.stEthLiability.toString(),
-            sharesLiability: item.liabilityShares.toString(),
+            liabilityShares: item.liabilityShares.toString(),
+            liabilityStETH: item.liabilityStETH.toString(),
             healthFactor: healthFactor.healthRatio,
-            forcedRebalanceThreshold: item.forcedRebalanceThreshold.toString(),
-            lidoTreasuryFee: item.lidoTreasuryFee.toString(),
-            nodeOperatorFee: item.nodeOperatorFee.toString(),
+            shareLimit: item.shareLimit.toString(),
+            reserveRatioBP: item.reserveRatioBP,
+            forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+            infraFeeBP: item.infraFeeBP,
+            liquidityFeeBP: item.liquidityFeeBP,
+            reservationFeeBP: item.reservationFeeBP,
+            nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
             updatedAt: new Date(),
             blockNumber,
           });
+          this.logger.log(
+            `[fetchAllVaultsAndStateHourly] Saved 'vaultsStateHourly' data to DB for vault ${item.vault}`,
+          );
 
           this.logger.log(
-            `[subscribeToEvents, event:VaultConnectionSet] State added/updated for vault ${vault} at block ${blockNumber}`,
+            `[subscribeToEvents, event:VaultConnected] State added/updated for vault ${vault} at block ${blockNumber}`,
           );
         } catch (err) {
           this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
