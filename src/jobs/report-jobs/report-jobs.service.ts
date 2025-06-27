@@ -19,7 +19,9 @@ export class ReportJobsService {
 
   async onModuleInit() {
     this.logger.log('ReportJobsService initialization started');
-    // ...
+
+    // TODO: add event here (ReportCreated)
+
     this.logger.log('VaultJobsService initialization finished');
   }
 
@@ -41,6 +43,15 @@ export class ReportJobsService {
       try {
         const reportData = await this.fetchReportFromIPFS(cid);
         console.log(`Fetched report for CID: ${cid}`);
+
+        // TODO: remove for new hoodie testnets
+        // skip all old reports, e.g. https://ipfs.io/ipfs/QmQfBBNh66bhJFd4EP3BvY1CURGsD6Gav33jvTozVHsyQo
+        const values = reportData?.values;
+        const extraValues = reportData?.extraValues;
+        if (!values?.length || !extraValues || Object.keys(extraValues).length === 0) {
+          console.log(`Skip the report for CID: ${cid}`);
+          return;
+        }
 
         const report = await this.reportService.saveReport(cid, reportData);
         console.log(`Saved the report for CID: ${cid}`);

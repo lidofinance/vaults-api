@@ -15,7 +15,7 @@ export class LazyOracleContractService {
   public readonly contract: Contract;
 
   constructor(provider: ExecutionProvider, address: string) {
-    if (!address) throw new Error('VaultHub contract address is not defined');
+    if (!address) throw new Error('LazyOracle contract address is not defined');
     this.contract = new Contract(address, LazyOracleAbi, provider);
   }
 

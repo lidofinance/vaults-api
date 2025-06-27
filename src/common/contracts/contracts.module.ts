@@ -23,6 +23,12 @@ import { VaultViewerContractModule } from './modules/vault-viewer-contract';
     VaultViewerContractModule,
     LazyOracleContractModule,
   ],
-  exports: [VaultHubContractModule, VaultViewerContractModule, LazyOracleContractModule],
+  exports: [
+    LidoContractModule,
+    LidoLocatorContractModule,
+    VaultHubContractModule,
+    VaultViewerContractModule,
+    LazyOracleContractModule,
+  ],
 })
 export class ContractsModule {}

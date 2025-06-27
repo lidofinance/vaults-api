@@ -17,6 +17,18 @@ export class ReportService {
     private readonly reportLeafRepo: Repository<ReportLeafEntity>,
   ) {}
 
+  async getAllReportsSortedDesc(skip = 0, take = 100): Promise<ReportEntity[]> {
+    return this.reportRepo.find({
+      order: { timestamp: 'DESC' },
+      skip,
+      take,
+    });
+  }
+
+  async getLeavesByReport(report: ReportEntity): Promise<ReportLeafEntity[]> {
+    return this.reportLeafRepo.find({ where: { report: { id: report.id } } });
+  }
+
   async saveReport(cid: string, reportData: any): Promise<ReportEntity> {
     const exists = await this.reportRepo.exist({ where: { cid } });
     if (exists) return this.reportRepo.findOneOrFail({ where: { cid } });
@@ -38,8 +50,6 @@ export class ReportService {
     // reportData is json (see example: https://ipfs.io/ipfs/QmPCBnLZzQsaUgzLfhTxiQTU8nRe3siG29feWYEQN2e5W1)
     const values = reportData?.values;
     const extraValues = reportData?.extraValues;
-
-    if (!values || values.length === 0) return;
 
     const leafChunks = chunk(values, LEAF_BATCH_SIZE);
 
