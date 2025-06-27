@@ -1,13 +1,16 @@
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Inject, Injectable } from '@nestjs/common';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+
 import { reportMetrics } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
+import { type VaultReport as VaultReportCliType } from '@lidofinance/lsv-cli/dist/utils/report';
 import { calculateRebaseReward } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
-import { VaultsStateHourlyService } from 'vaults-state-hourly';
 import { ReportEntity, ReportLeafEntity, ReportService } from 'report';
+import { VaultsService } from 'vault';
+import { VaultsStateHourlyService } from 'vaults-state-hourly';
 
 @Injectable()
 export class ReportStatisticJobsService {
@@ -20,6 +23,7 @@ export class ReportStatisticJobsService {
     @Inject(LIDO_CONTRACT_TOKEN) private readonly lidoContract: Lido,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     private readonly reportService: ReportService,
+    private readonly vaultsService: VaultsService,
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
   ) {}
 
@@ -32,21 +36,28 @@ export class ReportStatisticJobsService {
   async calculate(): Promise<void> {
     let skip = 0;
     let previousReport: ReportEntity | null = null;
-    let previousLeaves: Awaited<ReturnType<ReportService['getLeavesByReport']>> | null = null;
+    let previousLeaves: ReportLeafEntity[] | null = null;
 
     while (true) {
       const batch = await this.reportService.getAllReportsSortedDesc(skip, this.BATCH_SIZE);
       if (batch.length === 0) break;
 
+      // batch = [report5, report4, report3, report2, report1] (new → old)
+      // ordered = [report1, report2, report3, report4, report5] (old → new)
       const ordered = batch.reverse();
-
       for (const currentReport of ordered) {
         const currentLeaves = await this.reportService.getLeavesByReport(currentReport);
 
+        // skip first iteration, because previousReport = undefined, currentReport = report1
+        // last iteration: previousReport = report4, currentReport = report5
         if (previousReport && previousLeaves) {
+          this.logger.log(
+            `Calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
+          );
           await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
-
-          // this.logger.log(`Calculated vault statistics for reports: ${previousReport.cid} -> ${currentReport.cid}`);
+          this.logger.log(
+            `Finished calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
+          );
         }
 
         previousReport = currentReport;
@@ -75,8 +86,8 @@ export class ReportStatisticJobsService {
       const currLeaf = currentLeavesByVaultAddress.get(vaultAddress);
       if (!currLeaf) continue;
 
-      const currentVaultReport = ReportStatisticJobsService.toVaultReport(currentReport, currLeaf);
-      const previousVaultReport = ReportStatisticJobsService.toVaultReport(previousReport, prevLeaf);
+      const currentVaultReport = ReportStatisticJobsService.toVaultReportCliTyping(currentReport, currLeaf);
+      const previousVaultReport = ReportStatisticJobsService.toVaultReportCliTyping(previousReport, prevLeaf);
 
       // nodeOperatorFeeRate cache
       let nodeOperatorFeeRate: bigint;
@@ -101,26 +112,33 @@ export class ReportStatisticJobsService {
         stEthLiabilityRebaseRewards: rebaseReward,
       });
 
-      this.logger.debug(`Vault: ${vaultAddress}`);
-      this.logger.debug(`- grossStakingRewards: ${metrics.grossStakingRewards}`);
-      this.logger.debug(`- nodeOperatorRewards: ${metrics.nodeOperatorRewards}`);
-      this.logger.debug(`- dailyLidoFees: ${metrics.dailyLidoFees}`);
-      this.logger.debug(`- netStakingRewards: ${metrics.netStakingRewards}`);
-      this.logger.debug(`- grossStakingAPR.apr: ${metrics.grossStakingAPR.apr}`);
-      this.logger.debug(`- grossStakingAPR.apr_bps: ${metrics.grossStakingAPR.apr_bps}`);
-      this.logger.debug(`- grossStakingAPR.apr_percent: ${metrics.grossStakingAPR.apr_percent}`);
-      this.logger.debug(`- netStakingAPR.apr: ${metrics.netStakingAPR.apr}`);
-      this.logger.debug(`- netStakingAPR.apr_bps: ${metrics.netStakingAPR.apr_bps}`);
-      this.logger.debug(`- netStakingAPR.apr_percent: ${metrics.netStakingAPR.apr_percent}`);
-      this.logger.debug(`- bottomLine: ${metrics.bottomLine}`);
-      this.logger.debug(`- efficiency.apr: ${metrics.efficiency.apr}`);
-      this.logger.debug(`- efficiency.apr_bps: ${metrics.efficiency.apr_bps}`);
-      this.logger.debug(`- efficiency.apr_percent: ${metrics.efficiency.apr_percent}`);
-      this.logger.debug(``);
+      const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(vaultAddress);
+
+      // todo: sync with `src/jobs/vault-jobs/vault-jobs.service.ts`
+      // problem: blockNumber from here and from vault-jobs.service.ts may not match
+      await this.vaultsStateHourlyService.addOrUpdate({
+        vault: vaultDbEntity,
+        grossStakingRewards: metrics.grossStakingRewards.toString(),
+        nodeOperatorRewards: metrics.nodeOperatorRewards.toString(),
+        dailyLidoFees: metrics.dailyLidoFees.toString(),
+        netStakingRewards: metrics.netStakingRewards.toString(),
+        grossStakingAPR: metrics.grossStakingAPR.toString(),
+        grossStakingAprBps: metrics.grossStakingAPR.apr_bps,
+        grossStakingAprPercent: metrics.grossStakingAPR.apr_percent,
+        netStakingAPR: metrics.netStakingAPR.toString(),
+        netStakingAprBps: metrics.netStakingAPR.apr_bps,
+        netStakingAprPercent: metrics.netStakingAPR.apr_percent,
+        bottomLine: metrics.bottomLine.toString(),
+        efficiencyAPR: metrics.efficiency.apr.toString(),
+        efficiencyAprBps: metrics.efficiency.apr_bps,
+        efficiencyAprPercent: metrics.efficiency.apr_percent,
+      });
+
+      this.logger.log(`Saved report metrics for ${vaultAddress}`);
     }
   }
 
-  private static toVaultReport(report: ReportEntity, leaf: ReportLeafEntity) {
+  private static toVaultReportCliTyping(report: ReportEntity, leaf: ReportLeafEntity): VaultReportCliType {
     return {
       data: {
         vaultAddress: leaf.vaultAddress,
@@ -133,11 +151,12 @@ export class ReportStatisticJobsService {
         inOutDelta: leaf.inOutDelta,
       },
       // TODO
-      leaf: leaf.id.toString(),
+      leaf: '',
       refSlot: report.refSlot,
       blockNumber: report.blockNumber,
       timestamp: report.timestamp,
-      proofsCID: report.cid,
+      // TODO
+      proofsCID: '',
       prevTreeCID: report.prevTreeCID,
       merkleTreeRoot: report.merkleTreeRoot,
     };
