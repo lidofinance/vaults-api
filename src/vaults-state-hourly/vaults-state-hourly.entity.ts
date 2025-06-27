@@ -12,12 +12,7 @@ export class VaultsStateHourlyEntity {
   vault: VaultEntity;
 
   @Column({ name: 'total_value', type: 'numeric', precision: 78, scale: 0 })
-  // TODO
-  // during deserialization from 'plain' to 'class'
-  // @Transform(({ value }) => value !== null ? BigInt(value) : null, { toClassOnly: true })
-  // during serialization from 'class' to 'plain'
-  // @Transform(({ value }) => value !== null ? value.toString() : null, { toPlainOnly: true })
-  totalValue: string; // bigint/numeric
+  totalValue: string;
 
   @Column({ name: 'liability_steth', type: 'numeric', precision: 78, scale: 0 })
   liabilityStETH: string;
@@ -26,7 +21,7 @@ export class VaultsStateHourlyEntity {
   liabilityShares: string;
 
   @Column({ name: 'health_factor', type: 'float8' })
-  healthFactor: number; // float8, ±Infinity support
+  healthFactor: number;
 
   @Column({ name: 'share_limit', type: 'numeric', precision: 78, scale: 0 })
   shareLimit: string;
@@ -54,4 +49,46 @@ export class VaultsStateHourlyEntity {
 
   @Column({ name: 'block_number', type: 'integer' })
   blockNumber: number;
+
+  @Column({ name: 'gross_staking_rewards', type: 'numeric', precision: 78, scale: 0, nullable: true })
+  grossStakingRewards?: string;
+
+  @Column({ name: 'node_operator_rewards', type: 'numeric', precision: 78, scale: 0, nullable: true })
+  nodeOperatorRewards?: string;
+
+  @Column({ name: 'daily_lido_fees', type: 'numeric', precision: 78, scale: 0, nullable: true })
+  dailyLidoFees?: string;
+
+  @Column({ name: 'net_staking_rewards', type: 'numeric', precision: 78, scale: 0, nullable: true })
+  netStakingRewards?: string;
+
+  @Column({ name: 'gross_staking_apr', type: 'numeric', precision: 78, scale: 0, nullable: true })
+  grossStakingAPR?: string;
+
+  @Column({ name: 'gross_staking_apr_bps', type: 'integer', nullable: true })
+  grossStakingAprBps?: number;
+
+  @Column({ name: 'gross_staking_apr_percent', type: 'integer', nullable: true })
+  grossStakingAprPercent?: number;
+
+  @Column({ name: 'net_staking_apr', type: 'numeric', precision: 78, scale: 0, nullable: true })
+  netStakingAPR?: string;
+
+  @Column({ name: 'net_staking_apr_bps', type: 'integer', nullable: true })
+  netStakingAprBps?: number;
+
+  @Column({ name: 'net_staking_apr_percent', type: 'integer', nullable: true })
+  netStakingAprPercent?: number;
+
+  @Column({ name: 'bottom_line', type: 'numeric', precision: 78, scale: 0, nullable: true })
+  bottomLine?: string;
+
+  @Column({ name: 'efficiency_apr', type: 'numeric', precision: 78, scale: 0, nullable: true })
+  efficiencyAPR?: string;
+
+  @Column({ name: 'efficiency_apr_bps', type: 'integer', nullable: true })
+  efficiencyAprBps?: number;
+
+  @Column({ name: 'efficiency_apr_percent', type: 'integer', nullable: true })
+  efficiencyAprPercent?: number;
 }
