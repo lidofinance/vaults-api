@@ -16,9 +16,8 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import { ConfigService } from 'common/config';
 import { VaultsService } from 'vault';
-import { VaultsQueryService, SortFieldsEnum, DirectionEnum } from 'vaults-query';
-import { VaultsStateHourlyService } from 'vaults-state-hourly';
-import { ALL_ROLE_VALUES } from 'vault-member';
+import { SortFieldsEnum, DirectionEnum } from 'vault/enums';
+import { ALL_ROLE_VALUES } from 'vault/vault.constants';
 
 import { vaultsExample } from './example';
 
@@ -34,8 +33,6 @@ export class VaultsHttpController {
     private readonly configService: ConfigService,
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     private readonly vaultsService: VaultsService,
-    private readonly vaultsStateHourlyService: VaultsStateHourlyService,
-    private readonly vaultsQueryService: VaultsQueryService,
   ) {}
 
   @Version('1')
@@ -103,7 +100,7 @@ export class VaultsHttpController {
       throw new BadRequestException('Both "role" and "address" must be provided together.');
     }
 
-    const vaults = await this.vaultsQueryService.getVaults(
+    const vaults = await this.vaultsService.getVaultsWithRoleAndSorting(
       limit,
       offset,
       sortBy,

@@ -7,8 +7,7 @@ import { VaultViewerContractService, RoleMembers } from 'common/contracts/module
 import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
 import { ExecutionProviderService } from 'common/execution-provider';
 import { VaultsService } from 'vault';
-import { VaultsMemberService } from 'vault-member';
-import { ROLE_BYTES32 } from 'vault-member/vault-member.constants';
+import { ROLE_BYTES32 } from 'vault/vault.constants';
 
 @Injectable()
 export class VaultMemberJobsService {
@@ -19,7 +18,6 @@ export class VaultMemberJobsService {
     private readonly vaultViewerContractService: VaultViewerContractService,
     private readonly vaultHubContractService: VaultHubContractService,
     private readonly vaultsService: VaultsService,
-    private readonly vaultsMemberService: VaultsMemberService,
     private readonly executionProviderService: ExecutionProviderService,
   ) {}
 
@@ -68,7 +66,7 @@ export class VaultMemberJobsService {
       this.logger.log(`[fetchAllVaultsRoleMembers] Saving vaults ${offset}..${offset + vaultEntities.length - 1}`);
       for (const { vault, roleMembersMap } of batchResults) {
         try {
-          await this.vaultsMemberService.setMembersForVault(vault, roleMembersMap);
+          await this.vaultsService.setMembersForVault(vault, roleMembersMap);
           this.logger.log(`[fetchAllVaultsRoleMembers] Saved 'membersForVault' data to DB for vault ${vault}`);
         } catch (err) {
           this.logger.error(`[fetchAllVaultsRoleMembers] Error saving role members for vault ${vault}: ${err.message}`);

@@ -3,7 +3,7 @@ export enum SortFieldsEnum {
   liabilityStETH = 'liabilityStETH',
   liabilityShares = 'liabilityShares',
   healthFactor = 'healthFactor',
-  // forcedRebalanceThresholdBP = 'forcedRebalanceThresholdBP',
+  forcedRebalanceThresholdBP = 'forcedRebalanceThresholdBP',
   blockNumber = 'blockNumber',
 }
 

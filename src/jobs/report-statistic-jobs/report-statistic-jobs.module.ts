@@ -1,14 +1,13 @@
 import { Module } from '@nestjs/common';
 
-import { ReportModule } from 'report';
 import { ContractsModule } from 'common/contracts';
-import { VaultsStateHourlyModule } from 'vaults-state-hourly';
+import { ReportModule } from 'report';
 import { VaultsModule } from 'vault';
 
 import { ReportStatisticJobsService } from './report-statistic-jobs.service';
 
 @Module({
-  imports: [ReportModule, ContractsModule, VaultsModule, VaultsStateHourlyModule],
+  imports: [ContractsModule, ReportModule, VaultsModule],
   providers: [ReportStatisticJobsService],
   exports: [ReportStatisticJobsService],
 })

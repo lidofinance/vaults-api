@@ -10,7 +10,6 @@ import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
 import { ReportEntity, ReportLeafEntity, ReportService } from 'report';
 import { VaultsService } from 'vault';
-import { VaultsStateHourlyService, VaultReportStatsService } from 'vaults-state-hourly';
 
 @Injectable()
 export class ReportStatisticJobsService {
@@ -24,8 +23,6 @@ export class ReportStatisticJobsService {
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     private readonly reportService: ReportService,
     private readonly vaultsService: VaultsService,
-    private readonly vaultReportStatsService: VaultReportStatsService,
-    private readonly vaultsStateHourlyService: VaultsStateHourlyService,
   ) {}
 
   async onModuleInit() {
@@ -95,7 +92,7 @@ export class ReportStatisticJobsService {
       if (this.nodeOperatorFeeRateByVault.has(vaultAddress)) {
         nodeOperatorFeeRate = this.nodeOperatorFeeRateByVault.get(vaultAddress);
       } else {
-        const vaultState = await this.vaultsStateHourlyService.getByVaultAddress(vaultAddress);
+        const vaultState = await this.vaultsService.getStateByVaultAddress(vaultAddress);
         nodeOperatorFeeRate = BigInt(vaultState?.nodeOperatorFeeRate ?? 0);
         this.nodeOperatorFeeRateByVault.set(vaultAddress, nodeOperatorFeeRate);
       }
@@ -115,7 +112,7 @@ export class ReportStatisticJobsService {
 
       const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(vaultAddress);
 
-      await this.vaultReportStatsService.addOrUpdate({
+      await this.vaultsService.addOrUpdateReportStats({
         vault: vaultDbEntity,
         currentReport,
         previousReport,

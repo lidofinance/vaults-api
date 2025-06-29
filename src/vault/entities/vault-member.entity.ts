@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, CreateDateColumn } from 'typeorm';
-import { VaultEntity } from '../vault';
+import { VaultEntity } from './vault.entity';
 
 @Entity('vault_member')
 @Index('uniq_vault_address_role', ['vault', 'address', 'role'], { unique: true })

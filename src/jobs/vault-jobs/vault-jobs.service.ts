@@ -8,7 +8,6 @@ import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultViewerContractService } from 'common/contracts/modules/vault-viewer-contract';
 import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
 import { VaultsService } from 'vault';
-import { VaultsStateHourlyService } from 'vaults-state-hourly';
 
 @Injectable()
 export class VaultJobsService {
@@ -19,7 +18,6 @@ export class VaultJobsService {
     private readonly vaultViewerContractService: VaultViewerContractService,
     private readonly vaultHubContractService: VaultHubContractService,
     private readonly vaultsService: VaultsService,
-    private readonly vaultsStateHourlyService: VaultsStateHourlyService,
     private readonly executionProviderService: ExecutionProviderService,
   ) {}
 
@@ -101,7 +99,7 @@ export class VaultJobsService {
             forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
           });
 
-          await this.vaultsStateHourlyService.addOrUpdate({
+          await this.vaultsService.addOrUpdateState({
             vault,
             totalValue: item.totalValue.toString(),
             liabilityShares: item.liabilityShares.toString(),
@@ -163,7 +161,7 @@ export class VaultJobsService {
             forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
           });
 
-          await this.vaultsStateHourlyService.addOrUpdate({
+          await this.vaultsService.addOrUpdateState({
             vault: vaultDbEntity,
             totalValue: item.totalValue.toString(),
             liabilityShares: item.liabilityShares.toString(),

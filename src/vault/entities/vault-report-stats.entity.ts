@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { ReportEntity } from 'report';
-import { VaultEntity } from '../vault';
+import { VaultEntity } from './vault.entity';
 
 @Entity('vault_report_stats')
 @Index('uniq_vault_curReport_prevReport', ['vault', 'currentReport', 'previousReport'], { unique: true })
