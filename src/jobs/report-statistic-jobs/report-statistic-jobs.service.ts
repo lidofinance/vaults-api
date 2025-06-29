@@ -10,7 +10,7 @@ import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
 import { ReportEntity, ReportLeafEntity, ReportService } from 'report';
 import { VaultsService } from 'vault';
-import { VaultsStateHourlyService } from 'vaults-state-hourly';
+import { VaultsStateHourlyService, VaultReportStatsService } from 'vaults-state-hourly';
 
 @Injectable()
 export class ReportStatisticJobsService {
@@ -24,6 +24,7 @@ export class ReportStatisticJobsService {
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     private readonly reportService: ReportService,
     private readonly vaultsService: VaultsService,
+    private readonly vaultReportStatsService: VaultReportStatsService,
     private readonly vaultsStateHourlyService: VaultsStateHourlyService,
   ) {}
 
@@ -114,24 +115,26 @@ export class ReportStatisticJobsService {
 
       const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(vaultAddress);
 
-      // todo: sync with `src/jobs/vault-jobs/vault-jobs.service.ts`
-      // problem: blockNumber from here and from vault-jobs.service.ts may not match
-      await this.vaultsStateHourlyService.addOrUpdate({
+      await this.vaultReportStatsService.addOrUpdate({
         vault: vaultDbEntity,
+        currentReport,
+        previousReport,
+        rebaseReward: rebaseReward.toString(),
         grossStakingRewards: metrics.grossStakingRewards.toString(),
         nodeOperatorRewards: metrics.nodeOperatorRewards.toString(),
         dailyLidoFees: metrics.dailyLidoFees.toString(),
         netStakingRewards: metrics.netStakingRewards.toString(),
-        grossStakingAPR: metrics.grossStakingAPR.toString(),
+        grossStakingAPR: metrics.grossStakingAPR.apr.toString(),
         grossStakingAprBps: metrics.grossStakingAPR.apr_bps,
         grossStakingAprPercent: metrics.grossStakingAPR.apr_percent,
-        netStakingAPR: metrics.netStakingAPR.toString(),
+        netStakingAPR: metrics.netStakingAPR.apr.toString(),
         netStakingAprBps: metrics.netStakingAPR.apr_bps,
         netStakingAprPercent: metrics.netStakingAPR.apr_percent,
         bottomLine: metrics.bottomLine.toString(),
         efficiencyAPR: metrics.efficiency.apr.toString(),
         efficiencyAprBps: metrics.efficiency.apr_bps,
         efficiencyAprPercent: metrics.efficiency.apr_percent,
+        updatedAt: new Date(),
       });
 
       this.logger.log(`Saved report metrics for ${vaultAddress}`);

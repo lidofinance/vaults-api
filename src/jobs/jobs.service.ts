@@ -37,7 +37,7 @@ export class JobsService {
         // await this.vaultJobsService.fetchAllVaultsAndStateHourly();
         // await this.vaultMemberJobsService.fetchAllVaultsRoleMembers();
         // await this.reportJobsService.fetchAllReports();
-        // await this.reportStatisticJobsService.calculate();
+        await this.reportStatisticJobsService.calculate();
       },
       null,
       false,
