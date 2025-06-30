@@ -28,7 +28,7 @@ export class JobsService {
     await this.reportJobsService.calculate();
 
     const job = new CronJob(
-      this.configService.jobs['vaultsHourlyCron'],
+      this.configService.jobs['vaultsCron'],
       async () => {
         await this.vaultJobsService.fetchAllVaultsAndCalculateStates();
         await this.vaultJobsService.fetchAllVaultsRoleMembers();
@@ -37,7 +37,7 @@ export class JobsService {
       },
       null,
       false,
-      this.configService.jobs['vaultsHourlyCronTZ'],
+      this.configService.jobs['vaultsCronTZ'],
     );
 
     this.schedulerRegistry.addCronJob('vaults-hourly', job);

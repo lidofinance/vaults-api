@@ -115,8 +115,8 @@ export class VaultsHttpController {
   }
 
   private getNextVaultsHourlyUpdate(): Date {
-    const options = { currentDate: new Date(), tz: this.configService.jobs['vaultsHourlyCronTZ'] };
-    const interval = CronExpressionParser.parse(this.configService.jobs['vaultsHourlyCron'], options);
+    const options = { currentDate: new Date(), tz: this.configService.jobs['vaultsCronTZ'] };
+    const interval = CronExpressionParser.parse(this.configService.jobs['vaultsCron'], options);
     return interval.next().toDate();
   }
 }

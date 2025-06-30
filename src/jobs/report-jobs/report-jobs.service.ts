@@ -12,9 +12,6 @@ import { LsvService } from 'lsv';
 
 @Injectable()
 export class ReportJobsService {
-  // TODO: to config
-  private readonly BATCH_SIZE = 100;
-
   private nodeOperatorFeeRateByVault = new Map<string, bigint>();
 
   constructor(
@@ -81,12 +78,13 @@ export class ReportJobsService {
   }
 
   async calculate(): Promise<void> {
+    const batchSize = this.configService.jobs['reportBatchSize'];
     let skip = 0;
     let previousReport: ReportEntity | null = null;
     let previousLeaves: ReportLeafEntity[] | null = null;
 
     while (true) {
-      const batch = await this.reportService.getAllReportsSortedDesc(skip, this.BATCH_SIZE);
+      const batch = await this.reportService.getAllReportsSortedDesc(skip, batchSize);
       if (batch.length === 0) break;
 
       // batch = [report5, report4, report3, report2, report1] (new → old)
@@ -111,7 +109,7 @@ export class ReportJobsService {
         previousLeaves = currentLeaves;
       }
 
-      skip += this.BATCH_SIZE;
+      skip += batchSize;
     }
 
     this.logger.log('All reports statistic calculation complete!');

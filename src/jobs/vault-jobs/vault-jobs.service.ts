@@ -35,7 +35,7 @@ export class VaultJobsService {
   public async fetchAllVaultsAndCalculateStates(): Promise<void> {
     this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
 
-    const batchSize = this.configService.jobs['vaultsHourlyBatchSize'];
+    const batchSize = this.configService.jobs['vaultsBatchSize'];
 
     let blockNumber: number;
     try {
