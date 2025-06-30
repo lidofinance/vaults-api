@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'common/logger';
 import { LsvService } from 'lsv/lsv.service';
 
-import { ReportsController } from './reports.controller';
+import { ReportsHttpController } from './reports-http.controller';
 
 @Module({
   imports: [LoggerModule],
-  controllers: [ReportsController],
+  controllers: [ReportsHttpController],
   providers: [LsvService],
 })
-export class ReportsModule {}
+export class ReportsHttpModule {}

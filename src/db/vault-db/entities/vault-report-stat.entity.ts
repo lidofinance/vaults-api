@@ -1,10 +1,10 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
-import { ReportEntity } from 'report';
+import { ReportEntity } from 'db/report-db';
 import { VaultEntity } from './vault.entity';
 
 @Entity('vault_report_stats')
 @Index('uniq_vault_curReport_prevReport', ['vault', 'currentReport', 'previousReport'], { unique: true })
-export class VaultReportStatsEntity {
+export class VaultReportStatEntity {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 

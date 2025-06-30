@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, CreateDateColumn } from 'typeorm';
 import { VaultEntity } from './vault.entity';
 
-@Entity('vault_member')
+@Entity('vault_members')
 @Index('uniq_vault_address_role', ['vault', 'address', 'role'], { unique: true })
 export class VaultMemberEntity {
   @PrimaryGeneratedColumn({ type: 'int' })

@@ -8,7 +8,7 @@ import { calculateRebaseReward } from '@lidofinance/lsv-cli/dist/utils/rebase-re
 import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 import { reportMetrics } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
 
-import { ReportEntity, ReportLeafEntity } from 'report';
+import { ReportEntity, ReportLeafEntity } from 'db/report-db';
 import { ConfigService } from 'common/config';
 
 export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR';

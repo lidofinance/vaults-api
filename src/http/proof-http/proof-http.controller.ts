@@ -9,7 +9,7 @@ import { ProofDto } from './dto';
 @Controller('proof')
 @ApiTags('Proof')
 @UseInterceptors(ClassSerializerInterceptor)
-export class ProofController {
+export class ProofHttpController {
   constructor(private readonly lsvService: LsvService) {}
 
   @Version('1')

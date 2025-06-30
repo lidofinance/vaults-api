@@ -13,7 +13,7 @@ import { reportByVaultExample } from './example';
 
 @Controller('report')
 @ApiTags('Reports')
-export class ReportsController {
+export class ReportsHttpController {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly configService: ConfigService,

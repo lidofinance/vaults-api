@@ -1,10 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { VaultEntity } from './vault.entity';
 
-@Entity('vaults_state_hourly')
+@Entity('vault_states')
 @Index('uniq_vault', ['vault'], { unique: true })
-// TODO: VaultsStateHourlyEntity ---> VaultStateEntity
-export class VaultsStateHourlyEntity {
+export class VaultStateEntity {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 

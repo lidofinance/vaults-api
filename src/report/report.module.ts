@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { VaultDbModule } from 'db/vault-db';
+import { ReportDbModule } from 'db/report-db';
+import { LsvModule } from 'lsv';
 
 import { ReportService } from './report.service';
-import { ReportEntity } from './report.entity';
-import { ReportLeafEntity } from './report-leaf.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ReportEntity, ReportLeafEntity])],
+  imports: [VaultDbModule, ReportDbModule, LsvModule],
   providers: [ReportService],
   exports: [ReportService],
 })

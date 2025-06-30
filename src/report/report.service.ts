@@ -1,79 +1,198 @@
-import chunk from 'lodash.chunk';
-import { Repository } from 'typeorm';
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import fetch from 'node-fetch';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { Inject, Injectable } from '@nestjs/common';
+import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 
-import { ReportEntity } from './report.entity';
-import { ReportLeafEntity } from './report-leaf.entity';
-
-const LEAF_BATCH_SIZE = 500;
+import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { ConfigService } from 'common/config';
+import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
+import { ReportEntity, ReportLeafEntity, ReportDbService } from 'db/report-db';
+import { VaultDbService } from 'db/vault-db';
+import { LsvService } from 'lsv';
 
 @Injectable()
-// TODO: ReportService ---> ReportServiceDB
 export class ReportService {
+  private nodeOperatorFeeRateByVault = new Map<string, bigint>();
+
   constructor(
-    @InjectRepository(ReportEntity)
-    private readonly reportRepo: Repository<ReportEntity>,
-    @InjectRepository(ReportLeafEntity)
-    private readonly reportLeafRepo: Repository<ReportLeafEntity>,
+    private readonly configService: ConfigService,
+    private readonly schedulerRegistry: SchedulerRegistry,
+    @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
+    @Inject(LIDO_CONTRACT_TOKEN) private readonly lidoContract: Lido,
+    private readonly lazyOracleContractService: LazyOracleContractService,
+    private readonly reportDbService: ReportDbService,
+    private readonly vaultDbService: VaultDbService,
+    private readonly lsvService: LsvService,
   ) {}
 
-  async getAllReportsSortedDesc(skip = 0, take = 100): Promise<ReportEntity[]> {
-    return this.reportRepo.find({
-      order: { timestamp: 'DESC' },
-      skip,
-      take,
-    });
+  async fetchReportFromIPFS(cid: string): Promise<any> {
+    const url = `${this.configService.get('IPFS_GATEWAY')}/${cid}`;
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch IPFS report: ${res.status} ${res.statusText}`);
+    }
+
+    return await res.json();
   }
 
-  async getLeavesByReport(report: ReportEntity): Promise<ReportLeafEntity[]> {
-    return this.reportLeafRepo.find({ where: { report: { id: report.id } } });
+  async fetchAllReports(): Promise<void> {
+    let cid: string | null = (await this.lazyOracleContractService.getLatestReportData()).reportCid;
+
+    while (cid) {
+      try {
+        const reportData = await this.fetchReportFromIPFS(cid);
+        this.logger.log(`Fetched report for CID: ${cid}`);
+
+        // TODO: remove for new hoodie testnets
+        // skip all old reports, e.g. https://ipfs.io/ipfs/QmQfBBNh66bhJFd4EP3BvY1CURGsD6Gav33jvTozVHsyQo
+        const values = reportData?.values;
+        const extraValues = reportData?.extraValues;
+        if (!values?.length || !extraValues || Object.keys(extraValues).length === 0) {
+          this.logger.log(`Skip the report for CID: ${cid}`);
+          return;
+        }
+
+        const report = await this.reportDbService.saveReport(cid, reportData);
+        this.logger.log(`Saved the report for CID: ${cid}`);
+
+        await this.reportDbService.saveLeaves(report, reportData || []);
+        this.logger.log(`Saved leaves for CID: ${cid}`);
+
+        cid = reportData.prevTreeCID && reportData.prevTreeCID.trim() !== '' ? reportData.prevTreeCID : null;
+      } catch (error) {
+        this.logger.error(`Failed to fetch/save report with CID: ${cid}`, error);
+        return;
+      }
+    }
+
+    this.logger.log(`Report fetching complete!`);
   }
 
-  async saveReport(cid: string, reportData: any): Promise<ReportEntity> {
-    const exists = await this.reportRepo.exist({ where: { cid } });
-    if (exists) return this.reportRepo.findOneOrFail({ where: { cid } });
+  async calculate(): Promise<void> {
+    const batchSize = this.configService.jobs['reportBatchSize'];
+    let skip = 0;
+    let previousReport: ReportEntity | null = null;
+    let previousLeaves: ReportLeafEntity[] | null = null;
 
-    const report = this.reportRepo.create({
-      cid,
-      merkleTreeRoot: reportData.merkleTreeRoot,
-      refSlot: reportData.refSlot,
-      blockNumber: reportData.blockNumber,
-      timestamp: reportData.timestamp,
-      prevTreeCID: reportData.prevTreeCID || null,
-      tree: reportData.tree,
-    });
+    while (true) {
+      const batch = await this.reportDbService.getAllReportsSortedDesc(skip, batchSize);
+      if (batch.length === 0) break;
 
-    return await this.reportRepo.save(report);
+      // batch = [report5, report4, report3, report2, report1] (new → old)
+      // ordered = [report1, report2, report3, report4, report5] (old → new)
+      const ordered = batch.reverse();
+      for (const currentReport of ordered) {
+        const currentLeaves = await this.reportDbService.getLeavesByReport(currentReport);
+
+        // skip first iteration, because previousReport = undefined, currentReport = report1
+        // last iteration: previousReport = report4, currentReport = report5
+        if (previousReport && previousLeaves) {
+          this.logger.log(
+            `Calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
+          );
+          await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
+          this.logger.log(
+            `Finished calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
+          );
+        }
+
+        previousReport = currentReport;
+        previousLeaves = currentLeaves;
+      }
+
+      skip += batchSize;
+    }
+
+    this.logger.log('All reports statistic calculation complete!');
   }
 
-  async saveLeaves(report: ReportEntity, reportData: any): Promise<void> {
-    // reportData is json (see example: https://ipfs.io/ipfs/QmPCBnLZzQsaUgzLfhTxiQTU8nRe3siG29feWYEQN2e5W1)
-    const values = reportData?.values;
-    const extraValues = reportData?.extraValues;
+  private async calculateForVaultsBasedPrevReport(
+    currentReport: ReportEntity,
+    previousReport: ReportEntity,
+    currentLeaves: ReportLeafEntity[],
+    previousLeaves: ReportLeafEntity[],
+  ) {
+    const previousLeavesByVaultAddress = new Map(previousLeaves.map((leaf) => [leaf.vaultAddress, leaf]));
+    const currentLeavesByVaultAddress = new Map(currentLeaves.map((leaf) => [leaf.vaultAddress, leaf]));
 
-    const leafChunks = chunk(values, LEAF_BATCH_SIZE);
+    const shareRatePrev = await this.calculateShareRate(previousReport.blockNumber);
+    const shareRateCurr = await this.calculateShareRate(currentReport.blockNumber);
 
-    for (const batch of leafChunks) {
-      const leaves = batch.map((entry: any) => {
-        const [vaultAddress, totalValueWei, fee, liabilityShares, slashingReserve] = entry.value;
+    for (const [vaultAddress, prevLeaf] of previousLeavesByVaultAddress.entries()) {
+      const currLeaf = currentLeavesByVaultAddress.get(vaultAddress);
+      if (!currLeaf) continue;
 
-        const treeIndex = entry.treeIndex;
-        const inOutDelta = extraValues?.[vaultAddress]?.inOutDelta ?? '0';
+      const currentVaultReport = LsvService.transformToVaultReportCli(currentReport, currLeaf);
+      const previousVaultReport = LsvService.transformToVaultReportCli(previousReport, prevLeaf);
 
-        return this.reportLeafRepo.create({
-          report,
-          vaultAddress,
-          totalValueWei: BigInt(totalValueWei).toString(),
-          inOutDelta: BigInt(inOutDelta).toString(),
-          fee: BigInt(fee).toString(),
-          liabilityShares: BigInt(liabilityShares).toString(),
-          slashingReserve: BigInt(slashingReserve).toString(),
-          treeIndex,
-        });
+      // nodeOperatorFeeRate cache
+      let nodeOperatorFeeRate: bigint;
+      if (this.nodeOperatorFeeRateByVault.has(vaultAddress)) {
+        nodeOperatorFeeRate = this.nodeOperatorFeeRateByVault.get(vaultAddress);
+      } else {
+        const vaultState = await this.vaultDbService.getStateByVaultAddress(vaultAddress);
+        nodeOperatorFeeRate = BigInt(vaultState?.nodeOperatorFeeRate ?? 0);
+        this.nodeOperatorFeeRateByVault.set(vaultAddress, nodeOperatorFeeRate);
+      }
+
+      const rebaseReward = await this.lsvService.calculateRebaseReward(
+        shareRatePrev,
+        shareRateCurr,
+        BigInt(prevLeaf.liabilityShares),
+        BigInt(currLeaf.liabilityShares),
+      );
+
+      const metrics = await this.lsvService.calcReportMetrics(
+        currentVaultReport,
+        previousVaultReport,
+        nodeOperatorFeeRate,
+        rebaseReward,
+      );
+
+      const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(vaultAddress);
+
+      await this.vaultDbService.addOrUpdateReportStats({
+        vault: vaultDbEntity,
+        currentReport,
+        previousReport,
+        rebaseReward: rebaseReward.toString(),
+        grossStakingRewards: metrics.grossStakingRewards.toString(),
+        nodeOperatorRewards: metrics.nodeOperatorRewards.toString(),
+        dailyLidoFees: metrics.dailyLidoFees.toString(),
+        netStakingRewards: metrics.netStakingRewards.toString(),
+        grossStakingAPR: metrics.grossStakingAPR.apr.toString(),
+        grossStakingAprBps: metrics.grossStakingAPR.apr_bps,
+        grossStakingAprPercent: metrics.grossStakingAPR.apr_percent,
+        netStakingAPR: metrics.netStakingAPR.apr.toString(),
+        netStakingAprBps: metrics.netStakingAPR.apr_bps,
+        netStakingAprPercent: metrics.netStakingAPR.apr_percent,
+        bottomLine: metrics.bottomLine.toString(),
+        efficiencyAPR: metrics.efficiency.apr.toString(),
+        efficiencyAprBps: metrics.efficiency.apr_bps,
+        efficiencyAprPercent: metrics.efficiency.apr_percent,
+        updatedAt: new Date(),
       });
 
-      await this.reportLeafRepo.upsert(leaves, ['report', 'vaultAddress']);
+      this.logger.log(`Saved report metrics for ${vaultAddress}`);
     }
   }
+
+  private async totalSupply(blockNumber: number) {
+    return (await this.lidoContract.totalSupply({ blockTag: blockNumber })).toBigInt();
+  }
+
+  private async totalShares(blockNumber: number) {
+    return (await this.lidoContract.getTotalShares({ blockTag: blockNumber })).toBigInt();
+  }
+
+  // https://github.com/lidofinance/lido-staking-vault-cli/blob/develop/utils/share-rate.ts
+  private calculateShareRate = async (blockNumber: number): Promise<bigint> => {
+    const [totalSupply, totalShares] = await Promise.all([
+      this.totalSupply(blockNumber),
+      this.totalShares(blockNumber),
+    ]);
+
+    return totalShares !== 0n ? (totalSupply * 10n ** 27n) / totalShares : 0n;
+  };
 }

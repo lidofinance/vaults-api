@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
-@Entity('vault')
+@Entity('vaults')
 export class VaultEntity {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;

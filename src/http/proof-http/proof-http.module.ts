@@ -11,4 +11,4 @@ import { LsvService } from 'lsv/lsv.service';
   // controllers: [ProofController],
   providers: [LsvService],
 })
-export class ProofModule {}
+export class ProofHttpModule {}
