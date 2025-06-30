@@ -1,6 +1,5 @@
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Injectable, Inject } from '@nestjs/common';
-import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 
 import { ConfigService } from 'common/config';
 import { ExecutionProviderService } from 'common/execution-provider';
@@ -9,6 +8,7 @@ import { VaultViewerContractService, type RoleMembers } from 'common/contracts/m
 import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
 import { VaultsService } from 'vault';
 import { ROLE_BYTES32 } from 'vault/vault.constants';
+import { LsvService } from 'lsv';
 
 @Injectable()
 export class VaultJobsService {
@@ -20,6 +20,7 @@ export class VaultJobsService {
     private readonly vaultHubContractService: VaultHubContractService,
     private readonly vaultsService: VaultsService,
     private readonly executionProviderService: ExecutionProviderService,
+    private readonly lsvService: LsvService,
   ) {}
 
   async onModuleInit() {
@@ -94,11 +95,11 @@ export class VaultJobsService {
         }
 
         try {
-          const healthFactor = calculateHealth({
-            totalValue: item.totalValue,
-            liabilitySharesInStethWei: item.liabilityStETH,
-            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
-          });
+          const healthFactor = await this.lsvService.calculateHealth(
+            item.totalValue,
+            item.liabilityStETH,
+            item.forcedRebalanceThresholdBP,
+          );
 
           await this.vaultsService.addOrUpdateState({
             vault,
@@ -203,11 +204,11 @@ export class VaultJobsService {
 
           const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
 
-          const healthFactor = calculateHealth({
-            totalValue: item.totalValue,
-            liabilitySharesInStethWei: item.liabilityStETH,
-            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
-          });
+          const healthFactor = await this.lsvService.calculateHealth(
+            item.totalValue,
+            item.liabilityStETH,
+            item.forcedRebalanceThresholdBP,
+          );
 
           await this.vaultsService.addOrUpdateState({
             vault: vaultDbEntity,

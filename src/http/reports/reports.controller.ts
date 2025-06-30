@@ -4,12 +4,9 @@ import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BadRequestException } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
-import { fetchAndVerifyFile } from '@lidofinance/lsv-cli/dist/utils/ipfs';
-import { getVaultReport, getVaultReportProofByCid } from '@lidofinance/lsv-cli/dist/utils/report';
-
-import { LsvService } from 'lsv/lsv.service';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { ConfigService } from 'common/config';
+import { LsvService } from 'lsv';
 
 import { ReportParamsDto } from './dto';
 import { reportByVaultExample } from './example';
@@ -40,18 +37,18 @@ export class ReportsController {
 
     try {
       // TODO: disable logger inside fetchAndVerifyFile
-      await fetchAndVerifyFile(latestReportData.reportCid, this.configService.get('IPFS_GATEWAY'));
+      await this.lsvService.fetchAndVerifyFile(latestReportData.reportCid);
     } catch (error) {
       this.logger.error(`Failed to verify report CID: ${error.message}`);
       throw new BadRequestException(`Failed to verify report!`);
     }
 
-    const vaultReport = await getVaultReport({
+    const vaultReport = await this.lsvService.getVaultReport({
       vault,
       cid: latestReportData.reportCid,
       gateway: this.configService.get('IPFS_GATEWAY'),
     });
-    const reportProof = await getVaultReportProofByCid({
+    const reportProof = await this.lsvService.getVaultReportProofByCid({
       vault,
       cid: vaultReport.proofsCID,
       gateway: this.configService.get('IPFS_GATEWAY'),
@@ -59,7 +56,7 @@ export class ReportsController {
 
     try {
       // TODO: disable logger inside fetchAndVerifyFile
-      await fetchAndVerifyFile(vaultReport.proofsCID, this.configService.get('IPFS_GATEWAY'));
+      await this.lsvService.fetchAndVerifyFile(vaultReport.proofsCID);
     } catch (error) {
       this.logger.error(`Failed to verify report proofsCID: ${error.message}`);
       throw new BadRequestException(`Failed to verify report!`);
@@ -86,7 +83,7 @@ export class ReportsController {
 
     const latestReportData = await this.lazyOracleContractService.getLatestReportData();
 
-    const lastVaultReport = await getVaultReport({
+    const lastVaultReport = await this.lsvService.getVaultReport({
       vault,
       cid: latestReportData.reportCid,
       gateway: this.configService.get('IPFS_GATEWAY'),
@@ -95,13 +92,13 @@ export class ReportsController {
       throw new BadRequestException(`Previous report CID not found in the latest report`);
     }
 
-    const prevVaultReport = await getVaultReport({
+    const prevVaultReport = await this.lsvService.getVaultReport({
       vault,
       cid: lastVaultReport.prevTreeCID,
       gateway: this.configService.get('IPFS_GATEWAY'),
     });
 
-    const reportProof = await getVaultReportProofByCid({
+    const reportProof = await this.lsvService.getVaultReportProofByCid({
       vault,
       cid: prevVaultReport.proofsCID,
       gateway: this.configService.get('IPFS_GATEWAY'),
@@ -109,7 +106,7 @@ export class ReportsController {
 
     try {
       // TODO: disable logger inside fetchAndVerifyFile
-      await fetchAndVerifyFile(prevVaultReport.proofsCID, this.configService.get('IPFS_GATEWAY'));
+      await this.lsvService.fetchAndVerifyFile(prevVaultReport.proofsCID);
     } catch (error) {
       this.logger.error(`Failed to verify report proofsCID: ${error.message}`);
       throw new BadRequestException(`Failed to verify report!`);

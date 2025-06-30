@@ -3,15 +3,12 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { Inject, Injectable } from '@nestjs/common';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 
-import { reportMetrics } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
-import { type VaultReport as VaultReportCliType } from '@lidofinance/lsv-cli/dist/utils/report';
-import { calculateRebaseReward } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
-
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { ReportEntity, ReportLeafEntity, ReportService } from 'report';
 import { VaultsService } from 'vault';
+import { LsvService } from 'lsv';
 
 @Injectable()
 export class ReportJobsService {
@@ -28,6 +25,7 @@ export class ReportJobsService {
     private readonly lazyOracleContractService: LazyOracleContractService,
     private readonly reportService: ReportService,
     private readonly vaultsService: VaultsService,
+    private readonly lsvService: LsvService,
   ) {}
 
   async onModuleInit() {
@@ -135,8 +133,8 @@ export class ReportJobsService {
       const currLeaf = currentLeavesByVaultAddress.get(vaultAddress);
       if (!currLeaf) continue;
 
-      const currentVaultReport = ReportJobsService.toVaultReportCliTyping(currentReport, currLeaf);
-      const previousVaultReport = ReportJobsService.toVaultReportCliTyping(previousReport, prevLeaf);
+      const currentVaultReport = LsvService.transformToVaultReportCli(currentReport, currLeaf);
+      const previousVaultReport = LsvService.transformToVaultReportCli(previousReport, prevLeaf);
 
       // nodeOperatorFeeRate cache
       let nodeOperatorFeeRate: bigint;
@@ -148,18 +146,19 @@ export class ReportJobsService {
         this.nodeOperatorFeeRateByVault.set(vaultAddress, nodeOperatorFeeRate);
       }
 
-      const rebaseReward = calculateRebaseReward({
+      const rebaseReward = await this.lsvService.calculateRebaseReward(
         shareRatePrev,
         shareRateCurr,
-        sharesPrev: BigInt(prevLeaf.liabilityShares),
-        sharesCurr: BigInt(currLeaf.liabilityShares),
-      });
+        BigInt(prevLeaf.liabilityShares),
+        BigInt(currLeaf.liabilityShares),
+      );
 
-      const metrics = reportMetrics({
-        reports: { current: currentVaultReport, previous: previousVaultReport },
+      const metrics = await this.lsvService.calcReportMetrics(
+        currentVaultReport,
+        previousVaultReport,
         nodeOperatorFeeRate,
-        stEthLiabilityRebaseRewards: rebaseReward,
-      });
+        rebaseReward,
+      );
 
       const vaultDbEntity = await this.vaultsService.getOrCreateVaultByAddress(vaultAddress);
 
@@ -187,30 +186,6 @@ export class ReportJobsService {
 
       this.logger.log(`Saved report metrics for ${vaultAddress}`);
     }
-  }
-
-  private static toVaultReportCliTyping(report: ReportEntity, leaf: ReportLeafEntity): VaultReportCliType {
-    return {
-      data: {
-        vaultAddress: leaf.vaultAddress,
-        totalValueWei: leaf.totalValueWei,
-        fee: leaf.fee,
-        liabilityShares: leaf.liabilityShares,
-        slashingReserve: leaf.slashingReserve,
-      },
-      extraData: {
-        inOutDelta: leaf.inOutDelta,
-      },
-      // TODO
-      leaf: '',
-      refSlot: report.refSlot,
-      blockNumber: report.blockNumber,
-      timestamp: report.timestamp,
-      // TODO
-      proofsCID: '',
-      prevTreeCID: report.prevTreeCID,
-      merkleTreeRoot: report.merkleTreeRoot,
-    };
   }
 
   private async totalSupply(blockNumber: number) {
