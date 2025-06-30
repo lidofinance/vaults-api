@@ -117,10 +117,10 @@ export class VaultJobsService {
             updatedAt: new Date(),
             blockNumber,
           });
-          this.logger.log(`[fetchAllVaultsAndCalculateStates] Saved 'vaultsStateHourly' data to DB ${item.vault}`);
+          this.logger.log(`[fetchAllVaultsAndCalculateStates] Saved 'vaultsState' data to DB ${item.vault}`);
         } catch (err) {
           this.logger.error(
-            `[fetchAllVaultsAndCalculateStates] Failed to save 'vaultsStateHourly' data to DB OR calculateHealth of vault ${item.vault}: ${err}`,
+            `[fetchAllVaultsAndCalculateStates] Failed to save 'vaultsState' data to DB OR calculateHealth of vault ${item.vault}: ${err}`,
           );
           // continue
         }
@@ -227,7 +227,7 @@ export class VaultJobsService {
             blockNumber,
           });
           this.logger.log(
-            `[fetchAllVaultsAndCalculateStates] Saved 'vaultsStateHourly' data to DB for vault ${item.vault}`,
+            `[fetchAllVaultsAndCalculateStates] Saved 'vaultsState' data to DB for vault ${item.vault}`,
           );
 
           this.logger.log(
