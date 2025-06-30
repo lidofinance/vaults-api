@@ -48,25 +48,8 @@ export class ReportsController {
       cid: latestReportData.reportCid,
       gateway: this.configService.get('IPFS_GATEWAY'),
     });
-    const reportProof = await this.lsvService.getVaultReportProofByCid({
-      vault,
-      cid: vaultReport.proofsCID,
-      gateway: this.configService.get('IPFS_GATEWAY'),
-    });
 
-    try {
-      // TODO: disable logger inside fetchAndVerifyFile
-      await this.lsvService.fetchAndVerifyFile(vaultReport.proofsCID);
-    } catch (error) {
-      this.logger.error(`Failed to verify report proofsCID: ${error.message}`);
-      throw new BadRequestException(`Failed to verify report!`);
-    }
-
-    // TODO: response can be changed
-    return {
-      vaultReport,
-      reportProof,
-    };
+    return vaultReport;
   }
 
   @Version('1')
@@ -98,24 +81,6 @@ export class ReportsController {
       gateway: this.configService.get('IPFS_GATEWAY'),
     });
 
-    const reportProof = await this.lsvService.getVaultReportProofByCid({
-      vault,
-      cid: prevVaultReport.proofsCID,
-      gateway: this.configService.get('IPFS_GATEWAY'),
-    });
-
-    try {
-      // TODO: disable logger inside fetchAndVerifyFile
-      await this.lsvService.fetchAndVerifyFile(prevVaultReport.proofsCID);
-    } catch (error) {
-      this.logger.error(`Failed to verify report proofsCID: ${error.message}`);
-      throw new BadRequestException(`Failed to verify report!`);
-    }
-
-    // TODO: response can be changed
-    return {
-      vaultReport: prevVaultReport,
-      reportProof,
-    };
+    return prevVaultReport;
   }
 }

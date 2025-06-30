@@ -163,7 +163,6 @@ export class VaultsService {
    *   ...
    * }
    */
-  // TODO: setMembersForVault ---> setMembers
   async setMembersForVault(vaultAddress: string, membersMap: RoleMembers): Promise<void> {
     const vault = await this.vaultRepo.findOne({
       where: { address: vaultAddress },
