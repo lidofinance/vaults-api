@@ -5,9 +5,10 @@ import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculat
 import { ConfigService } from 'common/config';
 import { ExecutionProviderService } from 'common/execution-provider';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
-import { VaultViewerContractService } from 'common/contracts/modules/vault-viewer-contract';
+import { VaultViewerContractService, type RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
 import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
 import { VaultsService } from 'vault';
+import { ROLE_BYTES32 } from 'vault/vault.constants';
 
 @Injectable()
 export class VaultJobsService {
@@ -30,8 +31,8 @@ export class VaultJobsService {
     this.logger.log('VaultJobsService initialization finished');
   }
 
-  public async fetchAllVaultsAndStateHourly(): Promise<void> {
-    this.logger.log('[fetchAllVaultsAndStateHourly] Started');
+  public async fetchAllVaultsAndCalculateStates(): Promise<void> {
+    this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
 
     const batchSize = this.configService.jobs['vaultsHourlyBatchSize'];
 
@@ -39,7 +40,7 @@ export class VaultJobsService {
     try {
       blockNumber = await this.executionProviderService.getBlockNumber();
     } catch (err) {
-      this.logger.error(`[fetchAllVaultsAndStateHourly] Failed to fetch blockNumber for batch: ${err}`);
+      this.logger.error(`[fetchAllVaultsAndCalculateStates] Failed to fetch blockNumber for batch: ${err}`);
       return;
     }
 
@@ -54,7 +55,7 @@ export class VaultJobsService {
       leftoverVaults = result.leftoverVaults;
     } catch (err: any) {
       this.logger.error(
-        `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsConnectedBound (0 - ${
+        `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsConnectedBound (0 - ${
           batchSize - 1
         }) at block ${blockNumber}: ${err}`,
       );
@@ -62,12 +63,12 @@ export class VaultJobsService {
     }
 
     const vaultsCount = initialBatch.length + leftoverVaults;
-    this.logger.log(`[fetchAllVaultsAndStateHourly] Total vaults: ${vaultsCount}`);
+    this.logger.log(`[fetchAllVaultsAndCalculateStates] Total vaults: ${vaultsCount}`);
 
     // 2. Starting to fetch vaults data
     for (let from = 0; from < vaultsCount; from += batchSize) {
       const to = Math.min(from + batchSize, vaultsCount);
-      this.logger.log(`[fetchAllVaultsAndStateHourly] Fetching vaults batch: ${from} to ${to}`);
+      this.logger.log(`[fetchAllVaultsAndCalculateStates] Fetching vaults batch: ${from} to ${to}`);
 
       let vaultsDataBatch;
       try {
@@ -76,7 +77,7 @@ export class VaultJobsService {
         ).vaultsDataBatch;
       } catch (err) {
         this.logger.error(
-          `[fetchAllVaultsAndStateHourly] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
+          `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
         );
         continue;
       }
@@ -87,7 +88,7 @@ export class VaultJobsService {
           vault = await this.vaultsService.getOrCreateVaultByAddress(item.vault);
         } catch (err) {
           this.logger.error(
-            `[fetchAllVaultsAndStateHourly] Failed to get or create vault: ${item.vault} — ${err} at block ${blockNumber}`,
+            `[fetchAllVaultsAndCalculateStates] Failed to get or create vault: ${item.vault} — ${err} at block ${blockNumber}`,
           );
           continue;
         }
@@ -115,17 +116,64 @@ export class VaultJobsService {
             updatedAt: new Date(),
             blockNumber,
           });
-          this.logger.log(`[fetchAllVaultsAndStateHourly] Saved 'vaultsStateHourly' data to DB ${item.vault}`);
+          this.logger.log(`[fetchAllVaultsAndCalculateStates] Saved 'vaultsStateHourly' data to DB ${item.vault}`);
         } catch (err) {
           this.logger.error(
-            `[fetchAllVaultsAndStateHourly] Failed to save 'vaultsStateHourly' data to DB OR calculateHealth of vault ${item.vault}: ${err}`,
+            `[fetchAllVaultsAndCalculateStates] Failed to save 'vaultsStateHourly' data to DB OR calculateHealth of vault ${item.vault}: ${err}`,
           );
           // continue
         }
       }
     }
 
-    this.logger.log('[fetchAllVaultsAndStateHourly] finished');
+    this.logger.log('[fetchAllVaultsAndCalculateStates] finished');
+  }
+
+  public async fetchAllVaultsRoleMembers(): Promise<void> {
+    this.logger.log('[fetchAllVaultsRoleMembers] Started');
+
+    const totalVaults = await this.vaultsService.getVaultsCount();
+    this.logger.log(`[fetchAllVaultsRoleMembers] Total vaults: ${totalVaults}`);
+
+    const batchSize = this.configService.jobs['vaultMembersBatchSize'];
+
+    let blockNumber: number;
+    try {
+      blockNumber = await this.executionProviderService.getBlockNumber();
+    } catch (err) {
+      this.logger.error(`[fetchAllVaultsAndStateHourly] Failed to fetch blockNumber for batch: ${err}`);
+      return;
+    }
+
+    for (let offset = 0; offset < totalVaults; offset += batchSize) {
+      const vaultEntities = await this.vaultsService.getVaults(batchSize, offset);
+      if (vaultEntities.length === 0) break;
+
+      this.logger.log(`[fetchAllVaultsRoleMembers] Fetching vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      const vaultAddresses = vaultEntities.map((vault) => vault.address);
+
+      let batchResults: Array<{ vault: string; roleMembersMap: RoleMembers }>;
+      try {
+        batchResults = await this.vaultViewerContractService.getRoleMembersBatch(vaultAddresses, ROLE_BYTES32, {
+          blockTag: blockNumber,
+        });
+      } catch (err) {
+        this.logger.error(`[fetchAllVaultsRoleMembers] Error fetching batch role members: ${err.message}`);
+        continue;
+      }
+
+      this.logger.log(`[fetchAllVaultsRoleMembers] Saving vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      for (const { vault, roleMembersMap } of batchResults) {
+        try {
+          await this.vaultsService.setMembersForVault(vault, roleMembersMap);
+          this.logger.log(`[fetchAllVaultsRoleMembers] Saved 'membersForVault' data to DB for vault ${vault}`);
+        } catch (err) {
+          this.logger.error(`[fetchAllVaultsRoleMembers] Error saving role members for vault ${vault}: ${err.message}`);
+        }
+      }
+    }
+
+    this.logger.log('[fetchAllVaultsRoleMembers] Finished');
   }
 
   private subscribeToEvents() {
@@ -178,7 +226,7 @@ export class VaultJobsService {
             blockNumber,
           });
           this.logger.log(
-            `[fetchAllVaultsAndStateHourly] Saved 'vaultsStateHourly' data to DB for vault ${item.vault}`,
+            `[fetchAllVaultsAndCalculateStates] Saved 'vaultsStateHourly' data to DB for vault ${item.vault}`,
           );
 
           this.logger.log(

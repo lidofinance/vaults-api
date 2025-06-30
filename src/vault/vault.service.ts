@@ -44,7 +44,6 @@ export class VaultsService {
     return vault;
   }
 
-  // TODO: было VaultsStateHourlyService.getByVaultAddress
   async getStateByVaultAddress(vaultAddress: string): Promise<VaultsStateHourlyEntity | null> {
     return this.vaultsStateHourlyRepo
       .createQueryBuilder('state')
@@ -53,7 +52,6 @@ export class VaultsService {
       .getOne();
   }
 
-  // TODO: было VaultsStateHourlyService.addOrUpdate
   async addOrUpdateState(entry: Partial<VaultsStateHourlyEntity>): Promise<void> {
     await this.vaultsStateHourlyRepo.upsert(entry, {
       conflictPaths: ['vault'],
@@ -200,7 +198,6 @@ export class VaultsService {
     });
   }
 
-  // TODO: было VaultReportStatsService.addOrUpdate
   async addOrUpdateReportStats(entry: Partial<VaultReportStatsEntity>): Promise<void> {
     await this.vaultReportStatsRepo.upsert(entry, {
       conflictPaths: ['vault', 'currentReport', 'previousReport'],
