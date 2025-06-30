@@ -1,3 +1,4 @@
+import { CronJob } from 'cron';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Injectable, Inject } from '@nestjs/common';
 
@@ -12,6 +13,8 @@ import { LsvService } from 'lsv';
 
 @Injectable()
 export class VaultJobsService {
+  private vaultsReady = false;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
@@ -26,10 +29,35 @@ export class VaultJobsService {
   async onModuleInit() {
     this.logger.log('VaultJobsService initialization started');
 
+    // one-time execution on startup
+    await this.fetchAllVaultsAndCalculateStates();
+    await this.fetchAllVaultsRoleMembers();
+    this.vaultsReady = true;
+
+    const job = new CronJob(
+      this.configService.jobs['vaultsCron'],
+      async () => {
+        this.vaultsReady = false;
+        await this.fetchAllVaultsAndCalculateStates();
+        await this.fetchAllVaultsRoleMembers();
+        this.vaultsReady = true;
+      },
+      null,
+      false,
+      this.configService.jobs['vaultsCronTZ'],
+    );
+
+    this.schedulerRegistry.addCronJob('vaults-cron', job);
+    job.start();
+
     // subscribes to events
     this.subscribeToEvents();
 
     this.logger.log('VaultJobsService initialization finished');
+  }
+
+  public isVaultsReady(): boolean {
+    return this.vaultsReady;
   }
 
   public async fetchAllVaultsAndCalculateStates(): Promise<void> {

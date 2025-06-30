@@ -7,7 +7,7 @@ import { ConfigModule, getTypeOrmConfig } from 'common/config';
 import { ExecutionProviderModule } from 'common/execution-provider';
 import { LoggerModule } from 'common/logger';
 
-import { JobsModule } from '../jobs';
+import { VaultJobsModule, ReportJobsModule } from '../jobs';
 
 @Module({
   imports: [
@@ -17,7 +17,8 @@ import { JobsModule } from '../jobs';
     PrometheusModule,
     ConfigModule,
     TypeOrmModule.forRoot(getTypeOrmConfig()),
-    JobsModule,
+    VaultJobsModule,
+    ReportJobsModule,
   ],
 })
 export class AppJobModule {}

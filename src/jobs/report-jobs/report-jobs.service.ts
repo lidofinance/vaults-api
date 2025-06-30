@@ -1,3 +1,4 @@
+import { CronJob } from 'cron';
 import fetch from 'node-fetch';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Inject, Injectable } from '@nestjs/common';
@@ -9,6 +10,9 @@ import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-
 import { ReportEntity, ReportLeafEntity, ReportService } from 'report';
 import { VaultsService } from 'vault';
 import { LsvService } from 'lsv';
+
+import { VaultJobsService } from '../vault-jobs';
+import { waitFor } from '../utils';
 
 @Injectable()
 export class ReportJobsService {
@@ -23,14 +27,36 @@ export class ReportJobsService {
     private readonly reportService: ReportService,
     private readonly vaultsService: VaultsService,
     private readonly lsvService: LsvService,
+    private readonly vaultJobsService: VaultJobsService,
   ) {}
 
   async onModuleInit() {
     this.logger.log('ReportJobsService initialization started');
 
+    // one-time execution on startup
+    await waitFor(() => this.vaultJobsService.isVaultsReady());
+    await this.fetchAllReports();
+    await this.calculate();
+
+    const job = new CronJob(
+      this.configService.jobs['reportCron'],
+      async () => {
+        // max wait for this.vaultJobsService.fetch*() is 10 minutes
+        await waitFor(() => this.vaultJobsService.isVaultsReady(), 60 * 1000, 10 * 60 * 1000);
+        await this.fetchAllReports();
+        await this.calculate();
+      },
+      null,
+      false,
+      this.configService.jobs['reportCronTZ'],
+    );
+
+    this.schedulerRegistry.addCronJob('reports-cron', job);
+    job.start();
+
     // TODO: add event here (ReportCreated)
 
-    this.logger.log('VaultJobsService initialization finished');
+    this.logger.log('ReportJobsService initialization finished');
   }
 
   async fetchReportFromIPFS(cid: string): Promise<any> {
