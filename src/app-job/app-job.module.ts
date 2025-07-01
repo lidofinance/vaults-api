@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import { PrometheusModule } from 'common/prometheus';
-import { ConfigModule, getTypeOrmConfig } from 'common/config';
+import { ConfigModule } from 'common/config';
 import { ExecutionProviderModule } from 'common/execution-provider';
 import { LoggerModule } from 'common/logger';
+import { getTypeOrmConfig } from 'db/config';
 
 import { VaultJobsModule, ReportJobsModule } from '../jobs';
 

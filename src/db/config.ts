@@ -10,8 +10,8 @@ export const ormConfig: DataSourceOptions = {
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DATABASE,
   entities: ['dist/**/*.entity{.ts,.js}'],
-  migrations: ['dist/migration/*.js'],
-  migrationsTableName: 'migration',
+  migrations: ['dist/db/migrations/*.js'],
+  migrationsTableName: 'migrations',
   ssl: false,
 };
 
