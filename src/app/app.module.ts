@@ -3,11 +3,12 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PrometheusModule } from 'common/prometheus';
-import { ConfigModule, getTypeOrmConfig } from 'common/config';
+import { ConfigModule } from 'common/config';
 import { ExecutionProviderModule } from 'common/execution-provider';
 import { ContractsModule } from 'common/contracts';
 import { SentryInterceptor } from 'common/sentry';
 import { HealthModule } from 'common/health';
+import { getTypeOrmConfig } from 'db/config';
 
 import { HTTPModule } from '../http';
 import { LsvModule } from '../lsv';

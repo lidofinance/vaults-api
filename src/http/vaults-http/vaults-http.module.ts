@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
+
+import { VaultDbModule } from 'db/vault-db';
 import { VaultsHttpController } from './vaults-http.controller';
-import { VaultsModule } from '../../vault';
-import { VaultsStateHourlyModule } from '../../vaults-state-hourly';
 
 @Module({
-  imports: [VaultsModule, VaultsStateHourlyModule],
+  imports: [VaultDbModule],
   controllers: [VaultsHttpController],
 })
 export class VaultsHttpModule {}

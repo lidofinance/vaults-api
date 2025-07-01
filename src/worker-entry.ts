@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { AppJobModule } from './app-job';
-import { JobsService } from './jobs';
+import { VaultJobsService, ReportJobsService } from './jobs';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppJobModule);
@@ -9,7 +9,8 @@ async function bootstrap() {
   // logger
   app.useLogger(app.get(LOGGER_PROVIDER));
 
-  app.get(JobsService);
+  app.get(VaultJobsService);
+  app.get(ReportJobsService);
 }
 
 bootstrap();

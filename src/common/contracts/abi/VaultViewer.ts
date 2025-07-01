@@ -3,7 +3,7 @@ export const VaultViewerAbi = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "_vaultHubAddress",
+        "name": "_vaultHub",
         "type": "address"
       }
     ],
@@ -51,19 +51,32 @@ export const VaultViewerAbi = [
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "VAULT_HUB",
+    "outputs": [
       {
-        "internalType": "uint256",
-        "name": "_from",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_to",
-        "type": "uint256"
+        "internalType": "contract VaultHub",
+        "name": "",
+        "type": "address"
       }
     ],
-    "name": "getVaultsDataBatch",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "vaultAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "roles",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "getRoleMembers",
     "outputs": [
       {
         "components": [
@@ -73,43 +86,69 @@ export const VaultViewerAbi = [
             "type": "address"
           },
           {
-            "internalType": "uint256",
-            "name": "totalValue",
-            "type": "uint256"
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
           },
           {
-            "internalType": "uint256",
-            "name": "forcedRebalanceThreshold",
-            "type": "uint256"
+            "internalType": "address",
+            "name": "nodeOperator",
+            "type": "address"
           },
           {
-            "internalType": "uint256",
-            "name": "liabilityShares",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "stEthLiability",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "lidoTreasuryFee",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "nodeOperatorFee",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "isOwnerDashboard",
-            "type": "bool"
+            "internalType": "address[][]",
+            "name": "members",
+            "type": "address[][]"
           }
         ],
-        "internalType": "struct VaultViewer.VaultData[]",
-        "name": "vaultsData",
+        "internalType": "struct VaultViewer.VaultMembers",
+        "name": "roleMembers",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "vaultAddresses",
+        "type": "address[]"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "roles",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "getRoleMembersBatch",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "vault",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "nodeOperator",
+            "type": "address"
+          },
+          {
+            "internalType": "address[][]",
+            "name": "members",
+            "type": "address[][]"
+          }
+        ],
+        "internalType": "struct VaultViewer.VaultMembers[]",
+        "name": "result",
         "type": "tuple[]"
       }
     ],
@@ -124,14 +163,132 @@ export const VaultViewerAbi = [
         "type": "address"
       }
     ],
-    "name": "getVaultsDataByAddress",
+    "name": "getVaultData",
     "outputs": [
       {
         "components": [
           {
             "internalType": "address",
-            "name": "vault",
+            "name": "vaultAddress",
             "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+              },
+              {
+                "internalType": "uint96",
+                "name": "shareLimit",
+                "type": "uint96"
+              },
+              {
+                "internalType": "uint96",
+                "name": "vaultIndex",
+                "type": "uint96"
+              },
+              {
+                "internalType": "bool",
+                "name": "pendingDisconnect",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint16",
+                "name": "reserveRatioBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "forcedRebalanceThresholdBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "infraFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "liquidityFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "reservationFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "bool",
+                "name": "isBeaconDepositsManuallyPaused",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct VaultHub.VaultConnection",
+            "name": "connection",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint112",
+                    "name": "totalValue",
+                    "type": "uint112"
+                  },
+                  {
+                    "internalType": "int112",
+                    "name": "inOutDelta",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "uint32",
+                    "name": "timestamp",
+                    "type": "uint32"
+                  }
+                ],
+                "internalType": "struct VaultHub.Report",
+                "name": "report",
+                "type": "tuple"
+              },
+              {
+                "internalType": "uint128",
+                "name": "locked",
+                "type": "uint128"
+              },
+              {
+                "internalType": "uint96",
+                "name": "liabilityShares",
+                "type": "uint96"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "int112",
+                    "name": "value",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "int112",
+                    "name": "valueOnRefSlot",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "uint32",
+                    "name": "refSlot",
+                    "type": "uint32"
+                  }
+                ],
+                "internalType": "struct RefSlotCache.Int112WithRefSlotCache",
+                "name": "inOutDelta",
+                "type": "tuple"
+              }
+            ],
+            "internalType": "struct VaultHub.VaultRecord",
+            "name": "record",
+            "type": "tuple"
           },
           {
             "internalType": "uint256",
@@ -140,33 +297,13 @@ export const VaultViewerAbi = [
           },
           {
             "internalType": "uint256",
-            "name": "forcedRebalanceThreshold",
+            "name": "liabilityStETH",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "liabilityShares",
+            "name": "nodeOperatorFeeRate",
             "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "stEthLiability",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "lidoTreasuryFee",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "nodeOperatorFee",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "isOwnerDashboard",
-            "type": "bool"
           }
         ],
         "internalType": "struct VaultViewer.VaultData",
@@ -180,7 +317,176 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
-        "internalType": "contract IVault",
+        "internalType": "uint256",
+        "name": "_from",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_to",
+        "type": "uint256"
+      }
+    ],
+    "name": "getVaultsDataBound",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "vaultAddress",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+              },
+              {
+                "internalType": "uint96",
+                "name": "shareLimit",
+                "type": "uint96"
+              },
+              {
+                "internalType": "uint96",
+                "name": "vaultIndex",
+                "type": "uint96"
+              },
+              {
+                "internalType": "bool",
+                "name": "pendingDisconnect",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint16",
+                "name": "reserveRatioBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "forcedRebalanceThresholdBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "infraFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "liquidityFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "reservationFeeBP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "bool",
+                "name": "isBeaconDepositsManuallyPaused",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct VaultHub.VaultConnection",
+            "name": "connection",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint112",
+                    "name": "totalValue",
+                    "type": "uint112"
+                  },
+                  {
+                    "internalType": "int112",
+                    "name": "inOutDelta",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "uint32",
+                    "name": "timestamp",
+                    "type": "uint32"
+                  }
+                ],
+                "internalType": "struct VaultHub.Report",
+                "name": "report",
+                "type": "tuple"
+              },
+              {
+                "internalType": "uint128",
+                "name": "locked",
+                "type": "uint128"
+              },
+              {
+                "internalType": "uint96",
+                "name": "liabilityShares",
+                "type": "uint96"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "int112",
+                    "name": "value",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "int112",
+                    "name": "valueOnRefSlot",
+                    "type": "int112"
+                  },
+                  {
+                    "internalType": "uint32",
+                    "name": "refSlot",
+                    "type": "uint32"
+                  }
+                ],
+                "internalType": "struct RefSlotCache.Int112WithRefSlotCache",
+                "name": "inOutDelta",
+                "type": "tuple"
+              }
+            ],
+            "internalType": "struct VaultHub.VaultRecord",
+            "name": "record",
+            "type": "tuple"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalValue",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "liabilityStETH",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "nodeOperatorFeeRate",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct VaultViewer.VaultData[]",
+        "name": "vaultsData",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "leftover",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IStakingVault",
         "name": "vault",
         "type": "address"
       },
@@ -228,7 +534,7 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
-        "internalType": "contract IVault",
+        "internalType": "contract IStakingVault",
         "name": "vault",
         "type": "address"
       },
@@ -250,38 +556,6 @@ export const VaultViewerAbi = [
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "vaultHub",
-    "outputs": [
-      {
-        "internalType": "contract VaultHub",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "contract IStakingVault",
-        "name": "_vault",
-        "type": "address"
-      }
-    ],
-    "name": "vaultState",
-    "outputs": [
-      {
-        "internalType": "enum VaultViewer.VaultState",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -292,7 +566,7 @@ export const VaultViewerAbi = [
     "name": "vaultsByOwner",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       }
@@ -321,7 +595,7 @@ export const VaultViewerAbi = [
     "name": "vaultsByOwnerBound",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       },
@@ -350,7 +624,7 @@ export const VaultViewerAbi = [
     "name": "vaultsByRole",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       }
@@ -384,7 +658,7 @@ export const VaultViewerAbi = [
     "name": "vaultsByRoleBound",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       },
@@ -402,7 +676,7 @@ export const VaultViewerAbi = [
     "name": "vaultsConnected",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       }
@@ -426,7 +700,7 @@ export const VaultViewerAbi = [
     "name": "vaultsConnectedBound",
     "outputs": [
       {
-        "internalType": "contract IVault[]",
+        "internalType": "contract IStakingVault[]",
         "name": "",
         "type": "address[]"
       },

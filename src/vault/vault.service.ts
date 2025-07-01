@@ -1,72 +1,231 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { VaultEntity } from './vault.entity';
+import { Inject, Injectable } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
+
+import { ConfigService } from 'common/config';
+import { ExecutionProviderService } from 'common/execution-provider';
+import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { VaultViewerContractService, type RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
+import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
+import { VaultDbService } from 'db/vault-db';
+import { ROLE_BYTES32 } from 'vault/vault.constants';
+import { LsvService } from 'lsv';
 
 @Injectable()
-export class VaultsService {
+export class VaultService {
   constructor(
-    @InjectRepository(VaultEntity)
-    private readonly vaultRepo: Repository<VaultEntity>,
+    private readonly configService: ConfigService,
+    private readonly schedulerRegistry: SchedulerRegistry,
+    @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
+    private readonly vaultDbService: VaultDbService,
+    private readonly vaultViewerContractService: VaultViewerContractService,
+    private readonly vaultHubContractService: VaultHubContractService,
+    private readonly executionProviderService: ExecutionProviderService,
+    private readonly lsvService: LsvService,
   ) {}
 
-  async addVault(address: string): Promise<VaultEntity> {
-    const existing = await this.vaultRepo.findOne({ where: { address } });
-    if (existing) {
-      throw new ConflictException(`Vault with address ${address} already exists`);
+  public async fetchAllVaultsAndCalculateStates(): Promise<void> {
+    this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
+
+    const batchSize = this.configService.jobs['vaultsBatchSize'];
+
+    let blockNumber: number;
+    try {
+      blockNumber = await this.executionProviderService.getBlockNumber();
+    } catch (err) {
+      this.logger.error(`[fetchAllVaultsAndCalculateStates] Failed to fetch blockNumber for batch: ${err}`);
+      return;
     }
 
-    const vault = this.vaultRepo.create({ address });
-    return await this.vaultRepo.save(vault);
-  }
-
-  async updateEns(address: string, ens: string): Promise<VaultEntity> {
-    const vault = await this.vaultRepo.findOne({ where: { address } });
-    if (!vault) {
-      throw new NotFoundException(`Vault with address ${address} not found`);
+    // 1. Get vaultsCount with first batch (0, batchSize - 1) + leftover
+    let initialBatch = [];
+    let leftoverVaults = 0;
+    try {
+      const result = await this.vaultViewerContractService.getVaultsConnectedBound(0, batchSize - 1, {
+        blockTag: blockNumber,
+      });
+      initialBatch = result.addresses;
+      leftoverVaults = result.leftoverVaults;
+    } catch (err: any) {
+      this.logger.error(
+        `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsConnectedBound (0 - ${
+          batchSize - 1
+        }) at block ${blockNumber}: ${err}`,
+      );
+      return;
     }
 
-    vault.ens = ens;
-    return await this.vaultRepo.save(vault);
-  }
+    const vaultsCount = initialBatch.length + leftoverVaults;
+    this.logger.log(`[fetchAllVaultsAndCalculateStates] Total vaults: ${vaultsCount}`);
 
-  async updateCustomName(address: string, customName: string): Promise<VaultEntity> {
-    const vault = await this.vaultRepo.findOne({ where: { address } });
-    if (!vault) {
-      throw new NotFoundException(`Vault with address ${address} not found`);
+    // 2. Starting to fetch vaults data
+    for (let from = 0; from < vaultsCount; from += batchSize) {
+      const to = Math.min(from + batchSize, vaultsCount);
+      this.logger.log(`[fetchAllVaultsAndCalculateStates] Fetching vaults batch: ${from} to ${to}`);
+
+      let vaultsDataBatch;
+      try {
+        vaultsDataBatch = (
+          await this.vaultViewerContractService.getVaultsDataBound(from, to, { blockTag: blockNumber })
+        ).vaultsDataBatch;
+      } catch (err) {
+        this.logger.error(
+          `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
+        );
+        continue;
+      }
+
+      for (const item of vaultsDataBatch) {
+        let vault;
+        try {
+          vault = await this.vaultDbService.getOrCreateVaultByAddress(item.vault);
+        } catch (err) {
+          this.logger.error(
+            `[fetchAllVaultsAndCalculateStates] Failed to get or create vault: ${item.vault} — ${err} at block ${blockNumber}`,
+          );
+          continue;
+        }
+
+        try {
+          const healthFactor = await this.lsvService.calculateHealth(
+            item.totalValue,
+            item.liabilityStETH,
+            item.forcedRebalanceThresholdBP,
+          );
+
+          await this.vaultDbService.addOrUpdateState({
+            vault,
+            totalValue: item.totalValue.toString(),
+            liabilityShares: item.liabilityShares.toString(),
+            liabilityStETH: item.liabilityStETH.toString(),
+            healthFactor: healthFactor.healthRatio,
+            shareLimit: item.shareLimit.toString(),
+            reserveRatioBP: item.reserveRatioBP,
+            forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+            infraFeeBP: item.infraFeeBP,
+            liquidityFeeBP: item.liquidityFeeBP,
+            reservationFeeBP: item.reservationFeeBP,
+            nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
+            updatedAt: new Date(),
+            blockNumber,
+          });
+          this.logger.log(`[fetchAllVaultsAndCalculateStates] Saved 'vaultsState' data to DB ${item.vault}`);
+        } catch (err) {
+          this.logger.error(
+            `[fetchAllVaultsAndCalculateStates] Failed to save 'vaultsState' data to DB OR calculateHealth of vault ${item.vault}: ${err}`,
+          );
+          // continue
+        }
+      }
     }
 
-    vault.customName = customName;
-    return await this.vaultRepo.save(vault);
+    this.logger.log('[fetchAllVaultsAndCalculateStates] finished');
   }
 
-  async getVaultsCount(): Promise<number> {
-    return await this.vaultRepo.count();
-  }
+  public async fetchAllVaultsRoleMembers(): Promise<void> {
+    this.logger.log('[fetchAllVaultsRoleMembers] Started');
 
-  async getVaults(limit = 10, offset = 0): Promise<VaultEntity[]> {
-    return await this.vaultRepo.find({
-      take: limit,
-      skip: offset,
-      // ASC (ascending order) - 1 → 2 → 3 → 4 → ...
-      order: { id: 'ASC' },
-    });
-  }
+    const totalVaults = await this.vaultDbService.getVaultsCount();
+    this.logger.log(`[fetchAllVaultsRoleMembers] Total vaults: ${totalVaults}`);
 
-  async getVaultByAddress(address: string): Promise<VaultEntity> {
-    const vault = await this.vaultRepo.findOne({ where: { address } });
-    if (!vault) {
-      throw new NotFoundException(`Vault with address ${address} not found`);
+    const batchSize = this.configService.jobs['vaultMembersBatchSize'];
+
+    let blockNumber: number;
+    try {
+      blockNumber = await this.executionProviderService.getBlockNumber();
+    } catch (err) {
+      this.logger.error(`[fetchAllVaultsAndStateHourly] Failed to fetch blockNumber for batch: ${err}`);
+      return;
     }
-    return vault;
+
+    for (let offset = 0; offset < totalVaults; offset += batchSize) {
+      const vaultEntities = await this.vaultDbService.getVaults(batchSize, offset);
+      if (vaultEntities.length === 0) break;
+
+      this.logger.log(`[fetchAllVaultsRoleMembers] Fetching vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      const vaultAddresses = vaultEntities.map((vault) => vault.address);
+
+      let batchResults: Array<{ vault: string; roleMembersMap: RoleMembers }>;
+      try {
+        batchResults = await this.vaultViewerContractService.getRoleMembersBatch(vaultAddresses, ROLE_BYTES32, {
+          blockTag: blockNumber,
+        });
+      } catch (err) {
+        this.logger.error(`[fetchAllVaultsRoleMembers] Error fetching batch role members: ${err.message}`);
+        continue;
+      }
+
+      this.logger.log(`[fetchAllVaultsRoleMembers] Saving vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      for (const { vault, roleMembersMap } of batchResults) {
+        try {
+          await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
+          this.logger.log(`[fetchAllVaultsRoleMembers] Saved 'membersForVault' data to DB for vault ${vault}`);
+        } catch (err) {
+          this.logger.error(`[fetchAllVaultsRoleMembers] Error saving role members for vault ${vault}: ${err.message}`);
+        }
+      }
+    }
+
+    this.logger.log('[fetchAllVaultsRoleMembers] Finished');
   }
 
-  async getOrCreateVaultByAddress(address: string): Promise<VaultEntity> {
-    let vault = await this.vaultRepo.findOne({ where: { address } });
-    if (!vault) {
-      vault = this.vaultRepo.create({ address });
-      vault = await this.vaultRepo.save(vault);
-    }
-    return vault;
+  public subscribeToEvents() {
+    this.logger.log('[subscribeToEvents] Subscribing to VaultConnected event');
+
+    this.vaultHubContractService.contract.on(
+      'VaultConnected',
+      async (
+        vault: string,
+        shareLimit: bigint,
+        reserveRatioBP: bigint,
+        forcedRebalanceThresholdBP: bigint,
+        infraFeeBP: bigint,
+        liquidityFeeBP: bigint,
+        reservationFeeBP: bigint,
+        event,
+      ) => {
+        this.logger.log(
+          `[subscribeToEvents, event:VaultConnected] Event received for vault ${vault} at block ${event.blockNumber}`,
+        );
+
+        try {
+          const blockNumber = event.blockNumber;
+          const item = await this.vaultViewerContractService.getVaultData(vault, {
+            blockTag: blockNumber,
+          });
+
+          const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(item.vault);
+
+          const healthFactor = await this.lsvService.calculateHealth(
+            item.totalValue,
+            item.liabilityStETH,
+            item.forcedRebalanceThresholdBP,
+          );
+
+          await this.vaultDbService.addOrUpdateState({
+            vault: vaultDbEntity,
+            totalValue: item.totalValue.toString(),
+            liabilityShares: item.liabilityShares.toString(),
+            liabilityStETH: item.liabilityStETH.toString(),
+            healthFactor: healthFactor.healthRatio,
+            shareLimit: item.shareLimit.toString(),
+            reserveRatioBP: item.reserveRatioBP,
+            forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+            infraFeeBP: item.infraFeeBP,
+            liquidityFeeBP: item.liquidityFeeBP,
+            reservationFeeBP: item.reservationFeeBP,
+            nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
+            updatedAt: new Date(),
+            blockNumber,
+          });
+          this.logger.log(`[fetchAllVaultsAndCalculateStates] Saved 'vaultsState' data to DB for vault ${item.vault}`);
+
+          this.logger.log(
+            `[subscribeToEvents, event:VaultConnected] State added/updated for vault ${vault} at block ${blockNumber}`,
+          );
+        } catch (err) {
+          this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
+        }
+      },
+    );
   }
 }

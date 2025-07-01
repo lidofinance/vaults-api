@@ -5,6 +5,7 @@
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "target": "es2020",
     "lib": ["ES2020"],
@@ -17,7 +18,7 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
   },
   "include": ["src/**/*"]
 }

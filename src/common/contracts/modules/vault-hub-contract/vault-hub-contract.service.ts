@@ -18,15 +18,4 @@ export class VaultHubContractService {
     if (!address) throw new Error('VaultHub contract address is not defined');
     this.contract = new Contract(address, VaultHubAbi, provider);
   }
-
-  async getLatestReportData(): Promise<LatestReportData> {
-    const [timestamp, treeRoot, reportCid] = await this.contract.latestReportData();
-
-    return {
-      // BigNumber to bigint
-      timestamp: BigInt(timestamp),
-      treeRoot,
-      reportCid,
-    };
-  }
 }

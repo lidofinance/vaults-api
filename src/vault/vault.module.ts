@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { VaultsService } from './vault.service';
-import { VaultEntity } from './vault.entity';
+import { VaultDbModule } from 'db/vault-db';
+import { LsvModule } from 'lsv';
+import { ContractsModule } from 'common/contracts';
+
+import { VaultService } from './vault.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([VaultEntity])],
-  providers: [VaultsService],
-  exports: [VaultsService],
+  imports: [ContractsModule, VaultDbModule, LsvModule],
+  providers: [VaultService],
+  exports: [VaultService],
 })
-export class VaultsModule {}
+export class VaultModule {}
