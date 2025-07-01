@@ -8,6 +8,12 @@ import { Direction, DirectionEnum, SortFields } from './enums';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
 import { toSnakeCaseColumn } from './utils';
 
+// because toSnakeCaseColumn('liabilityStETH') = 'liability_st_e_t_h'
+const camelToSnakeExceptions: Record<string, string> = {
+  liabilityStETH: 'liability_steth',
+  forcedRebalanceThresholdBP: 'forced_rebalance_threshold_bp',
+};
+
 @Injectable()
 export class VaultDbService {
   constructor(
@@ -125,7 +131,7 @@ export class VaultDbService {
     }
 
     // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
-    qb.orderBy(`state."${toSnakeCaseColumn(sortBy)}"`, direction)
+    qb.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction)
       .limit(limit)
       .offset(offset);
 
