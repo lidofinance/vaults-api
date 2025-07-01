@@ -35,14 +35,11 @@ export class LsvService {
   }
 
   public async getVaultReport(args: VaultReportArgs): Promise<VaultReportCliType> {
-    return await getVaultReport(args);
+    return await getVaultReport(args, false);
   }
 
-  public async getVaultReportProofByCid(
-    args: VaultReportArgs,
-    cache?: boolean,
-  ): Promise<ReturnType<typeof getVaultReportProofByCid>> {
-    return getVaultReportProofByCid(args, cache);
+  public async getVaultReportProofByCid(args: VaultReportArgs): Promise<ReturnType<typeof getVaultReportProofByCid>> {
+    return getVaultReportProofByCid(args, false);
   }
 
   public async fetchAndVerifyFile(reportCid: string): Promise<Uint8Array> {
