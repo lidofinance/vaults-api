@@ -39,3 +39,22 @@ export const vaultsExample = {
     }
   ]
 };
+
+export const vaultLatestMetricsExample = {
+  "rebaseReward": 8620052069287,
+  "grossStakingRewards": "190180000000000",
+  "nodeOperatorRewards": "1901800000000",
+  "dailyLidoFees": "5404649809954",
+  "netStakingRewards": "182873550190046",
+  "grossStakingAPR": "2",
+  "grossStakingAprBps": 200.173300708,
+  "grossStakingAprPercent": 2.00173300708,
+  "netStakingAPR": "1",
+  "netStakingAprBps": 192.482922251,
+  "netStakingAprPercent": 1.9248292225099999,
+  "bottomLine": "174253498120759",
+  "carrySpreadAPR": "1",
+  "carrySpreadAprBps": 183.409916283,
+  "carrySpreadAprPercent": 1.83409916283,
+  "updatedAt": "2025-07-01T09:05:01.036Z"
+};

@@ -14,6 +14,25 @@ const camelToSnakeExceptions: Record<string, string> = {
   forcedRebalanceThresholdBP: 'forced_rebalance_threshold_bp',
 };
 
+const VAULT_REPORT_STATS_SELECT_FIELDS = [
+  'stats.rebaseReward AS "rebaseReward"',
+  'stats.grossStakingRewards AS "grossStakingRewards"',
+  'stats.nodeOperatorRewards AS "nodeOperatorRewards"',
+  'stats.dailyLidoFees AS "dailyLidoFees"',
+  'stats.netStakingRewards AS "netStakingRewards"',
+  'stats.grossStakingAPR AS "grossStakingAPR"',
+  'stats.grossStakingAprBps AS "grossStakingAprBps"',
+  'stats.grossStakingAprPercent AS "grossStakingAprPercent"',
+  'stats.netStakingAPR AS "netStakingAPR"',
+  'stats.netStakingAprBps AS "netStakingAprBps"',
+  'stats.netStakingAprPercent AS "netStakingAprPercent"',
+  'stats.bottomLine AS "bottomLine"',
+  'stats.carrySpreadAPR AS "carrySpreadAPR"',
+  'stats.carrySpreadAprBps AS "carrySpreadAprBps"',
+  'stats.carrySpreadAprPercent AS "carrySpreadAprPercent"',
+  'stats.updatedAt AS "updatedAt"',
+];
+
 @Injectable()
 export class VaultDbService {
   constructor(
@@ -155,6 +174,41 @@ export class VaultDbService {
     }>();
 
     return rawResult;
+  }
+
+  async getLatestVaultReportStats(vaultAddress: string) {
+    return this.vaultReportStatRepo
+      .createQueryBuilder('stats')
+      .innerJoin('stats.vault', 'vault')
+      .where('vault.address = :vaultAddress', { vaultAddress })
+      .orderBy('stats.updatedAt', 'DESC')
+      .select(VAULT_REPORT_STATS_SELECT_FIELDS)
+      .getRawOne();
+  }
+
+  async getVaultReportStatsInRange(
+    vaultAddress: string,
+    fromTimestamp?: number,
+    toTimestamp?: number,
+    fromBlock?: number,
+    toBlock?: number,
+  ) {
+    const query = this.vaultReportStatRepo
+      .createQueryBuilder('stats')
+      .innerJoin('stats.vault', 'vault')
+      .innerJoin('stats.currentReport', 'currentReport')
+      .where('vault.address = :vaultAddress', { vaultAddress })
+      .orderBy('currentReport.timestamp', 'ASC');
+
+    if (fromBlock !== undefined && toBlock !== undefined) {
+      query.andWhere('currentReport.blockNumber BETWEEN :fromBlock AND :toBlock', { fromBlock, toBlock });
+    }
+
+    if (fromTimestamp !== undefined && toTimestamp !== undefined) {
+      query.andWhere('currentReport.timestamp BETWEEN :fromTimestamp AND :toTimestamp', { fromTimestamp, toTimestamp });
+    }
+
+    return query.select(VAULT_REPORT_STATS_SELECT_FIELDS).getRawMany();
   }
 
   /**

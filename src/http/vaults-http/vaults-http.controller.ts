@@ -1,6 +1,7 @@
 import { CronExpressionParser } from 'cron-parser';
 import {
   Controller,
+  Param,
   Get,
   Query,
   DefaultValuePipe,
@@ -11,14 +12,14 @@ import {
   LoggerService,
   BadRequestException,
 } from '@nestjs/common';
-import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import { ConfigService } from 'common/config';
 import { VaultDbService, SortFieldsEnum, DirectionEnum } from 'db/vault-db';
 import { ALL_ROLE_VALUES } from 'vault/vault.constants';
 
-import { vaultsExample } from './example';
+import { vaultsExample, vaultLatestMetricsExample } from './example';
 
 const limitQueryDefault = 10;
 const offsetQueryDefault = 0;
@@ -79,7 +80,7 @@ export class VaultsHttpController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Vaults with latest state metrics',
+    description: 'Vaults list with latest state',
     schema: {
       example: vaultsExample,
     },
@@ -111,6 +112,25 @@ export class VaultsHttpController {
       nextUpdateAt: this.getNextVaultsHourlyUpdate(),
       vaults,
     };
+  }
+
+  @Version('1')
+  @Get(':vaultAddress/latest-metrics')
+  @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Vault with latest metrics',
+    schema: {
+      example: vaultLatestMetricsExample,
+    },
+  })
+  async getLatestVaultStatsByAddress(@Param('vaultAddress') vaultAddress: string) {
+    const latestStats = await this.vaultDbService.getLatestVaultReportStats(vaultAddress);
+    if (!latestStats) {
+      throw new BadRequestException('Vault not found or has no stats.');
+    }
+
+    return latestStats;
   }
 
   private getNextVaultsHourlyUpdate(): Date {
