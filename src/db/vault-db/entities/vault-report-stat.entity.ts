@@ -56,14 +56,14 @@ export class VaultReportStatEntity {
   @Column({ name: 'bottom_line', type: 'numeric', precision: 78, scale: 0 })
   bottomLine?: string;
 
-  @Column({ name: 'efficiency_apr', type: 'numeric', precision: 78, scale: 0 })
-  efficiencyAPR?: string;
+  @Column({ name: 'carry_spread_apr', type: 'numeric', precision: 78, scale: 0 })
+  carrySpreadAPR?: string;
 
-  @Column({ name: 'efficiency_apr_bps', type: 'float8' })
-  efficiencyAprBps?: number;
+  @Column({ name: 'carry_spread_apr_bps', type: 'float8' })
+  carrySpreadAprBps?: number;
 
-  @Column({ name: 'efficiency_apr_percent', type: 'float8' })
-  efficiencyAprPercent?: number;
+  @Column({ name: 'carry_spread_apr_percent', type: 'float8' })
+  carrySpreadAprPercent?: number;
 
   @Column({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
