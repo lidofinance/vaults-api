@@ -50,6 +50,7 @@ export class ReportDbService {
     const values = reportData?.values;
     const extraValues = reportData?.extraValues;
 
+    // TODO: remove lodash
     const leafChunks = chunk(values, LEAF_BATCH_SIZE);
 
     for (const batch of leafChunks) {
