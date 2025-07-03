@@ -58,7 +58,7 @@ export class ReportsHttpController {
       });
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
-      throw new BadRequestException(`Vault by address not exist!`);
+      throw new BadRequestException(`Vault by address not exist or failed to verify report!`);
     }
   }
 
@@ -73,7 +73,7 @@ export class ReportsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Vault by address not exist or previous report CID not found!',
+    description: 'Vault by address not exist or failed to verify report or previous report CID not found!',
     type: ErrorResponseType,
   })
   async getPrevious(@Param() params: ReportParamsDto) {
@@ -106,7 +106,7 @@ export class ReportsHttpController {
       });
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
-      throw new BadRequestException(`Vault by address not exist!`);
+      throw new BadRequestException(`Vault by address not exist or failed to verify report!`);
     }
   }
 }
