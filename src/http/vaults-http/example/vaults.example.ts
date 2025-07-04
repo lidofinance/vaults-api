@@ -17,7 +17,13 @@ export const vaultsExample = {
       "reservationFeeBP": 100,
       "nodeOperatorFeeRate": "100",
       "updatedAt": "2025-06-19T12:55:17.378Z",
-      "blockNumber": 634997
+      "blockNumber": 634997,
+      "grossStakingAPR": "2",
+      "grossStakingAprBps": 200.173300708,
+      "grossStakingAprPercent": 2.00173300708,
+      "carrySpreadAPR": "1",
+      "carrySpreadAprBps": 183.409916283,
+      "carrySpreadAprPercent": 1.83409916283
     },
     {
       "address": "0xF19A613D8560433CEe5238FEc243F75E125999e0",
@@ -35,7 +41,13 @@ export const vaultsExample = {
       "reservationFeeBP": 100,
       "nodeOperatorFeeRate": "500",
       "updatedAt": "2025-06-19T12:55:17.389Z",
-      "blockNumber": 634997
+      "blockNumber": 634997,
+      "grossStakingAPR": "2",
+      "grossStakingAprBps": 200.173300708,
+      "grossStakingAprPercent": 2.00173300708,
+      "carrySpreadAPR": "1",
+      "carrySpreadAprBps": 183.409916283,
+      "carrySpreadAprPercent": 1.83409916283
     }
   ]
 };

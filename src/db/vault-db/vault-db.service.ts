@@ -108,17 +108,41 @@ export class VaultDbService {
       nodeOperatorFeeRate: string;
       updatedAt: Date;
       blockNumber: number;
+      grossStakingAPR: string | null;
+      grossStakingAprBps: number | null;
+      grossStakingAprPercent: number | null;
+      carrySpreadAPR: string | null;
+      carrySpreadAprBps: number | null;
+      carrySpreadAprPercent: number | null;
     }>
   > {
-    // Since the vaults_state_hourly table has exactly one row per vault_id,
-    // we can select everything, sort by the field, and apply limit, offset
     const qb = this.vaultStateRepo
       .createQueryBuilder('state')
       .innerJoin('state.vault', 'vault')
+      .leftJoin(
+        (subQuery) => {
+          return subQuery
+            .select([
+              'DISTINCT ON (stats.vault_id) stats.vault_id',
+              'stats.gross_staking_apr',
+              'stats.gross_staking_apr_bps',
+              'stats.gross_staking_apr_percent',
+              'stats.carry_spread_apr',
+              'stats.carry_spread_apr_bps',
+              'stats.carry_spread_apr_percent',
+            ])
+            .from(VaultReportStatEntity, 'stats')
+            .orderBy('stats.vault_id', 'ASC') // required by 'DISTINCT ON (stats.vault_id) stats.vault_id'
+            .addOrderBy('stats.updated_at', 'DESC'); // get the latest data for each vault_id
+        },
+        'report_metrics',
+        'report_metrics.vault_id = vault.id',
+      )
       .select([
         `vault.address AS "address"`,
         `vault.ens AS "ens"`,
         `vault.custom_name AS "customName"`,
+        // vault states
         `state.total_value AS "totalValue"`,
         `state.liability_steth AS "liabilityStETH"`,
         `state.liability_shares AS "liabilityShares"`,
@@ -136,6 +160,13 @@ export class VaultDbService {
         `state.node_operator_fee_rate AS "nodeOperatorFeeRate"`,
         `state.updated_at AS "updatedAt"`,
         `state.block_number AS "blockNumber"`,
+        // vault report metrics
+        `report_metrics.gross_staking_apr AS "grossStakingAPR"`,
+        `report_metrics.gross_staking_apr_bps AS "grossStakingAprBps"`,
+        `report_metrics.gross_staking_apr_percent AS "grossStakingAprPercent"`,
+        `report_metrics.carry_spread_apr AS "carrySpreadAPR"`,
+        `report_metrics.carry_spread_apr_bps AS "carrySpreadAprBps"`,
+        `report_metrics.carry_spread_apr_percent AS "carrySpreadAprPercent"`,
       ]);
 
     if (role && address) {
@@ -149,29 +180,11 @@ export class VaultDbService {
       );
     }
 
-    // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
     qb.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction)
       .limit(limit)
       .offset(offset);
 
-    const rawResult = await qb.getRawMany<{
-      address: string;
-      ens: string | null;
-      customName: string | null;
-      totalValue: string;
-      liabilityStETH: string;
-      liabilityShares: string;
-      healthFactor: number;
-      shareLimit: string;
-      reserveRatioBP: number;
-      forcedRebalanceThresholdBP: number;
-      infraFeeBP: number;
-      liquidityFeeBP: number;
-      reservationFeeBP: number;
-      nodeOperatorFeeRate: string;
-      updatedAt: Date;
-      blockNumber: number;
-    }>();
+    const rawResult = await qb.getRawMany();
 
     return rawResult;
   }
