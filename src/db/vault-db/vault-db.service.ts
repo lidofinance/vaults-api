@@ -72,7 +72,7 @@ export class VaultDbService {
     return this.vaultStateRepo
       .createQueryBuilder('state')
       .leftJoinAndSelect('state.vault', 'vault')
-      .where('vault.address = :vaultAddress', { vaultAddress })
+      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
       .getOne();
   }
 
@@ -144,7 +144,7 @@ export class VaultDbService {
         'member',
         `"member"."vault_id" = "vault"."id"
          AND "member"."role" = :role
-         AND "member"."address" = :address`,
+         AND LOWER("member"."address") = LOWER(:address)`,
         { role, address },
       );
     }
@@ -180,7 +180,7 @@ export class VaultDbService {
     return this.vaultReportStatRepo
       .createQueryBuilder('stats')
       .innerJoin('stats.vault', 'vault')
-      .where('vault.address = :vaultAddress', { vaultAddress })
+      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
       .orderBy('stats.updatedAt', 'DESC')
       .select(VAULT_REPORT_STATS_SELECT_FIELDS)
       .getRawOne();
@@ -197,7 +197,7 @@ export class VaultDbService {
       .createQueryBuilder('stats')
       .innerJoin('stats.vault', 'vault')
       .innerJoin('stats.currentReport', 'currentReport')
-      .where('vault.address = :vaultAddress', { vaultAddress })
+      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
       .orderBy('currentReport.timestamp', 'ASC');
 
     if (fromBlock !== undefined && toBlock !== undefined) {
