@@ -181,9 +181,15 @@ export class VaultDbService {
     }
 
     // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
-    qb.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction)
-      .limit(limit)
-      .offset(offset);
+    if (
+      ['grossStakingAprBps', 'grossStakingAprPercent', 'carrySpreadAprBps', 'carrySpreadAprPercent'].includes(sortBy)
+    ) {
+      qb.orderBy(`report_metrics."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
+    } else {
+      qb.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
+    }
+
+    qb.limit(limit).offset(offset);
 
     const rawResult = await qb.getRawMany();
 
