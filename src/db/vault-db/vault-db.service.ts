@@ -180,6 +180,7 @@ export class VaultDbService {
       );
     }
 
+    // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
     qb.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction)
       .limit(limit)
       .offset(offset);
