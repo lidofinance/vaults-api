@@ -182,7 +182,14 @@ export class VaultDbService {
 
     // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
     if (
-      ['grossStakingAprBps', 'grossStakingAprPercent', 'carrySpreadAprBps', 'carrySpreadAprPercent'].includes(sortBy)
+      [
+        'grossStakingAPR',
+        'grossStakingAprBps',
+        'grossStakingAprPercent',
+        'carrySpreadAPR',
+        'carrySpreadAprBps',
+        'carrySpreadAprPercent',
+      ].includes(sortBy)
     ) {
       qb.orderBy(`report_metrics."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
     } else {
