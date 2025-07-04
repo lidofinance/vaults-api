@@ -11,6 +11,7 @@ import {
   Inject,
   LoggerService,
   BadRequestException,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
@@ -18,6 +19,7 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { ConfigService } from 'common/config';
 import { VaultDbService, SortFieldsEnum, DirectionEnum } from 'db/vault-db';
 import { ALL_ROLE_VALUES } from 'vault/vault.constants';
+import { ErrorResponseType } from 'http/common/dto/error-response-type';
 
 import { GetVaultStatsRangeQueryDto } from './dto/get-vault-stats-range-query.dto';
 import { vaultsExample, vaultLatestMetricsExample } from './example';
@@ -86,6 +88,11 @@ export class VaultsHttpController {
       example: vaultsExample,
     },
   })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Both "role" and "address" must be provided together.',
+    type: ErrorResponseType,
+  })
   async getVaultsByRoleAndAddress(
     @Query('limit', new DefaultValuePipe(limitQueryDefault), ParseIntPipe) limit: number,
     @Query('offset', new DefaultValuePipe(offsetQueryDefault), ParseIntPipe) offset: number,
@@ -125,6 +132,11 @@ export class VaultsHttpController {
       example: vaultLatestMetricsExample,
     },
   })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Vault not found or has no stats.',
+    type: ErrorResponseType,
+  })
   async getLatestVaultStatsByAddress(@Param('vaultAddress') vaultAddress: string) {
     const latestStats = await this.vaultDbService.getLatestVaultReportStats(vaultAddress);
     if (!latestStats) {
@@ -147,6 +159,11 @@ export class VaultsHttpController {
     schema: {
       example: [vaultLatestMetricsExample, vaultLatestMetricsExample],
     },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'You must provide either both "fromBlock" & "toBlock" or both "fromTimestamp" & "toTimestamp".',
+    type: ErrorResponseType,
   })
   async getVaultStatsRangeByAddress(
     @Param('vaultAddress') vaultAddress: string,

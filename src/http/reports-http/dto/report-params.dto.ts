@@ -5,7 +5,8 @@ export class ReportParamsDto {
   @ApiProperty({
     name: 'vaultAddress',
     type: String,
-    example: '0xE312f1ed35c4dBd010A332118baAD69d45A0E302',
+    // hoodie example
+    example: '0x7228FC874C1D08cAE68a558d7B650fc4862B1DB7',
     description: 'Vault address',
   })
   @IsEthereumAddress()

@@ -1,8 +1,13 @@
+import { Hex } from 'viem';
 import { Injectable } from '@nestjs/common';
 
 import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof';
 import { type VaultReport as VaultReportCliType, type VaultReportArgs } from '@lidofinance/lsv-cli/dist/utils/report';
-import { getVaultReport, getVaultReportProofByCid } from '@lidofinance/lsv-cli/dist/utils/report';
+import {
+  getVaultReport,
+  getVaultReportProofByCid,
+  getReportProofByVault,
+} from '@lidofinance/lsv-cli/dist/utils/report';
 import { fetchAndVerifyFile } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 import { calculateRebaseReward } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
 import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
@@ -40,6 +45,10 @@ export class LsvService {
 
   public async getVaultReportProofByCid(args: VaultReportArgs): Promise<ReturnType<typeof getVaultReportProofByCid>> {
     return getVaultReportProofByCid(args, false);
+  }
+
+  public async getReportProofByVault(args: VaultReportArgs): Promise<VaultReportCliType & { proof: Hex[] }> {
+    return getReportProofByVault(args);
   }
 
   public async fetchAndVerifyFile(reportCid: string): Promise<Uint8Array> {
