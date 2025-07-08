@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
+import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
 
 import { Direction, DirectionEnum, SortFields } from './enums';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
@@ -20,14 +21,11 @@ const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.nodeOperatorRewards AS "nodeOperatorRewards"',
   'stats.dailyLidoFees AS "dailyLidoFees"',
   'stats.netStakingRewards AS "netStakingRewards"',
-  // 'stats.grossStakingAPR AS "grossStakingAPR"',
   'stats.grossStakingAprBps AS "grossStakingAprBps"',
   'stats.grossStakingAprPercent AS "grossStakingAprPercent"',
-  // 'stats.netStakingAPR AS "netStakingAPR"',
   'stats.netStakingAprBps AS "netStakingAprBps"',
   'stats.netStakingAprPercent AS "netStakingAprPercent"',
   'stats.bottomLine AS "bottomLine"',
-  // 'stats.carrySpreadAPR AS "carrySpreadAPR"',
   'stats.carrySpreadAprBps AS "carrySpreadAprBps"',
   'stats.carrySpreadAprPercent AS "carrySpreadAprPercent"',
   'stats.updatedAt AS "updatedAt"',
@@ -109,32 +107,65 @@ export class VaultDbService {
       updatedAt: Date;
       blockNumber: number;
       isReportFresh: boolean;
-      // grossStakingAPR: string | null;
-      grossStakingAprBps: number | null;
+      rebaseReward: string | null;
+      grossStakingRewards: string | null;
+      nodeOperatorRewards: string | null;
+      dailyLidoFees: string | null;
+      netStakingRewards: string | null;
       grossStakingAprPercent: number | null;
-      // carrySpreadAPR: string | null;
-      carrySpreadAprBps: number | null;
+      netStakingAprPercent: number | null;
+      bottomLine: string | null;
       carrySpreadAprPercent: number | null;
     }>
   > {
     const qb = this.vaultStateRepo
       .createQueryBuilder('state')
       .innerJoin('state.vault', 'vault')
+      // join ReportEntity and ReportLeafEntity
+      .leftJoin(
+        (subQuery) =>
+          subQuery
+            .select([
+              'rl."vault_address"',
+              'rl."total_value_wei"',
+              'rl."in_out_delta"',
+              'rl."fee"',
+              'rl."liability_shares"',
+              'rl."slashing_reserve"',
+              'r."blockNumber"',
+              'r."timestamp"',
+            ])
+            .from(ReportLeafEntity, 'rl')
+            .innerJoin(ReportEntity, 'r', 'r.id = rl."reportId"')
+            .orderBy('r."blockNumber"', 'DESC'),
+        'last_report',
+        'last_report."vault_address" = vault.address',
+      )
+      // join VaultReportStat (Report Metrics)
       .leftJoin(
         (subQuery) => {
           return subQuery
             .select([
-              'DISTINCT ON (stats.vault_id) stats.vault_id',
-              'stats.gross_staking_apr',
-              'stats.gross_staking_apr_bps',
-              'stats.gross_staking_apr_percent',
-              'stats.carry_spread_apr',
-              'stats.carry_spread_apr_bps',
-              'stats.carry_spread_apr_percent',
+              'DISTINCT ON (report_stat.vault_id) report_stat.vault_id',
+              'report_stat.rebase_reward',
+              'report_stat.gross_staking_rewards',
+              'report_stat.node_operator_rewards',
+              'report_stat.daily_lido_fees',
+              'report_stat.net_staking_rewards',
+              'report_stat.gross_staking_apr',
+              'report_stat.gross_staking_apr_bps',
+              'report_stat.gross_staking_apr_percent',
+              'report_stat.net_staking_apr',
+              'report_stat.net_staking_apr_bps',
+              'report_stat.net_staking_apr_percent',
+              'report_stat.bottom_line',
+              'report_stat.carry_spread_apr',
+              'report_stat.carry_spread_apr_bps',
+              'report_stat.carry_spread_apr_percent',
             ])
-            .from(VaultReportStatEntity, 'stats')
-            .orderBy('stats.vault_id', 'ASC') // required by 'DISTINCT ON (stats.vault_id) stats.vault_id'
-            .addOrderBy('stats.updated_at', 'DESC'); // get the latest data for each vault_id
+            .from(VaultReportStatEntity, 'report_stat')
+            .orderBy('report_stat.vault_id', 'ASC') // required by 'DISTINCT ON (report_stat.vault_id) report_stat.vault_id'
+            .addOrderBy('report_stat.updated_at', 'DESC'); // get the latest data for each vault_id
         },
         'report_metrics',
         'report_metrics.vault_id = vault.id',
@@ -143,11 +174,12 @@ export class VaultDbService {
         `vault.address AS "address"`,
         `vault.ens AS "ens"`,
         `vault.custom_name AS "customName"`,
+
         // vault states
         `state.total_value AS "totalValue"`,
         `state.liability_steth AS "liabilityStETH"`,
         `state.liability_shares AS "liabilityShares"`,
-        // Only PostgreSQL!!!
+        // `CASE` is PostgreSQL-specific!!!
         `CASE
           WHEN state.health_factor = 'Infinity' THEN 'Infinity'
           ELSE state.health_factor::text
@@ -162,13 +194,29 @@ export class VaultDbService {
         `state.updated_at AS "updatedAt"`,
         `state.block_number AS "blockNumber"`,
         `state.is_report_fresh AS "isReportFresh"`,
+
         // vault report metrics
-        // `report_metrics.gross_staking_apr AS "grossStakingAPR"`,
-        `report_metrics.gross_staking_apr_bps AS "grossStakingAprBps"`,
+        `report_metrics.rebase_reward AS "rebaseReward"`,
+        `report_metrics.gross_staking_rewards AS "grossStakingRewards"`,
+        `report_metrics.node_operator_rewards AS "nodeOperatorRewards"`,
+        `report_metrics.daily_lido_fees AS "dailyLidoFees"`,
+        `report_metrics.net_staking_rewards AS "netStakingRewards"`,
         `report_metrics.gross_staking_apr_percent AS "grossStakingAprPercent"`,
-        // `report_metrics.carry_spread_apr AS "carrySpreadAPR"`,
-        `report_metrics.carry_spread_apr_bps AS "carrySpreadAprBps"`,
+        `report_metrics.net_staking_apr_percent AS "netStakingAprPercent"`,
+        `report_metrics.bottom_line AS "bottomLine"`,
         `report_metrics.carry_spread_apr_percent AS "carrySpreadAprPercent"`,
+
+        // last report
+        // `jsonb_build_object` is PostgreSQL-specific!!!
+        // Use '::text' to ensure fields like 'totalValueWei' and others, which are BIGINT or stored as NUMERIC,
+        // are returned as strings, preventing precision loss in JavaScript due to IEEE 754 limitations.
+        `jsonb_build_object(
+          'totalValueWei', last_report.total_value_wei::text,
+          'inOutDelta', last_report.in_out_delta::text,
+          'fee', last_report.fee::text,
+          'liabilityShares', last_report.liability_shares::text,
+          'slashingReserve', last_report.slashing_reserve::text
+        ) AS "lastReport"`,
       ]);
 
     if (role && address) {
@@ -183,16 +231,7 @@ export class VaultDbService {
     }
 
     // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
-    if (
-      [
-        // 'grossStakingAPR',
-        'grossStakingAprBps',
-        'grossStakingAprPercent',
-        // 'carrySpreadAPR',
-        'carrySpreadAprBps',
-        'carrySpreadAprPercent',
-      ].includes(sortBy)
-    ) {
+    if (['grossStakingAprPercent', 'carrySpreadAprPercent'].includes(sortBy)) {
       qb.orderBy(`report_metrics."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
     } else {
       qb.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
