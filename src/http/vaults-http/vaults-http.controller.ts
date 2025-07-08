@@ -108,7 +108,7 @@ export class VaultsHttpController {
       throw new BadRequestException('Both "role" and "address" must be provided together.');
     }
 
-    const vaults = await this.vaultDbService.getVaultsWithRoleAndSorting(
+    const { lastReportMeta, vaults } = await this.vaultDbService.getVaultsWithRoleAndSorting(
       limit,
       offset,
       sortBy,
@@ -118,6 +118,7 @@ export class VaultsHttpController {
 
     return {
       nextUpdateAt: this.getNextVaultsHourlyUpdate(),
+      lastReportMeta,
       data: vaults,
     };
   }
