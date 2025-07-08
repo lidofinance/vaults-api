@@ -118,7 +118,7 @@ export class VaultsHttpController {
 
     return {
       nextUpdateAt: this.getNextVaultsHourlyUpdate(),
-      vaults,
+      data: vaults,
     };
   }
 
