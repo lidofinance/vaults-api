@@ -82,7 +82,7 @@ export class VaultDbService {
     });
   }
 
-  async getVaultsWithRoleAndSorting(
+  async getVaultsWithRoleAndSortingAndReportData(
     limit: number,
     offset: number,
     sortBy: SortFields,
