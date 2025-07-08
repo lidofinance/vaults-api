@@ -8,10 +8,10 @@ export enum SortFieldsEnum {
   blockNumber = 'blockNumber',
 
   // vault report metrics
-  grossStakingAPR = 'grossStakingAPR',
+  // grossStakingAPR = 'grossStakingAPR',
   grossStakingAprBps = 'grossStakingAprBps',
   grossStakingAprPercent = 'grossStakingAprPercent',
-  carrySpreadAPR = 'carrySpreadAPR',
+  // carrySpreadAPR = 'carrySpreadAPR',
   carrySpreadAprBps = 'carrySpreadAprBps',
   carrySpreadAprPercent = 'carrySpreadAprPercent',
 }

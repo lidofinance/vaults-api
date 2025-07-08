@@ -20,14 +20,14 @@ const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.nodeOperatorRewards AS "nodeOperatorRewards"',
   'stats.dailyLidoFees AS "dailyLidoFees"',
   'stats.netStakingRewards AS "netStakingRewards"',
-  'stats.grossStakingAPR AS "grossStakingAPR"',
+  // 'stats.grossStakingAPR AS "grossStakingAPR"',
   'stats.grossStakingAprBps AS "grossStakingAprBps"',
   'stats.grossStakingAprPercent AS "grossStakingAprPercent"',
-  'stats.netStakingAPR AS "netStakingAPR"',
+  // 'stats.netStakingAPR AS "netStakingAPR"',
   'stats.netStakingAprBps AS "netStakingAprBps"',
   'stats.netStakingAprPercent AS "netStakingAprPercent"',
   'stats.bottomLine AS "bottomLine"',
-  'stats.carrySpreadAPR AS "carrySpreadAPR"',
+  // 'stats.carrySpreadAPR AS "carrySpreadAPR"',
   'stats.carrySpreadAprBps AS "carrySpreadAprBps"',
   'stats.carrySpreadAprPercent AS "carrySpreadAprPercent"',
   'stats.updatedAt AS "updatedAt"',
@@ -109,10 +109,10 @@ export class VaultDbService {
       updatedAt: Date;
       blockNumber: number;
       isReportFresh: boolean;
-      grossStakingAPR: string | null;
+      // grossStakingAPR: string | null;
       grossStakingAprBps: number | null;
       grossStakingAprPercent: number | null;
-      carrySpreadAPR: string | null;
+      // carrySpreadAPR: string | null;
       carrySpreadAprBps: number | null;
       carrySpreadAprPercent: number | null;
     }>
@@ -163,10 +163,10 @@ export class VaultDbService {
         `state.block_number AS "blockNumber"`,
         `state.is_report_fresh AS "isReportFresh"`,
         // vault report metrics
-        `report_metrics.gross_staking_apr AS "grossStakingAPR"`,
+        // `report_metrics.gross_staking_apr AS "grossStakingAPR"`,
         `report_metrics.gross_staking_apr_bps AS "grossStakingAprBps"`,
         `report_metrics.gross_staking_apr_percent AS "grossStakingAprPercent"`,
-        `report_metrics.carry_spread_apr AS "carrySpreadAPR"`,
+        // `report_metrics.carry_spread_apr AS "carrySpreadAPR"`,
         `report_metrics.carry_spread_apr_bps AS "carrySpreadAprBps"`,
         `report_metrics.carry_spread_apr_percent AS "carrySpreadAprPercent"`,
       ]);
@@ -185,10 +185,10 @@ export class VaultDbService {
     // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
     if (
       [
-        'grossStakingAPR',
+        // 'grossStakingAPR',
         'grossStakingAprBps',
         'grossStakingAprPercent',
-        'carrySpreadAPR',
+        // 'carrySpreadAPR',
         'carrySpreadAprBps',
         'carrySpreadAprPercent',
       ].includes(sortBy)
