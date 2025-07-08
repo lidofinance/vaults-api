@@ -108,6 +108,7 @@ export class VaultDbService {
       nodeOperatorFeeRate: string;
       updatedAt: Date;
       blockNumber: number;
+      isReportFresh: boolean;
       grossStakingAPR: string | null;
       grossStakingAprBps: number | null;
       grossStakingAprPercent: number | null;
@@ -160,6 +161,7 @@ export class VaultDbService {
         `state.node_operator_fee_rate AS "nodeOperatorFeeRate"`,
         `state.updated_at AS "updatedAt"`,
         `state.block_number AS "blockNumber"`,
+        `state.is_report_fresh AS "isReportFresh"`,
         // vault report metrics
         `report_metrics.gross_staking_apr AS "grossStakingAPR"`,
         `report_metrics.gross_staking_apr_bps AS "grossStakingAprBps"`,
