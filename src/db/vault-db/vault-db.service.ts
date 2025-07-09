@@ -1,8 +1,9 @@
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
+import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
 
 import { Direction, DirectionEnum, SortFields } from './enums';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
@@ -20,14 +21,11 @@ const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.nodeOperatorRewards AS "nodeOperatorRewards"',
   'stats.dailyLidoFees AS "dailyLidoFees"',
   'stats.netStakingRewards AS "netStakingRewards"',
-  'stats.grossStakingAPR AS "grossStakingAPR"',
   'stats.grossStakingAprBps AS "grossStakingAprBps"',
   'stats.grossStakingAprPercent AS "grossStakingAprPercent"',
-  'stats.netStakingAPR AS "netStakingAPR"',
   'stats.netStakingAprBps AS "netStakingAprBps"',
   'stats.netStakingAprPercent AS "netStakingAprPercent"',
   'stats.bottomLine AS "bottomLine"',
-  'stats.carrySpreadAPR AS "carrySpreadAPR"',
   'stats.carrySpreadAprBps AS "carrySpreadAprBps"',
   'stats.carrySpreadAprPercent AS "carrySpreadAprPercent"',
   'stats.updatedAt AS "updatedAt"',
@@ -36,6 +34,7 @@ const VAULT_REPORT_STATS_SELECT_FIELDS = [
 @Injectable()
 export class VaultDbService {
   constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
     @InjectRepository(VaultEntity)
     private readonly vaultRepo: Repository<VaultEntity>,
     @InjectRepository(VaultMemberEntity)
@@ -83,15 +82,22 @@ export class VaultDbService {
     });
   }
 
-  async getVaultsWithRoleAndSorting(
+  async getVaultsWithRoleAndSortingAndReportData(
     limit: number,
     offset: number,
     sortBy: SortFields,
     direction: Direction = DirectionEnum.ASC,
     role?: string,
     address?: string,
-  ): Promise<
-    Array<{
+  ): Promise<{
+    lastReportMeta: {
+      cid: string;
+      refSlot: number;
+      blockNumber: number;
+      timestamp: number;
+    } | null;
+    totalVaults: number;
+    vaults: Array<{
       address: string;
       ens: string | null;
       customName: string | null;
@@ -108,99 +114,172 @@ export class VaultDbService {
       nodeOperatorFeeRate: string;
       updatedAt: Date;
       blockNumber: number;
-      grossStakingAPR: string | null;
-      grossStakingAprBps: number | null;
+      isReportFresh: boolean;
+      rebaseReward: string | null;
+      grossStakingRewards: string | null;
+      nodeOperatorRewards: string | null;
+      dailyLidoFees: string | null;
+      netStakingRewards: string | null;
       grossStakingAprPercent: number | null;
-      carrySpreadAPR: string | null;
-      carrySpreadAprBps: number | null;
+      netStakingAprPercent: number | null;
+      bottomLine: string | null;
       carrySpreadAprPercent: number | null;
-    }>
-  > {
-    const qb = this.vaultStateRepo
-      .createQueryBuilder('state')
-      .innerJoin('state.vault', 'vault')
-      .leftJoin(
-        (subQuery) => {
-          return subQuery
-            .select([
-              'DISTINCT ON (stats.vault_id) stats.vault_id',
-              'stats.gross_staking_apr',
-              'stats.gross_staking_apr_bps',
-              'stats.gross_staking_apr_percent',
-              'stats.carry_spread_apr',
-              'stats.carry_spread_apr_bps',
-              'stats.carry_spread_apr_percent',
-            ])
-            .from(VaultReportStatEntity, 'stats')
-            .orderBy('stats.vault_id', 'ASC') // required by 'DISTINCT ON (stats.vault_id) stats.vault_id'
-            .addOrderBy('stats.updated_at', 'DESC'); // get the latest data for each vault_id
-        },
-        'report_metrics',
-        'report_metrics.vault_id = vault.id',
-      )
-      .select([
-        `vault.address AS "address"`,
-        `vault.ens AS "ens"`,
-        `vault.custom_name AS "customName"`,
-        // vault states
-        `state.total_value AS "totalValue"`,
-        `state.liability_steth AS "liabilityStETH"`,
-        `state.liability_shares AS "liabilityShares"`,
-        // Only PostgreSQL!!!
-        `CASE
-          WHEN state.health_factor = 'Infinity' THEN 'Infinity'
-          ELSE state.health_factor::text
-        END AS "healthFactor"`,
-        `state.share_limit AS "shareLimit"`,
-        `state.reserve_ratio_bp AS "reserveRatioBP"`,
-        `state.forced_rebalance_threshold_bp AS "forcedRebalanceThresholdBP"`,
-        `state.infra_fee_bp AS "infraFeeBP"`,
-        `state.liquidity_fee_bp AS "liquidityFeeBP"`,
-        `state.reservation_fee_bp AS "reservationFeeBP"`,
-        `state.node_operator_fee_rate AS "nodeOperatorFeeRate"`,
-        `state.updated_at AS "updatedAt"`,
-        `state.block_number AS "blockNumber"`,
-        // vault report metrics
-        `report_metrics.gross_staking_apr AS "grossStakingAPR"`,
-        `report_metrics.gross_staking_apr_bps AS "grossStakingAprBps"`,
-        `report_metrics.gross_staking_apr_percent AS "grossStakingAprPercent"`,
-        `report_metrics.carry_spread_apr AS "carrySpreadAPR"`,
-        `report_metrics.carry_spread_apr_bps AS "carrySpreadAprBps"`,
-        `report_metrics.carry_spread_apr_percent AS "carrySpreadAprPercent"`,
-      ]);
+      lastReport: {
+        totalValueWei: string;
+        inOutDelta: string;
+        fee: string;
+        liabilityShares: string;
+        slashingReserve: string;
+      } | null;
+    }>;
+  }> {
+    // Use a transaction to ensure both queries see the same database snapshot,
+    // avoiding possible inconsistencies between two separate queries.
+    return this.dataSource.transaction(async (manager) => {
+      const lastReportMeta = await manager
+        .getRepository(ReportEntity)
+        .createQueryBuilder('report')
+        .select([
+          'report.cid AS "cid"',
+          'report.refSlot AS "refSlot"',
+          'report.blockNumber AS "blockNumber"',
+          'report.timestamp AS "timestamp"',
+        ])
+        .orderBy('report.blockNumber', 'DESC')
+        .limit(1)
+        .getRawOne();
 
-    if (role && address) {
-      qb.innerJoin(
-        VaultMemberEntity,
-        'member',
-        `"member"."vault_id" = "vault"."id"
-         AND "member"."role" = :role
-         AND LOWER("member"."address") = LOWER(:address)`,
-        { role, address },
-      );
-    }
+      const vaultsQuery = manager
+        .getRepository(VaultStateEntity)
+        .createQueryBuilder('state')
+        .innerJoin('state.vault', 'vault')
+        // join ReportEntity and ReportLeafEntity
+        .leftJoin(
+          (subQuery) =>
+            subQuery
+              .select([
+                'rl."vault_address"',
+                'rl."total_value_wei"',
+                'rl."in_out_delta"',
+                'rl."fee"',
+                'rl."liability_shares"',
+                'rl."slashing_reserve"',
+                'r."blockNumber"',
+                'r."timestamp"',
+              ])
+              .from(ReportLeafEntity, 'rl')
+              .innerJoin(ReportEntity, 'r', 'r.id = rl."reportId"')
+              .orderBy('r."blockNumber"', 'DESC'),
+          'last_report',
+          'last_report."vault_address" = vault.address',
+        )
+        // join VaultReportStat (Report Metrics)
+        .leftJoin(
+          (subQuery) => {
+            return subQuery
+              .select([
+                'DISTINCT ON (report_stat.vault_id) report_stat.vault_id',
+                'report_stat.rebase_reward',
+                'report_stat.gross_staking_rewards',
+                'report_stat.node_operator_rewards',
+                'report_stat.daily_lido_fees',
+                'report_stat.net_staking_rewards',
+                'report_stat.gross_staking_apr',
+                'report_stat.gross_staking_apr_bps',
+                'report_stat.gross_staking_apr_percent',
+                'report_stat.net_staking_apr',
+                'report_stat.net_staking_apr_bps',
+                'report_stat.net_staking_apr_percent',
+                'report_stat.bottom_line',
+                'report_stat.carry_spread_apr',
+                'report_stat.carry_spread_apr_bps',
+                'report_stat.carry_spread_apr_percent',
+              ])
+              .from(VaultReportStatEntity, 'report_stat')
+              .orderBy('report_stat.vault_id', 'ASC') // required by 'DISTINCT ON (report_stat.vault_id) report_stat.vault_id'
+              .addOrderBy('report_stat.updated_at', 'DESC'); // get the latest data for each vault_id
+          },
+          'report_metrics',
+          'report_metrics.vault_id = vault.id',
+        )
+        .select([
+          `vault.address AS "address"`,
+          `vault.ens AS "ens"`,
+          `vault.custom_name AS "customName"`,
 
-    // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
-    if (
-      [
-        'grossStakingAPR',
-        'grossStakingAprBps',
-        'grossStakingAprPercent',
-        'carrySpreadAPR',
-        'carrySpreadAprBps',
-        'carrySpreadAprPercent',
-      ].includes(sortBy)
-    ) {
-      qb.orderBy(`report_metrics."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
-    } else {
-      qb.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
-    }
+          // vault states
+          `state.total_value AS "totalValue"`,
+          `state.liability_steth AS "liabilityStETH"`,
+          `state.liability_shares AS "liabilityShares"`,
+          // `CASE` is PostgreSQL-specific!!!
+          `CASE
+            WHEN state.health_factor = 'Infinity' THEN 'Infinity'
+            ELSE state.health_factor::text
+          END AS "healthFactor"`,
+          `state.share_limit AS "shareLimit"`,
+          `state.reserve_ratio_bp AS "reserveRatioBP"`,
+          `state.forced_rebalance_threshold_bp AS "forcedRebalanceThresholdBP"`,
+          `state.infra_fee_bp AS "infraFeeBP"`,
+          `state.liquidity_fee_bp AS "liquidityFeeBP"`,
+          `state.reservation_fee_bp AS "reservationFeeBP"`,
+          `state.node_operator_fee_rate AS "nodeOperatorFeeRate"`,
+          `state.updated_at AS "updatedAt"`,
+          `state.block_number AS "blockNumber"`,
+          `state.is_report_fresh AS "isReportFresh"`,
 
-    qb.limit(limit).offset(offset);
+          // vault report metrics
+          `report_metrics.rebase_reward AS "rebaseReward"`,
+          `report_metrics.gross_staking_rewards AS "grossStakingRewards"`,
+          `report_metrics.node_operator_rewards AS "nodeOperatorRewards"`,
+          `report_metrics.daily_lido_fees AS "dailyLidoFees"`,
+          `report_metrics.net_staking_rewards AS "netStakingRewards"`,
+          `report_metrics.gross_staking_apr_percent AS "grossStakingAprPercent"`,
+          `report_metrics.net_staking_apr_percent AS "netStakingAprPercent"`,
+          `report_metrics.bottom_line AS "bottomLine"`,
+          `report_metrics.carry_spread_apr_percent AS "carrySpreadAprPercent"`,
 
-    const rawResult = await qb.getRawMany();
+          // last report
+          // `jsonb_build_object` is PostgreSQL-specific!!!
+          // Use '::text' to ensure fields like 'totalValueWei' and others, which are BIGINT or stored as NUMERIC,
+          // are returned as strings, preventing precision loss in JavaScript due to IEEE 754 limitations.
+          `jsonb_build_object(
+            'totalValueWei', last_report.total_value_wei::text,
+            'inOutDelta', last_report.in_out_delta::text,
+            'fee', last_report.fee::text,
+            'liabilityShares', last_report.liability_shares::text,
+            'slashingReserve', last_report.slashing_reserve::text
+          ) AS "lastReport"`,
+        ]);
 
-    return rawResult;
+      if (role && address) {
+        vaultsQuery.innerJoin(
+          VaultMemberEntity,
+          'member',
+          `"member"."vault_id" = "vault"."id"
+           AND "member"."role" = :role
+           AND LOWER("member"."address") = LOWER(:address)`,
+          { role, address },
+        );
+      }
+
+      // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
+      if (['grossStakingAprPercent', 'carrySpreadAprPercent'].includes(sortBy)) {
+        vaultsQuery.orderBy(`report_metrics."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
+      } else {
+        vaultsQuery.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
+      }
+
+      const totalVaults = await vaultsQuery.getCount();
+
+      vaultsQuery.limit(limit).offset(offset);
+      const vaults = await vaultsQuery.getRawMany();
+
+      return {
+        lastReportMeta,
+        totalVaults,
+        vaults,
+      };
+    });
   }
 
   async getLatestVaultReportStats(vaultAddress: string) {

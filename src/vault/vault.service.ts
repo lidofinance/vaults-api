@@ -105,6 +105,7 @@ export class VaultService {
             liquidityFeeBP: item.liquidityFeeBP,
             reservationFeeBP: item.reservationFeeBP,
             nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
+            isReportFresh: item.isReportFresh,
             updatedAt: new Date(),
             blockNumber,
           });
