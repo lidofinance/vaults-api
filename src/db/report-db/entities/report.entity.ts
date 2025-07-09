@@ -11,7 +11,7 @@ export class ReportEntity {
   cid: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 66 })
+  @Column({ type: 'varchar', length: 66, nullable: true })
   merkleTreeRoot: string;
 
   @Column({ type: 'int' })
