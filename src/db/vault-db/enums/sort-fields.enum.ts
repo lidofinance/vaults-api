@@ -10,6 +10,7 @@ export enum SortFieldsEnum {
   // vault report metrics
   grossStakingAprPercent = 'grossStakingAprPercent',
   carrySpreadAprPercent = 'carrySpreadAprPercent',
+  netStakingAprPercent = 'netStakingAprPercent',
 }
 
 export type SortFields = SortFieldsEnum;
