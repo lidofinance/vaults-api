@@ -6,6 +6,7 @@ export const vaultsExample = {
     "blockNumber": 713892,
     "timestamp": 1751357964
   },
+  "total": 52,
   "data": [
     {
       "address": "0x7228FC874C1D08cAE68a558d7B650fc4862B1DB7",

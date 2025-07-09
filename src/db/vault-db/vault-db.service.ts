@@ -96,6 +96,7 @@ export class VaultDbService {
       blockNumber: number;
       timestamp: number;
     } | null;
+    totalVaults: number;
     vaults: Array<{
       address: string;
       ens: string | null;
@@ -268,12 +269,14 @@ export class VaultDbService {
         vaultsQuery.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
       }
 
-      vaultsQuery.limit(limit).offset(offset);
+      const totalVaults = await vaultsQuery.getCount();
 
+      vaultsQuery.limit(limit).offset(offset);
       const vaults = await vaultsQuery.getRawMany();
 
       return {
         lastReportMeta,
+        totalVaults,
         vaults,
       };
     });
