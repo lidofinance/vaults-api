@@ -272,7 +272,7 @@ export class VaultDbService {
 
       const totalVaults = await vaultsQuery.getCount();
 
-      // vaultsQuery.limit(limit).offset(offset);
+      vaultsQuery.limit(limit).offset(offset);
       const vaults = await vaultsQuery.getRawMany();
 
       return {
