@@ -125,12 +125,12 @@ export class VaultDbService {
       bottomLine: string | null;
       carrySpreadAprPercent: number | null;
       lastReport: {
-        totalValueWei: string;
-        inOutDelta: string;
-        fee: string;
-        liabilityShares: string;
-        slashingReserve: string;
-      } | null;
+        totalValueWei: string | null;
+        inOutDelta: string | null;
+        fee: string | null;
+        liabilityShares: string | null;
+        slashingReserve: string | null;
+      };
     }>;
   }> {
     // Use a transaction to ensure both queries see the same database snapshot,
@@ -158,7 +158,7 @@ export class VaultDbService {
           (subQuery) =>
             subQuery
               .select([
-                'rl."vault_address"',
+                'DISTINCT ON (rl."vault_address") rl."vault_address"',
                 'rl."total_value_wei"',
                 'rl."in_out_delta"',
                 'rl."fee"',
@@ -169,7 +169,8 @@ export class VaultDbService {
               ])
               .from(ReportLeafEntity, 'rl')
               .innerJoin(ReportEntity, 'r', 'r.id = rl."reportId"')
-              .orderBy('r."blockNumber"', 'DESC'),
+              .orderBy('rl."vault_address"', 'ASC') // required by 'DISTINCT ON (rl."vault_address") rl."vault_address"'
+              .addOrderBy('r."blockNumber"', 'DESC'), // get the latest data
           'last_report',
           'last_report."vault_address" = vault.address',
         )
@@ -271,7 +272,7 @@ export class VaultDbService {
 
       const totalVaults = await vaultsQuery.getCount();
 
-      vaultsQuery.limit(limit).offset(offset);
+      // vaultsQuery.limit(limit).offset(offset);
       const vaults = await vaultsQuery.getRawMany();
 
       return {
