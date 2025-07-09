@@ -5,7 +5,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
 
-import { Direction, DirectionEnum, SortFields } from './enums';
+import { Direction, DirectionEnum, SortFields, SortFieldsEnum } from './enums';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
 import { toSnakeCaseColumn } from './utils';
 
@@ -264,7 +264,13 @@ export class VaultDbService {
       }
 
       // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
-      if (['grossStakingAprPercent', 'carrySpreadAprPercent'].includes(sortBy)) {
+      if (
+        [
+          SortFieldsEnum.grossStakingAprPercent,
+          SortFieldsEnum.carrySpreadAprPercent,
+          SortFieldsEnum.netStakingAprPercent,
+        ].includes(sortBy)
+      ) {
         vaultsQuery.orderBy(`report_metrics."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
       } else {
         vaultsQuery.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
