@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+import { CacheTTL } from '@nestjs/cache-manager';
 
 import { ConfigService } from 'common/config';
 import { VaultDbService, SortFieldsEnum, DirectionEnum } from 'db/vault-db';
@@ -40,6 +41,7 @@ export class VaultsHttpController {
 
   @Version('1')
   @Get('')
+  @CacheTTL(120 * 1000)
   @ApiQuery({
     name: 'limit',
     required: false,
