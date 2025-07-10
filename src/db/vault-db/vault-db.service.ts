@@ -87,8 +87,8 @@ export class VaultDbService {
     offset: number,
     sortBy: SortFields,
     direction: Direction = DirectionEnum.ASC,
-    role?: string,
     address?: string,
+    role?: string,
   ): Promise<{
     lastReportMeta: {
       cid: string;
@@ -204,7 +204,7 @@ export class VaultDbService {
           'report_metrics.vault_id = vault.id',
         )
         .select([
-          `vault.address AS "address"`,
+          `DISTINCT ON (vault.id) vault.address AS "address"`,
           `vault.ens AS "ens"`,
           `vault.custom_name AS "customName"`,
 
@@ -250,16 +250,26 @@ export class VaultDbService {
             'liabilityShares', last_report.liability_shares::text,
             'slashingReserve', last_report.slashing_reserve::text
           ) AS "lastReport"`,
-        ]);
+        ])
+        // required by `DISTINCT ON (vault.id) vault.address AS "address"`
+        .orderBy('vault.id', 'ASC');
 
       if (role && address) {
         vaultsQuery.innerJoin(
           VaultMemberEntity,
           'member',
           `"member"."vault_id" = "vault"."id"
-           AND "member"."role" = :role
-           AND LOWER("member"."address") = LOWER(:address)`,
+          AND "member"."role" = :role
+          AND LOWER("member"."address") = LOWER(:address)`,
           { role, address },
+        );
+      } else if (address) {
+        vaultsQuery.innerJoin(
+          VaultMemberEntity,
+          'member',
+          `"member"."vault_id" = "vault"."id"
+          AND LOWER("member"."address") = LOWER(:address)`,
+          { address },
         );
       }
 
@@ -271,9 +281,9 @@ export class VaultDbService {
           SortFieldsEnum.netStakingAprPercent,
         ].includes(sortBy)
       ) {
-        vaultsQuery.orderBy(`report_metrics."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
+        vaultsQuery.addOrderBy(`report_metrics."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
       } else {
-        vaultsQuery.orderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
+        vaultsQuery.addOrderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
       }
 
       const totalVaults = await vaultsQuery.getCount();

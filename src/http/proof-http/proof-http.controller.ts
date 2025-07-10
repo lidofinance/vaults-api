@@ -2,6 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { Controller, Get, Param, Version, ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BadRequestException } from '@nestjs/common';
+import { CacheTTL } from '@nestjs/cache-manager';
 
 import { LsvService, VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR } from 'lsv/lsv.service';
 import { ProofDto } from './dto';
@@ -14,6 +15,7 @@ export class ProofHttpController {
 
   @Version('1')
   @Get('/make/:validatorIndex')
+  @CacheTTL(120 * 1000)
   @ApiOperation({
     summary: 'Make proof for a validator',
     description:

@@ -2,6 +2,7 @@ import { Controller, Get, Param, Version, HttpStatus } from '@nestjs/common';
 import { Inject, LoggerService } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BadRequestException } from '@nestjs/common';
+import { CacheTTL } from '@nestjs/cache-manager';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
@@ -24,6 +25,7 @@ export class ReportsHttpController {
 
   @Version('1')
   @Get('/last/:vaultAddress')
+  @CacheTTL(120 * 1000)
   @ApiResponse({
     status: 200,
     description: 'Last report data for a vault',
@@ -64,6 +66,7 @@ export class ReportsHttpController {
 
   @Version('1')
   @Get('/previous/:vaultAddress')
+  @CacheTTL(120 * 1000)
   @ApiResponse({
     status: 200,
     description: 'Previous report data for a vault',
