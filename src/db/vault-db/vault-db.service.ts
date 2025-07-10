@@ -149,7 +149,7 @@ export class VaultDbService {
         .limit(1)
         .getRawOne();
 
-      const vaultsQuery = manager
+      const vaultsSubQuery = manager
         .getRepository(VaultStateEntity)
         .createQueryBuilder('state')
         .innerJoin('state.vault', 'vault')
@@ -255,7 +255,7 @@ export class VaultDbService {
         .orderBy('vault.id', 'ASC');
 
       if (role && address) {
-        vaultsQuery.innerJoin(
+        vaultsSubQuery.innerJoin(
           VaultMemberEntity,
           'member',
           `"member"."vault_id" = "vault"."id"
@@ -264,7 +264,7 @@ export class VaultDbService {
           { role, address },
         );
       } else if (address) {
-        vaultsQuery.innerJoin(
+        vaultsSubQuery.innerJoin(
           VaultMemberEntity,
           'member',
           `"member"."vault_id" = "vault"."id"
@@ -273,22 +273,21 @@ export class VaultDbService {
         );
       }
 
-      // Sort by field: The field in the database is named in snake_case, in TypeScript it is camelCase
-      if (
-        [
-          SortFieldsEnum.grossStakingAprPercent,
-          SortFieldsEnum.carrySpreadAprPercent,
-          SortFieldsEnum.netStakingAprPercent,
-        ].includes(sortBy)
-      ) {
-        vaultsQuery.addOrderBy(`report_metrics."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
-      } else {
-        vaultsQuery.addOrderBy(`state."${toSnakeCaseColumn(sortBy, camelToSnakeExceptions)}"`, direction);
-      }
+      const countQuery = manager
+        .createQueryBuilder()
+        .select('COUNT(*)', 'total')
+        .from(`(${vaultsSubQuery.getQuery()})`, 'vaults_sorted')
+        .setParameters(vaultsSubQuery.getParameters());
+      const totalVaults = parseInt((await countQuery.getRawOne()).total, 10);
 
-      const totalVaults = await vaultsQuery.getCount();
-
-      vaultsQuery.limit(limit).offset(offset);
+      const vaultsQuery = manager
+        .createQueryBuilder()
+        .select('*')
+        .from(`(${vaultsSubQuery.getQuery()})`, 'vaults_sorted')
+        .orderBy(`vaults_sorted."${sortBy}"`, direction)
+        .limit(limit)
+        .offset(offset)
+        .setParameters(vaultsSubQuery.getParameters());
       const vaults = await vaultsQuery.getRawMany();
 
       return {
