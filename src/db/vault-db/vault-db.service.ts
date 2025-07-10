@@ -284,7 +284,8 @@ export class VaultDbService {
         .createQueryBuilder()
         .select('*')
         .from(`(${vaultsSubQuery.getQuery()})`, 'vaults_sorted')
-        .orderBy(`vaults_sorted."${sortBy}"`, direction)
+        // Use 'NULLS LAST' to ensure records with NULL in the sort field always appear at the bottom (regardless of ASC or DESC)
+        .orderBy(`vaults_sorted."${sortBy}"`, direction, 'NULLS LAST')
         .limit(limit)
         .offset(offset)
         .setParameters(vaultsSubQuery.getParameters());
