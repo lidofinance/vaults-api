@@ -90,7 +90,7 @@ export class VaultsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Both "role" and "address" must be provided together.',
+    description: 'The "address" must be provided when "role" is specified.',
     type: ErrorResponseType,
   })
   async getVaultsByRoleAndAddress(
@@ -99,21 +99,23 @@ export class VaultsHttpController {
     @Query('sortBy', new DefaultValuePipe(defaultSortBy), new ParseEnumPipe(SortFieldsEnum)) sortBy: SortFieldsEnum,
     @Query('direction', new DefaultValuePipe(defaultDirection), new ParseEnumPipe(DirectionEnum))
     direction: DirectionEnum,
-    @Query('role') role: string,
     @Query('address') address: string,
+    @Query('role') role: string,
   ) {
     const hasRole = !!role;
     const hasAddress = !!address;
-    if ((hasRole && !hasAddress) || (!hasRole && hasAddress)) {
-      throw new BadRequestException('Both "role" and "address" must be provided together.');
+    if (hasRole && !hasAddress) {
+      throw new BadRequestException('"address" must be provided when "role" is specified.');
     }
+
+    const additionalParams = hasAddress && hasRole ? [address, role] : hasAddress ? [address] : [];
 
     const { lastReportMeta, totalVaults, vaults } = await this.vaultDbService.getVaultsWithRoleAndSortingAndReportData(
       limit,
       offset,
       sortBy,
       direction,
-      ...(hasRole && hasAddress ? [role, address] : [])
+      ...additionalParams,
     );
 
     return {
