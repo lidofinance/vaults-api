@@ -280,6 +280,8 @@ export class VaultDbService {
         .setParameters(vaultsSubQuery.getParameters());
       const totalVaults = parseInt((await countQuery.getRawOne()).total, 10);
 
+      // Perform pagination and sorting on the final result set itself,
+      // not on the selection of rows within DISTINCT ON (vault.id) groups.
       const vaultsQuery = manager
         .createQueryBuilder()
         .select('*')
