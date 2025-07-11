@@ -10,7 +10,7 @@ import { ErrorResponseType } from 'http/common/dto/error-response-type';
 import { ConfigService } from 'common/config';
 import { LsvService } from 'lsv';
 
-import { ReportParamsDto } from './dto';
+import { ReportByVaultParamsDto, ReportByCidAndVaultParamsDto } from './dto';
 import { reportByVaultExample } from './example';
 
 @Controller('report')
@@ -22,6 +22,56 @@ export class ReportsHttpController {
     private readonly lsvService: LsvService,
     private readonly lazyOracleContractService: LazyOracleContractService,
   ) {}
+
+  @Version('1')
+  @Get('/:cid/:vaultAddress')
+  @CacheTTL(120 * 1000)
+  @ApiResponse({
+    status: 200,
+    description: 'Report data by CID for a vaultAddress',
+    schema: {
+      example: reportByVaultExample,
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'cid must match /^[Qm][1-9A-HJ-NP-Za-km-z]{44,}$/ regular expression',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'vaultAddress must be an Ethereum address',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Vault by address not exist or failed to verify report!',
+    type: ErrorResponseType,
+  })
+  async getReportByCidAndVault(@Param() params: ReportByCidAndVaultParamsDto) {
+    const cid = params.cid;
+    const vault = params.vaultAddress;
+
+    try {
+      // TODO: disable logger inside fetchAndVerifyFile
+      await this.lsvService.fetchAndVerifyFile(cid);
+    } catch (error) {
+      this.logger.error(`Failed to verify report CID ${cid}: ${error.message}`);
+      throw new BadRequestException(`Failed to verify report!`);
+    }
+
+    try {
+      // vault report and proof
+      return await this.lsvService.getReportProofByVault({
+        vault,
+        cid,
+        gateway: this.configService.get('IPFS_GATEWAY'),
+      });
+    } catch (error) {
+      this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
+      throw new BadRequestException(`Vault by address not exist or failed to verify report!`);
+    }
+  }
 
   @Version('1')
   @Get('/last/:vaultAddress')
@@ -38,7 +88,7 @@ export class ReportsHttpController {
     description: 'Vault by address not exist or failed to verify report!',
     type: ErrorResponseType,
   })
-  async getLast(@Param() params: ReportParamsDto) {
+  async getLast(@Param() params: ReportByVaultParamsDto) {
     const vault = params.vaultAddress;
 
     const latestReportData = await this.lazyOracleContractService.getLatestReportData();
@@ -79,7 +129,7 @@ export class ReportsHttpController {
     description: 'Vault by address not exist or failed to verify report or previous report CID not found!',
     type: ErrorResponseType,
   })
-  async getPrevious(@Param() params: ReportParamsDto) {
+  async getPrevious(@Param() params: ReportByVaultParamsDto) {
     const vault = params.vaultAddress;
 
     const latestReportData = await this.lazyOracleContractService.getLatestReportData();
