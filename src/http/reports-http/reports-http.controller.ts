@@ -78,7 +78,7 @@ export class ReportsHttpController {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
 
       if (error.message?.toLowerCase().includes(`vault ${vault.toLowerCase()} not found in report`)) {
-        return null;
+        return null; // 200 ok
       }
 
       throw new BadRequestException(`Report by CID not exist!`);
