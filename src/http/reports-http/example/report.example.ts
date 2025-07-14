@@ -1,26 +1,31 @@
 export const reportByVaultExample = {
-  data: {
-    vaultAddress: '0x7228FC874C1D08cAE68a558d7B650fc4862B1DB7',
-    fee: '1006463116217346',
-    totalValueWei: '65052082926226272543',
-    liabilityShares: '3000000000000000000',
-    slashingReserve: '0',
+  "report": {
+    "data": {
+      "vaultAddress": "0x7228FC874C1D08cAE68a558d7B650fc4862B1DB7",
+      "fee": "1868148475611871",
+      "totalValueWei": "65074908875411226337",
+      "liabilityShares": "3000000000000000000",
+      "slashingReserve": "0"
+    },
+    "extraData": {
+      "inOutDelta": "65017862714411226337",
+      "prevFee": "1862759141466063",
+      "infraFee": "4502784066449",
+      "liquidityFee": "166182898960",
+      "reservationFee": "720367180399"
+    },
+    "leaf": "0x8ed3c7e8a5d803226c528278587eb7947b5e2804911b2e98ffc7a53f81f47a7d",
+    "refSlot": 820031,
+    "blockNumber": 768316,
+    "timestamp": 1752053772,
+    "prevTreeCID": "QmZAKxMDCgaKsf1Zvu7gRqdCHZt1b2VQUcteKbMQJF9PPP",
+    "proof": [
+      "0x98fd71445518033e3203f5bfcef94726efc43e17acd6b12e97ce0725a4c0d2d0",
+      "0x93289ba5438be36c3eec23f5bea6ece0ad8c67e47a391eace2e2ac7c1997856a",
+      "0x1206299503c2cddf36631124c1a6a7f32d28a12e69d06076e7546fc77c375731",
+      "0x9c3795aa9e6aa81974b8c854a8f709a737bf15daeaee5b92fe7a7426630725ba",
+      "0x7d603aa910426f04b807314eed6b2af8a0a8033963ba5bbded03b753b5dde323",
+      "0x1fc05eab8c26a5be59215aac69c99986aac8e80903035da0ff4b16d0f0abc9ba"
+    ]
   },
-  extraData: {
-    inOutDelta: '65019709677226272543',
-  },
-  leaf: '0x3061aaeafa8f0a4169795ebc6d514f4ee4f53cf2e9e241b3e798d34fce655b23',
-  refSlot: 770495,
-  blockNumber: 721873,
-  timestamp: 1751459340,
-  merkleTreeRoot: '0x984a2755def9db8fd6a76eafd130e7c35e29d99760a6b90e448b0bbd04f9bf50',
-  prevTreeCID: 'Qmb7e7mUEpKF2iN7LAZtoKYdc8EVx2Z9Ro1Rg7kioPkWsT',
-  proof: [
-    '0x2ad17cfe0638e5157e78265605c929a990a28ca8ad049ed061f03d0a2db80dcc',
-    '0x30f0d37584a3c04fc7b56931a595c10dd040ef87f5c2329385c1932a036ff03c',
-    '0xd6570101eaa36459c23caf6cce405f2f48a25a5f93924c61e89803c3842f5d02',
-    '0x3583ff2aa105067b49a2dbf9bfaf7998d7c284961a2aa10caf730caf046e8d57',
-    '0x0f75652b45420a3940b56c0d0f677c3b741491dba50343d42fa200618b82b137',
-    '0x4e8a9c8ed2cf939f4965e7d00930ea6a136a599244add9ab4f815cb173cbc40a',
-  ],
 };

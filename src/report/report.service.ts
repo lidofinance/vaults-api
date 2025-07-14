@@ -168,10 +168,9 @@ export class ReportService {
         netStakingAprBps: metrics.netStakingAPR.apr_bps,
         netStakingAprPercent: metrics.netStakingAPR.apr_percent,
         bottomLine: metrics.bottomLine.toString(),
-        // 'efficiency' is the old name for the field 'carrySpread'
-        carrySpreadAPR: metrics.efficiency.apr.toString(),
-        carrySpreadAprBps: metrics.efficiency.apr_bps,
-        carrySpreadAprPercent: metrics.efficiency.apr_percent,
+        carrySpreadAPR: metrics.carrySpread.apr.toString(),
+        carrySpreadAprBps: metrics.carrySpread.apr_bps,
+        carrySpreadAprPercent: metrics.carrySpread.apr_percent,
         updatedAt: new Date(),
       });
 
