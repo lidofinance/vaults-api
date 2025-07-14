@@ -34,6 +34,13 @@ export class ReportsHttpController {
     },
   })
   @ApiResponse({
+    status: 200,
+    description: 'Report found by CID, but the vault address is not present in it.',
+    schema: {
+      example: null,
+    },
+  })
+  @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: 'cid must match /^[Qm][1-9A-HJ-NP-Za-km-z]{44,}$/ regular expression',
     type: ErrorResponseType,
@@ -45,7 +52,7 @@ export class ReportsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Vault by address not exist or failed to verify report!',
+    description: 'Report by CID not exist or failed to verify report!',
     type: ErrorResponseType,
   })
   async getReportByCidAndVault(@Param() params: ReportByCidAndVaultParamsDto) {
@@ -69,7 +76,12 @@ export class ReportsHttpController {
       });
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
-      throw new BadRequestException(`Vault by address not exist or failed to verify report!`);
+
+      if (error.message?.toLowerCase().includes(`vault ${vault.toLowerCase()} not found in report`)) {
+        return null;
+      }
+
+      throw new BadRequestException(`Report by CID not exist!`);
     }
   }
 
