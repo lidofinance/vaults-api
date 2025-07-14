@@ -69,18 +69,14 @@ export class ReportsHttpController {
 
     try {
       // vault report and proof
-      return await this.lsvService.getReportProofByVault({
+      const report = await this.lsvService.getReportProofByVault({
         vault,
         cid,
         gateway: this.configService.get('IPFS_GATEWAY'),
       });
+      return { report };
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
-
-      if (error.message?.toLowerCase().includes(`vault ${vault.toLowerCase()} not found in report`)) {
-        return null; // 200 ok
-      }
-
       throw new BadRequestException(`Report by CID not exist!`);
     }
   }
@@ -115,11 +111,12 @@ export class ReportsHttpController {
 
     try {
       // vault report and proof
-      return await this.lsvService.getReportProofByVault({
+      const report = await this.lsvService.getReportProofByVault({
         vault,
         cid: latestReportData.reportCid,
         gateway: this.configService.get('IPFS_GATEWAY'),
       });
+      return { report };
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
       throw new BadRequestException(`Vault by address not exist or failed to verify report!`);
@@ -164,11 +161,12 @@ export class ReportsHttpController {
 
     try {
       // vault prev report and proof
-      return await this.lsvService.getReportProofByVault({
+      const report = await this.lsvService.getReportProofByVault({
         vault,
         cid: latestVaultReport.prevTreeCID,
         gateway: this.configService.get('IPFS_GATEWAY'),
       });
+      return { report };
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
       throw new BadRequestException(`Vault by address not exist or failed to verify report!`);

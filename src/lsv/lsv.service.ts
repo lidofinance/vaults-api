@@ -47,8 +47,17 @@ export class LsvService {
     return getVaultReportProofByCid(args, false);
   }
 
-  public async getReportProofByVault(args: VaultReportArgs): Promise<VaultReportCliType & { proof: Hex[] }> {
-    return getReportProofByVault(args);
+  public async getReportProofByVault(args: VaultReportArgs): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
+    try {
+      return await getReportProofByVault(args);
+    } catch (error) {
+      // This is the behavior of the CLI
+      if (error.message?.toLowerCase().includes(`vault ${args.vault.toLowerCase()} not found in report`)) {
+        return null;
+      }
+
+      throw error;
+    }
   }
 
   public async fetchAndVerifyFile(reportCid: string): Promise<Uint8Array> {
