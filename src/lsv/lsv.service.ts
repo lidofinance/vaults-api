@@ -3,12 +3,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof';
 import { type VaultReport as VaultReportCliType, type VaultReportArgs } from '@lidofinance/lsv-cli/dist/utils/report';
-import {
-  getVaultReport,
-  getVaultReportProofByCid,
-  getReportProofByVault,
-} from '@lidofinance/lsv-cli/dist/utils/report';
-import { fetchAndVerifyFile } from '@lidofinance/lsv-cli/dist/utils/ipfs';
+import { getVaultReport, getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report';
 import { calculateRebaseReward } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
 import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 import { reportMetrics } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
@@ -43,13 +38,9 @@ export class LsvService {
     return await getVaultReport(args, false);
   }
 
-  public async getVaultReportProofByCid(args: VaultReportArgs): Promise<ReturnType<typeof getVaultReportProofByCid>> {
-    return getVaultReportProofByCid(args, false);
-  }
-
   public async getReportProofByVault(args: VaultReportArgs): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
     try {
-      return await getReportProofByVault(args);
+      return await getReportProofByVault(args, false);
     } catch (error) {
       // This is the behavior of the CLI
       if (error.message?.toLowerCase().includes(`vault ${args.vault.toLowerCase()} not found in report`)) {
@@ -58,10 +49,6 @@ export class LsvService {
 
       throw error;
     }
-  }
-
-  public async fetchAndVerifyFile(reportCid: string): Promise<Uint8Array> {
-    return await fetchAndVerifyFile(reportCid, this.configService.get('IPFS_GATEWAY'));
   }
 
   public async calculateHealth(
@@ -123,10 +110,7 @@ export class LsvService {
       refSlot: report.refSlot,
       blockNumber: report.blockNumber,
       timestamp: report.timestamp,
-      // TODO
-      proofsCID: '',
       prevTreeCID: report.prevTreeCID,
-      merkleTreeRoot: report.merkleTreeRoot,
     };
   }
 }

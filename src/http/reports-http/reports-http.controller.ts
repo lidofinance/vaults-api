@@ -60,14 +60,6 @@ export class ReportsHttpController {
     const vault = params.vaultAddress;
 
     try {
-      // TODO: disable logger inside fetchAndVerifyFile
-      await this.lsvService.fetchAndVerifyFile(cid);
-    } catch (error) {
-      this.logger.error(`Failed to verify report CID ${cid}: ${error.message}`);
-      throw new BadRequestException(`Failed to verify report!`);
-    }
-
-    try {
       // vault report and proof
       const report = await this.lsvService.getReportProofByVault({
         vault,
@@ -100,14 +92,6 @@ export class ReportsHttpController {
     const vault = params.vaultAddress;
 
     const latestReportData = await this.lazyOracleContractService.getLatestReportData();
-
-    try {
-      // TODO: disable logger inside fetchAndVerifyFile
-      await this.lsvService.fetchAndVerifyFile(latestReportData.reportCid);
-    } catch (error) {
-      this.logger.error(`Failed to verify report CID ${latestReportData.reportCid}: ${error.message}`);
-      throw new BadRequestException(`Failed to verify report!`);
-    }
 
     try {
       // vault report and proof
