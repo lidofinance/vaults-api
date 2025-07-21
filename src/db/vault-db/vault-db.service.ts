@@ -212,11 +212,7 @@ export class VaultDbService {
           `state.total_value AS "totalValue"`,
           `state.liability_steth AS "liabilityStETH"`,
           `state.liability_shares AS "liabilityShares"`,
-          // `CASE` is PostgreSQL-specific!!!
-          `CASE
-            WHEN state.health_factor = 'Infinity' THEN 'Infinity'
-            ELSE state.health_factor::text
-          END AS "healthFactor"`,
+          `state.health_factor AS "healthFactor"`,
           `state.share_limit AS "shareLimit"`,
           `state.reserve_ratio_bp AS "reserveRatioBP"`,
           `state.forced_rebalance_threshold_bp AS "forcedRebalanceThresholdBP"`,
@@ -282,7 +278,7 @@ export class VaultDbService {
 
       // Perform pagination and sorting on the final result set itself,
       // not on the selection of rows within DISTINCT ON (vault.id) groups.
-      const vaultsQuery = manager
+      let vaultsQuery = manager
         .createQueryBuilder()
         .select('*')
         .from(`(${vaultsSubQuery.getQuery()})`, 'vaults_sorted')
@@ -291,6 +287,21 @@ export class VaultDbService {
         .limit(limit)
         .offset(offset)
         .setParameters(vaultsSubQuery.getParameters());
+
+      // Format healthFactor after sorting is already applied
+      vaultsQuery = manager
+        .createQueryBuilder()
+        .select([
+          '*',
+          // `CASE` is PostgreSQL-specific!!!
+          `CASE
+            WHEN "healthFactor" = 'Infinity' THEN 'Infinity'
+            ELSE "healthFactor"::text
+          END AS "healthFactor"`,
+        ])
+        .from(`(${vaultsQuery.getQuery()})`, 'vaults_formatted')
+        .setParameters(vaultsQuery.getParameters());
+
       const vaults = await vaultsQuery.getRawMany();
 
       return {
