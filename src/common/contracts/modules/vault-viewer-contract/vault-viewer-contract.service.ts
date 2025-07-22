@@ -20,6 +20,7 @@ export type VaultData = {
   reservationFeeBP: number;
   nodeOperatorFeeRate: bigint;
   isOwnerDashboard: boolean;
+  isReportFresh: boolean;
 };
 
 export type RoleMembers = Record<string, string[]>;
@@ -104,6 +105,7 @@ export class VaultViewerContractService {
       reservationFeeBP: vaultData.connection.reservationFeeBP,
       nodeOperatorFeeRate: vaultData.nodeOperatorFeeRate.toBigInt(),
       isOwnerDashboard: vaultData.isOwnerDashboard,
+      isReportFresh: vaultData.isReportFresh,
     };
   }
 
