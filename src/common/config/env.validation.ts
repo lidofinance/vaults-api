@@ -69,7 +69,7 @@ export class EnvironmentVariables {
 
   @IsArray()
   @ArrayMinSize(1)
-  @Transform(({ value }) => value.split(','))
+  @Transform(ensureTrailingSlashUrls)
   EL_RPC_URLS: string[] = null;
 
   @IsNumber()
@@ -78,7 +78,7 @@ export class EnvironmentVariables {
 
   @IsArray()
   @ArrayMinSize(1)
-  @Transform(({ value }) => value.split(','))
+  @Transform(ensureTrailingSlashUrls)
   IPFS_GATEWAYS: string[] = null;
 }
 
