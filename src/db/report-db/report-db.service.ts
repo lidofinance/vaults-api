@@ -35,7 +35,6 @@ export class ReportDbService {
 
     const report = this.reportRepo.create({
       cid,
-      merkleTreeRoot: '', // TODO: remove from DB
       refSlot: reportData.refSlot,
       // Safe: blockNumber is within Number.MAX_SAFE_INTEGER
       blockNumber: Number(reportData.blockNumber),
