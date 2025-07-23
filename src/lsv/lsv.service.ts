@@ -1,22 +1,27 @@
 import { Hex } from 'viem';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
+import { iterateUrls } from '@lidofinance/rpc';
 import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof';
 import { type VaultReport as VaultReportCliType, type VaultReportArgs } from '@lidofinance/lsv-cli/dist/utils/report';
 import { getVaultReport, getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report';
-import { fetchIPFS, type ReportFetchArgs, type Report } from '@lidofinance/lsv-cli/dist/utils';
+import { fetchIPFS as fetchIPFSCli, type Report } from '@lidofinance/lsv-cli/dist/utils';
 import { calculateRebaseReward, type CalculateRebaseRewardArgs } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
 import { calculateHealth, type CalculateHealthArgs } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
 
 import { ReportEntity, ReportLeafEntity } from 'db/report-db';
 import { ConfigService } from 'common/config';
+import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 
 export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR';
 
 @Injectable()
 export class LsvService {
-  constructor(protected readonly configService: ConfigService) {}
+  constructor(
+    protected readonly configService: ConfigService,
+    @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
+  ) {}
 
   public async createProof(
     validatorIndex: number,
@@ -35,9 +40,27 @@ export class LsvService {
     }
   }
 
-  public async fetchIPFS(args: ReportFetchArgs): Promise<Report> {
-    // TODO: fallback IPFS gateways
-    return await fetchIPFS(args, false);
+  private async _fetchIPFS(cid: string, gateway: string): Promise<Report> {
+    try {
+      return await fetchIPFSCli(
+        {
+          cid,
+          gateway,
+          bigNumberType: 'string',
+        },
+        false,
+      );
+    } catch (error) {
+      this.logger.error(`[LsvService._fetchIPFS] Error fetching IPFS Report by cid: ${cid}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  public async fetchIPFS(cid: string): Promise<Report> {
+    // TODO
+    const urls: [string, ...string[]] = [this.configService.get('IPFS_GATEWAY')];
+
+    return await iterateUrls(urls, (url) => this._fetchIPFS(cid, url));
   }
 
   public async getVaultReport(args: VaultReportArgs): Promise<VaultReportCliType> {

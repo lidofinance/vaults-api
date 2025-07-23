@@ -29,11 +29,7 @@ export class ReportService {
 
     while (cid) {
       try {
-        const reportData = await this.lsvService.fetchIPFS({
-          cid,
-          gateway: this.configService.get('IPFS_GATEWAY'),
-          bigNumberType: 'string',
-        });
+        const reportData = await this.lsvService.fetchIPFS(cid);
         this.logger.log(`Fetched report for CID: ${cid}`);
 
         const report = await this.reportDbService.saveReport(cid, reportData);

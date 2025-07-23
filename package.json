@@ -34,6 +34,7 @@
     "@lido-nestjs/execution": "^1.9.3",
     "@lido-nestjs/logger": "^1.0.1",
     "@lidofinance/lsv-cli": "1.0.0-alpha.60",
+    "@lidofinance/rpc": "^0.52.0",
     "@lidofinance/satanizer": "^0.32.0",
     "@nestjs/cache-manager": "^2.2.2",
     "@nestjs/common": "^10.4.4",
