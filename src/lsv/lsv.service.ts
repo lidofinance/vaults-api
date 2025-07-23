@@ -4,9 +4,10 @@ import { Injectable } from '@nestjs/common';
 import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof';
 import { type VaultReport as VaultReportCliType, type VaultReportArgs } from '@lidofinance/lsv-cli/dist/utils/report';
 import { getVaultReport, getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report';
-import { calculateRebaseReward } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
-import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
-import { reportMetrics } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
+import { fetchIPFS, type ReportFetchArgs, type Report } from '@lidofinance/lsv-cli/dist/utils';
+import { calculateRebaseReward, type CalculateRebaseRewardArgs } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
+import { calculateHealth, type CalculateHealthArgs } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
+import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
 
 import { ReportEntity, ReportLeafEntity } from 'db/report-db';
 import { ConfigService } from 'common/config';
@@ -34,6 +35,11 @@ export class LsvService {
     }
   }
 
+  public async fetchIPFS(args: ReportFetchArgs): Promise<Report> {
+    // TODO: fallback IPFS gateways
+    return await fetchIPFS(args, false);
+  }
+
   public async getVaultReport(args: VaultReportArgs): Promise<VaultReportCliType> {
     return await getVaultReport(args, false);
   }
@@ -51,46 +57,16 @@ export class LsvService {
     }
   }
 
-  public async calculateHealth(
-    // TODO: get CalculateHealthArgs from '@lidofinance/lsv-cli/dist/utils/health/calculate-health'
-    totalValue: bigint,
-    liabilitySharesInStethWei: bigint,
-    forceRebalanceThresholdBP: number,
-  ): Promise<ReturnType<typeof calculateHealth>> {
-    return calculateHealth({
-      totalValue,
-      liabilitySharesInStethWei,
-      forceRebalanceThresholdBP,
-    });
+  public async calculateHealth(args: CalculateHealthArgs): Promise<ReturnType<typeof calculateHealth>> {
+    return calculateHealth({ ...args });
   }
 
-  public async calculateRebaseReward(
-    // TODO: get CalculateHealthArgs from '@lidofinance/lsv-cli/dist/utils/rebase-rewards'
-    shareRatePrev: bigint,
-    shareRateCurr: bigint,
-    prevLeafLiabilityShares: bigint,
-    currLeafLiabilityShares: bigint,
-  ): Promise<bigint> {
-    return calculateRebaseReward({
-      shareRatePrev,
-      shareRateCurr,
-      sharesPrev: prevLeafLiabilityShares,
-      sharesCurr: currLeafLiabilityShares,
-    });
+  public async calculateRebaseReward(args: CalculateRebaseRewardArgs): Promise<bigint> {
+    return calculateRebaseReward({ ...args });
   }
 
-  public async calcReportMetrics(
-    // TODO: get ReportMetricsArgs from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic'
-    currentVaultReport: VaultReportCliType,
-    previousVaultReport: VaultReportCliType,
-    nodeOperatorFeeRate: bigint,
-    rebaseReward: bigint,
-  ): Promise<ReturnType<typeof reportMetrics>> {
-    return reportMetrics({
-      reports: { current: currentVaultReport, previous: previousVaultReport },
-      nodeOperatorFeeRate,
-      stEthLiabilityRebaseRewards: rebaseReward,
-    });
+  public async calcReportMetrics(args: ReportMetricsArgs): Promise<ReturnType<typeof reportMetrics>> {
+    return reportMetrics({ ...args });
   }
 
   public static transformToVaultReportCli(report: ReportEntity, leaf: ReportLeafEntity): VaultReportCliType {
@@ -104,6 +80,11 @@ export class LsvService {
       },
       extraData: {
         inOutDelta: leaf.inOutDelta,
+        // TODO
+        prevFee: '',
+        infraFee: '',
+        liquidityFee: '',
+        reservationFee: '',
       },
       // TODO
       leaf: '',
