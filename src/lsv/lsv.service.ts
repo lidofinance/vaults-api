@@ -1,18 +1,20 @@
-import { Hex } from 'viem';
+import { Hex, Address } from 'viem';
 import { Inject, Injectable } from '@nestjs/common';
-
 import { iterateUrls } from '@lidofinance/rpc';
 import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof';
-import { type VaultReport as VaultReportCliType, type VaultReportArgs } from '@lidofinance/lsv-cli/dist/utils/report';
-import { getVaultReport, getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report';
-import { fetchIPFS as fetchIPFSCli, type Report } from '@lidofinance/lsv-cli/dist/utils';
+import {
+  getVaultReport,
+  getReportProofByVault,
+  type VaultReport as VaultReportCliType,
+} from '@lidofinance/lsv-cli/dist/utils/report';
+import { fetchIPFS, type Report } from '@lidofinance/lsv-cli/dist/utils';
 import { calculateRebaseReward, type CalculateRebaseRewardArgs } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
 import { calculateHealth, type CalculateHealthArgs } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
 
-import { ReportEntity, ReportLeafEntity } from 'db/report-db';
 import { ConfigService } from 'common/config';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { ReportEntity, ReportLeafEntity } from 'db/report-db';
 
 export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR';
 
@@ -42,7 +44,7 @@ export class LsvService {
 
   private async _fetchIPFS(cid: string, gateway: string): Promise<Report> {
     try {
-      return await fetchIPFSCli(
+      return await fetchIPFS(
         {
           cid,
           gateway,
@@ -60,21 +62,63 @@ export class LsvService {
     return await iterateUrls(this.configService.ipfsGateways, (url) => this._fetchIPFS(cid, url));
   }
 
-  public async getVaultReport(args: VaultReportArgs): Promise<VaultReportCliType> {
-    return await getVaultReport(args, false);
+  private async _getVaultReport(vault: Address, cid: string, gateway: string): Promise<VaultReportCliType> {
+    try {
+      return await getVaultReport(
+        {
+          vault,
+          cid,
+          gateway,
+          bigNumberType: 'string',
+        },
+        false,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[LsvService._getVaultReport] Failed to get vault report (vault: ${vault}, cid: ${cid}): ${error.message}`,
+      );
+      throw error;
+    }
   }
 
-  public async getReportProofByVault(args: VaultReportArgs): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
+  public async getVaultReport(vault: Address, cid: string): Promise<VaultReportCliType> {
+    return await iterateUrls(this.configService.ipfsGateways, (url) => this._getVaultReport(vault, cid, url));
+  }
+
+  private async _getReportProofByVault(
+    vault: Address,
+    cid: string,
+    gateway: string,
+  ): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
     try {
-      return await getReportProofByVault(args, false);
+      return await getReportProofByVault(
+        {
+          vault,
+          cid,
+          gateway,
+          bigNumberType: 'string',
+        },
+        false,
+      );
     } catch (error) {
       // This is the behavior of the CLI
-      if (error.message?.toLowerCase().includes(`vault ${args.vault.toLowerCase()} not found in report`)) {
+      if (error.message?.toLowerCase().includes(`vault ${vault.toLowerCase()} not found in report`)) {
+        this.logger.warn(`[LsvService._getReportProofByVault] ${error.message}`);
         return null;
       }
 
+      this.logger.error(
+        `[LsvService._getReportProofByVault] Failed to get vault report and proof (vault: ${vault}, cid: ${cid}): ${error.message}`,
+      );
       throw error;
     }
+  }
+
+  public async getReportProofByVault(
+    vault: Address,
+    cid: string,
+  ): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
+    return await iterateUrls(this.configService.ipfsGateways, (url) => this._getReportProofByVault(vault, cid, url));
   }
 
   public async calculateHealth(args: CalculateHealthArgs): Promise<ReturnType<typeof calculateHealth>> {
