@@ -76,8 +76,10 @@ export class EnvironmentVariables {
   @Transform(({ value }) => Number(value))
   CHAIN_ID: number = null;
 
-  @IsString()
-  IPFS_GATEWAY: string;
+  @IsArray()
+  @ArrayMinSize(1)
+  @Transform(({ value }) => value.split(','))
+  IPFS_GATEWAYS: string[] = null;
 }
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());

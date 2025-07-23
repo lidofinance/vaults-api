@@ -64,7 +64,7 @@ export class ReportsHttpController {
       const report = await this.lsvService.getReportProofByVault({
         vault,
         cid,
-        gateway: this.configService.get('IPFS_GATEWAY'),
+        gateway: this.configService.get('IPFS_GATEWAYS')[0],
       });
       return { report };
     } catch (error) {
@@ -98,7 +98,7 @@ export class ReportsHttpController {
       const report = await this.lsvService.getReportProofByVault({
         vault,
         cid: latestReportData.reportCid,
-        gateway: this.configService.get('IPFS_GATEWAY'),
+        gateway: this.configService.get('IPFS_GATEWAYS')[0],
       });
       return { report };
     } catch (error) {
@@ -132,7 +132,7 @@ export class ReportsHttpController {
       latestVaultReport = await this.lsvService.getVaultReport({
         vault,
         cid: latestReportData.reportCid,
-        gateway: this.configService.get('IPFS_GATEWAY'),
+        gateway: this.configService.get('IPFS_GATEWAYS')[0],
       });
     } catch (error) {
       this.logger.error(`Failed to getVaultReport ${vault}: ${error.message}`);
@@ -148,7 +148,7 @@ export class ReportsHttpController {
       const report = await this.lsvService.getReportProofByVault({
         vault,
         cid: latestVaultReport.prevTreeCID,
-        gateway: this.configService.get('IPFS_GATEWAY'),
+        gateway: this.configService.get('IPFS_GATEWAYS')[0],
       });
       return { report };
     } catch (error) {

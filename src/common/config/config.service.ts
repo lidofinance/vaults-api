@@ -16,6 +16,11 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
     if (name) {
       this.networkConfig = findNetworkConfig(name);
     }
+
+    const gateways = this.get('IPFS_GATEWAYS');
+    if (!Array.isArray(gateways) || gateways.length === 0 || !gateways.every((gw) => typeof gw === 'string')) {
+      throw new Error('[ConfigService] IPFS_GATEWAYS must be a non-empty array of strings');
+    }
   }
 
   /**
@@ -27,6 +32,13 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
 
   public get<T extends keyof EnvironmentVariables>(key: T): EnvironmentVariables[T] {
     return super.get(key, { infer: true }) as EnvironmentVariables[T];
+  }
+
+  /**
+   * Safe getter that returns typed IPFS gateways
+   */
+  public get ipfsGateways(): [string, ...string[]] {
+    return this.get('IPFS_GATEWAYS') as [string, ...string[]];
   }
 
   public async getCustomConfigContractsAddressMap() {

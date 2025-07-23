@@ -51,16 +51,13 @@ export class LsvService {
         false,
       );
     } catch (error) {
-      this.logger.error(`[LsvService._fetchIPFS] Error fetching IPFS Report by cid: ${cid}: ${error.message}`);
+      this.logger.error(`[LsvService._fetchIPFS] Failed to fetch IPFS report (cid: ${cid}): ${error.message}`);
       throw error;
     }
   }
 
   public async fetchIPFS(cid: string): Promise<Report> {
-    // TODO
-    const urls: [string, ...string[]] = [this.configService.get('IPFS_GATEWAY')];
-
-    return await iterateUrls(urls, (url) => this._fetchIPFS(cid, url));
+    return await iterateUrls(this.configService.ipfsGateways, (url) => this._fetchIPFS(cid, url));
   }
 
   public async getVaultReport(args: VaultReportArgs): Promise<VaultReportCliType> {
