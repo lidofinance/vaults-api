@@ -17,6 +17,18 @@ export class ReportLeafEntity {
   @Column({ type: 'numeric', precision: 78, scale: 0, name: 'in_out_delta' })
   inOutDelta: string;
 
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'prev_fee', nullable: true })
+  prevFee: string;
+
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'infra_fee', nullable: true })
+  infraFee: string;
+
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'liquidity_fee', nullable: true })
+  liquidityFee: string;
+
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'reservation_fee', nullable: true })
+  reservationFee: string;
+
   @Column({ type: 'numeric', precision: 78, scale: 0, name: 'fee' })
   fee: string;
 

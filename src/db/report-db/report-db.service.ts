@@ -60,16 +60,23 @@ export class ReportDbService {
 
         const treeIndex = entry.treeIndex;
         const inOutDelta = extraValues?.[vaultAddress]?.inOutDelta ?? '0';
-        // TODO: add new extra data
+        const prevFee = extraValues?.[vaultAddress]?.prevFee ?? '0';
+        const infraFee = extraValues?.[vaultAddress]?.infraFee ?? '0';
+        const liquidityFee = extraValues?.[vaultAddress]?.liquidityFee ?? '0';
+        const reservationFee = extraValues?.[vaultAddress]?.reservationFee ?? '0';
 
         return this.reportLeafRepo.create({
           report,
           vaultAddress,
-          totalValueWei: BigInt(totalValueWei).toString(),
-          inOutDelta: BigInt(inOutDelta).toString(),
-          fee: BigInt(fee).toString(),
-          liabilityShares: BigInt(liabilityShares).toString(),
-          slashingReserve: BigInt(slashingReserve).toString(),
+          totalValueWei,
+          inOutDelta,
+          prevFee,
+          infraFee,
+          liquidityFee,
+          reservationFee,
+          fee,
+          liabilityShares,
+          slashingReserve,
           treeIndex,
         });
       });
