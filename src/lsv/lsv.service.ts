@@ -80,14 +80,12 @@ export class LsvService {
       },
       extraData: {
         inOutDelta: leaf.inOutDelta,
-        // TODO
-        prevFee: '',
-        infraFee: '',
-        liquidityFee: '',
-        reservationFee: '',
+        prevFee: leaf.prevFee,
+        infraFee: leaf.infraFee,
+        liquidityFee: leaf.liquidityFee,
+        reservationFee: leaf.reservationFee,
       },
-      // TODO
-      leaf: '',
+      leaf: report.tree[leaf.treeIndex],
       refSlot: report.refSlot,
       blockNumber: report.blockNumber,
       timestamp: report.timestamp,
