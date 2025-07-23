@@ -25,12 +25,12 @@ export class LsvService {
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
   ) {}
 
-  public async createProof(
+  private async _createProof(
     validatorIndex: number,
+    clApiUrl: string,
   ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
     try {
-      // TODO: add fallback
-      return await createPDGProof(validatorIndex, this.configService.get('CL_API_URLS')[0]);
+      return await createPDGProof(validatorIndex, clApiUrl);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
         console.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
@@ -40,6 +40,12 @@ export class LsvService {
       console.error(`[LsvService.createProof] Failed to create PDG proof for validatorIndex ${validatorIndex}:`, error);
       throw error;
     }
+  }
+
+  public async createProof(
+    validatorIndex: number,
+  ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
+    return await iterateUrls(this.configService.clApiUrls, (url) => this._createProof(validatorIndex, url));
   }
 
   private async _fetchIPFS(cid: string, gateway: string): Promise<Report> {
