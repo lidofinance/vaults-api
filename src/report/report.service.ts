@@ -24,7 +24,7 @@ export class ReportService {
     private readonly lsvService: LsvService,
   ) {}
 
-  async fetchAllReports(): Promise<void> {
+  public async fetchAllReports(): Promise<void> {
     let cid: string | null = (await this.lazyOracleContractService.getLatestReportData()).reportCid;
 
     while (cid) {
@@ -48,7 +48,7 @@ export class ReportService {
     this.logger.log(`Report fetching complete!`);
   }
 
-  async calculate(): Promise<void> {
+  public async calculate(): Promise<void> {
     const batchSize = this.configService.jobs['reportBatchSize'];
     let skip = 0;
     let previousReport: ReportEntity | null = null;
@@ -84,6 +84,35 @@ export class ReportService {
     }
 
     this.logger.log('All reports statistic calculation complete!');
+  }
+
+  public subscribeToEvents() {
+    this.logger.log('[subscribeToEvents, event:VaultsReportDataUpdated] Subscribing to VaultsReportDataUpdated event');
+
+    this.lazyOracleContractService.contract.on(
+      'VaultsReportDataUpdated',
+      async (timestamp: bigint, root: string, cid: string, event) => {
+        this.logger.log(
+          `[subscribeToEvents, event:VaultsReportDataUpdated] Event received: timestamp=${timestamp}, root=${root}, cid=${cid}, block=${event.blockNumber}`,
+        );
+
+        try {
+          const reportData = await this.lsvService.fetchIPFS(cid);
+          this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Fetched report for CID: ${cid}`);
+
+          const report = await this.reportDbService.saveReport(cid, reportData);
+          this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Saved the report for CID: ${cid}`);
+
+          await this.reportDbService.saveLeaves(report, reportData);
+          this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Saved leaves for CID: ${cid}`);
+        } catch (error) {
+          this.logger.error(
+            `[subscribeToEvents, event:VaultsReportDataUpdated] Failed to fetch/save report with CID: ${cid}`,
+            error,
+          );
+        }
+      },
+    );
   }
 
   private async calculateForVaultsBasedPrevReport(

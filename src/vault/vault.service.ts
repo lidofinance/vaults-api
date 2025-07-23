@@ -170,7 +170,7 @@ export class VaultService {
   }
 
   public subscribeToEvents() {
-    this.logger.log('[subscribeToEvents] Subscribing to VaultConnected event');
+    this.logger.log('[subscribeToEvents, event:VaultConnected] Subscribing to VaultConnected event');
 
     this.vaultHubContractService.contract.on(
       'VaultConnected',
@@ -218,13 +218,17 @@ export class VaultService {
             updatedAt: new Date(),
             blockNumber,
           });
-          this.logger.log(`[fetchAllVaultsAndCalculateStates] Saved 'vaultsState' data to DB for vault ${item.vault}`);
+          this.logger.log(
+            `[subscribeToEvents, event:VaultConnected] Saved 'vaultsState' data to DB for vault ${item.vault}`,
+          );
 
           this.logger.log(
             `[subscribeToEvents, event:VaultConnected] State added/updated for vault ${vault} at block ${blockNumber}`,
           );
         } catch (err) {
-          this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
+          this.logger.warn(
+            `[subscribeToEvents, event:VaultConnected] Failed to process VaultConnected for ${vault}: ${err}`,
+          );
         }
       },
     );

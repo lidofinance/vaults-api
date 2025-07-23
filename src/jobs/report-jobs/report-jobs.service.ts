@@ -40,7 +40,7 @@ export class ReportJobsService {
     this.schedulerRegistry.addCronJob('reports-cron', job);
     job.start();
 
-    // TODO: add event here (ReportCreated)
+    this.reportService.subscribeToEvents();
 
     this.logger.log('ReportJobsService initialization finished');
   }
