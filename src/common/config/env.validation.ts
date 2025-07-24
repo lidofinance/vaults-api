@@ -78,7 +78,7 @@ export class EnvironmentVariables {
 
   @IsArray()
   @ArrayMinSize(1)
-  @Transform(ensureTrailingSlashUrls)
+  @Transform(({ value }) => value.split(','))
   IPFS_GATEWAYS: string[] = null;
 }
 
