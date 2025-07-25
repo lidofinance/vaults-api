@@ -8,6 +8,7 @@ import { PrometheusService } from 'common/prometheus';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { ReportEntity, ReportLeafEntity, ReportDbService } from 'db/report-db';
 import { VaultDbService } from 'db/vault-db';
+import { TrackJob } from 'common/job/track-job.decorator';
 import { LsvService } from 'lsv';
 
 @Injectable()
@@ -26,6 +27,7 @@ export class ReportService {
     private readonly prometheusService: PrometheusService,
   ) {}
 
+  @TrackJob('fetchAllReports')
   public async fetchAllReports(): Promise<void> {
     let cid: string | null = (await this.lazyOracleContractService.getLatestReportData()).reportCid;
 
@@ -53,7 +55,8 @@ export class ReportService {
       .set(Date.now() / 1000);
   }
 
-  public async calculate(): Promise<void> {
+  @TrackJob('calculateVaultMetrics')
+  public async calculateVaultMetrics(): Promise<void> {
     const batchSize = this.configService.jobs['reportBatchSize'];
     let skip = 0;
     let previousReport: ReportEntity | null = null;

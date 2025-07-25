@@ -4,7 +4,6 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
-import { TrackJob } from 'common/job/track-job.decorator';
 import { ReportService } from 'report';
 import { VaultService } from 'vault';
 
@@ -22,11 +21,17 @@ export class ReportJobsService {
     this.logger.log('ReportJobsService initialization started');
 
     // one-time execution on startup
-    await this.run();
+    await this.vaultService.fetchAllVaultsAndCalculateStates();
+    await this.reportService.fetchAllReports();
+    await this.reportService.calculateVaultMetrics();
 
     const job = new CronJob(
       this.configService.jobs['reportCron'],
-      async () => await this.run(),
+      async () => {
+        await this.vaultService.fetchAllVaultsAndCalculateStates();
+        await this.reportService.fetchAllReports();
+        await this.reportService.calculateVaultMetrics();
+      },
       null,
       false,
       this.configService.jobs['reportCronTZ'],
@@ -38,12 +43,5 @@ export class ReportJobsService {
     this.reportService.subscribeToEvents();
 
     this.logger.log('ReportJobsService initialization finished');
-  }
-
-  @TrackJob('ReportJobs')
-  async run() {
-    await this.vaultService.fetchAllVaultsAndCalculateStates();
-    await this.reportService.fetchAllReports();
-    await this.reportService.calculate();
   }
 }
