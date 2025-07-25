@@ -30,6 +30,7 @@ export class LsvService {
     clApiUrl: string,
   ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
     try {
+      // TODO: metric here for 'clApiUrl with cli'
       return await createPDGProof(validatorIndex, clApiUrl);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
@@ -50,6 +51,7 @@ export class LsvService {
 
   private async _fetchIPFS(cid: string, gateway: string): Promise<Report> {
     try {
+      // TODO: metric here for 'IPFS with LSV CLI'
       return await fetchIPFS(
         {
           cid,
