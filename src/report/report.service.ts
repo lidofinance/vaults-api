@@ -4,6 +4,7 @@ import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
+import { PrometheusService } from 'common/prometheus';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { ReportEntity, ReportLeafEntity, ReportDbService } from 'db/report-db';
 import { VaultDbService } from 'db/vault-db';
@@ -22,6 +23,7 @@ export class ReportService {
     private readonly reportDbService: ReportDbService,
     private readonly vaultDbService: VaultDbService,
     private readonly lsvService: LsvService,
+    private readonly prometheusService: PrometheusService,
   ) {}
 
   public async fetchAllReports(): Promise<void> {
@@ -46,6 +48,9 @@ export class ReportService {
     }
 
     this.logger.log(`Report fetching complete!`);
+    this.prometheusService.lastUpdateGauge
+      .labels({ source: 'fetchAllReports', type: 'timestamp' })
+      .set(Date.now() / 1000);
   }
 
   public async calculate(): Promise<void> {
@@ -84,6 +89,9 @@ export class ReportService {
     }
 
     this.logger.log('All reports statistic calculation complete!');
+    this.prometheusService.lastUpdateGauge
+      .labels({ source: 'calculateVaultMetrics', type: 'timestamp' })
+      .set(Date.now() / 1000);
   }
 
   public subscribeToEvents() {
@@ -105,11 +113,17 @@ export class ReportService {
 
           await this.reportDbService.saveLeaves(report, reportData);
           this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Saved leaves for CID: ${cid}`);
+          this.prometheusService.contractEventHandledCounter
+            .labels({ eventName: 'VaultsReportDataUpdated', result: 'success' })
+            .inc();
         } catch (error) {
           this.logger.error(
             `[subscribeToEvents, event:VaultsReportDataUpdated] Failed to fetch/save report with CID: ${cid}`,
             error,
           );
+          this.prometheusService.contractEventHandledCounter
+            .labels({ eventName: 'VaultsReportDataUpdated', result: 'error' })
+            .inc();
         }
       },
     );
