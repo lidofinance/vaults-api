@@ -59,13 +59,13 @@ export class PrometheusService {
     name: METRICS_PREFIX + 'db_query_duration_seconds',
     help: 'Duration of DB queries in seconds',
     buckets: [0.005, 0.01, 0.05, 0.1, 0.5, 1, 2],
-    labelNames: ['operation', 'entity'],
+    labelNames: ['operation', 'detail'],
   });
 
   public dbQueryErrorCounter = this.getOrCreateMetric('Counter', {
     name: METRICS_PREFIX + 'db_query_error_counter',
     help: 'Total number of DB query errors, labeled by event name and result',
-    labelNames: ['operation', 'entity'],
+    labelNames: ['operation', 'detail'],
   });
 
   public contractEventHandledCounter = this.getOrCreateMetric('Counter', {
