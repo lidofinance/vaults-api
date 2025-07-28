@@ -29,6 +29,7 @@ export class ReportService {
 
   @TrackJob('fetchAllReports')
   public async fetchAllReports(): Promise<void> {
+    const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
     let cid: string | null = (await this.lazyOracleContractService.getLatestReportData()).reportCid;
 
     while (cid) {
@@ -43,6 +44,12 @@ export class ReportService {
         this.logger.log(`Saved leaves for CID: ${cid}`);
 
         cid = reportData.prevTreeCID && reportData.prevTreeCID.trim() !== '' ? reportData.prevTreeCID : null;
+
+        // safe for reportData.blockNumber:bigint
+        if (blockLimit > Number(reportData.blockNumber)) {
+          this.logger.log(`Stop fetching because the 'START_REPORT_BLOCK_NUMBER' has been reached, report CID: ${cid}`);
+          break;
+        }
       } catch (error) {
         this.logger.error(`Failed to fetch/save report with CID: ${cid}`, error);
         return;

@@ -80,6 +80,10 @@ export class EnvironmentVariables {
   @ArrayMinSize(1)
   @Transform(({ value }) => value.split(','))
   IPFS_GATEWAYS: string[] = null;
+
+  @IsNumber()
+  @Transform(({ value }) => Number(value))
+  START_REPORT_BLOCK_NUMBER: number = null;
 }
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
