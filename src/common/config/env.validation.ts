@@ -23,6 +23,12 @@ export class EnvironmentVariables {
   PORT: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Transform(toNumber({ defaultValue: 3001 }))
+  WORKER_PORT: number;
+
+  @IsOptional()
   @IsString()
   CORS_WHITELIST_REGEXP = '';
 

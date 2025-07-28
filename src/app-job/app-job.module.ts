@@ -11,7 +11,6 @@ import { CustomLogger } from 'db/custom.logger';
 
 import { VaultJobsModule, ReportJobsModule } from '../jobs';
 
-
 @Module({
   imports: [
     ScheduleModule.forRoot(),
