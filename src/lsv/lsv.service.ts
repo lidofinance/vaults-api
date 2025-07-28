@@ -12,6 +12,7 @@ import { calculateRebaseReward, type CalculateRebaseRewardArgs } from '@lidofina
 import { calculateHealth, type CalculateHealthArgs } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
 
+import { PrometheusService } from 'common/prometheus';
 import { ConfigService } from 'common/config';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db';
@@ -22,6 +23,7 @@ export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_
 export class LsvService {
   constructor(
     protected readonly configService: ConfigService,
+    private readonly prometheusService: PrometheusService,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
   ) {}
 
@@ -29,11 +31,14 @@ export class LsvService {
     validatorIndex: number,
     clApiUrl: string,
   ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
+    const endTimer = this.prometheusService.clApiRequestDuration.startTimer();
     try {
-      // TODO: metric here for 'clApiUrl with cli'
-      return await createPDGProof(validatorIndex, clApiUrl);
+      const proof = await createPDGProof(validatorIndex, clApiUrl);
+      endTimer({ result: 'success' });
+      return proof;
     } catch (error) {
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
+        endTimer({ result: 'error' });
         console.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
         return VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR;
       }
@@ -50,9 +55,9 @@ export class LsvService {
   }
 
   private async _fetchIPFS(cid: string, gateway: string): Promise<Report> {
+    const endTimer = this.prometheusService.ipfsRequestDuration.startTimer();
     try {
-      // TODO: metric here for 'IPFS with LSV CLI'
-      return await fetchIPFS(
+      const report = await fetchIPFS<Report>(
         {
           cid,
           gateway,
@@ -60,7 +65,10 @@ export class LsvService {
         },
         false,
       );
+      endTimer({ result: 'success' });
+      return report;
     } catch (error) {
+      endTimer({ result: 'error' });
       this.logger.error(`[LsvService._fetchIPFS] Failed to fetch IPFS report (cid: ${cid}): ${error.message}`);
       throw error;
     }

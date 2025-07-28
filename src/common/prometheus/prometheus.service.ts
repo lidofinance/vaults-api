@@ -45,14 +45,14 @@ export class PrometheusService {
     name: METRICS_PREFIX + 'cl_api_requests_duration_seconds',
     help: 'CL API request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
-    labelNames: ['result', 'status'],
+    labelNames: ['result'],
   });
 
   public ipfsRequestDuration = this.getOrCreateMetric('Histogram', {
     name: METRICS_PREFIX + 'ipfs_requests_duration_seconds',
     help: 'CL API request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
-    labelNames: ['result', 'status'],
+    labelNames: ['result'],
   });
 
   public dbQueryDuration = this.getOrCreateMetric('Histogram', {
@@ -71,7 +71,6 @@ export class PrometheusService {
   public contractEventHandledCounter = this.getOrCreateMetric('Counter', {
     name: METRICS_PREFIX + 'contract_event_handled_counter',
     help: 'Total number of contract events handled, labeled by event name and result',
-    // TODO: add contract
     labelNames: ['eventName', 'result'],
   });
 
