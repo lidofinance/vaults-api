@@ -30,33 +30,45 @@ export class ReportService {
   @TrackJob('fetchAllReports')
   public async fetchAllReports(): Promise<void> {
     const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
+
+    let fetchedCount = 0;
     let cid: string | null = (await this.lazyOracleContractService.getLatestReportData()).reportCid;
 
     while (cid) {
       try {
         const reportData = await this.lsvService.fetchIPFS(cid);
-        this.logger.log(`Fetched report for CID: ${cid}`);
+        this.logger.log(`[fetchAllReports] Fetched report for CID: ${cid}`);
 
         const report = await this.reportDbService.saveReport(cid, reportData);
-        this.logger.log(`Saved the report for CID: ${cid}`);
+        this.logger.log(`[fetchAllReports] Saved the report for CID: ${cid}`);
 
         await this.reportDbService.saveLeaves(report, reportData);
-        this.logger.log(`Saved leaves for CID: ${cid}`);
+        this.logger.log(`[fetchAllReports] Saved leaves for CID: ${cid}`);
 
+        fetchedCount++;
         cid = reportData.prevTreeCID && reportData.prevTreeCID.trim() !== '' ? reportData.prevTreeCID : null;
+
+        if (blockLimit <= 1 && fetchedCount >= 2) {
+          this.logger.log(
+            `[fetchAllReports] Stop fetching because 'START_REPORT_BLOCK_NUMBER' is not set (zero) or negative — fetching only the last 2 reports`,
+          );
+          break;
+        }
 
         // safe for reportData.blockNumber:bigint
         if (blockLimit > Number(reportData.blockNumber)) {
-          this.logger.log(`Stop fetching because the 'START_REPORT_BLOCK_NUMBER' has been reached, report CID: ${cid}`);
+          this.logger.log(
+            `[fetchAllReports] Stop fetching because the 'START_REPORT_BLOCK_NUMBER' has been reached, report CID: ${cid}`,
+          );
           break;
         }
       } catch (error) {
-        this.logger.error(`Failed to fetch/save report with CID: ${cid}`, error);
+        this.logger.error(`[fetchAllReports] Failed to fetch/save report with CID: ${cid}`, error);
         return;
       }
     }
 
-    this.logger.log(`Report fetching complete!`);
+    this.logger.log(`[fetchAllReports] Report fetching complete, fetchedCount={fetchedCount}!`);
     this.prometheusService.lastUpdateGauge
       .labels({ source: 'fetchAllReports', type: 'timestamp' })
       .set(Date.now() / 1000);
@@ -83,11 +95,11 @@ export class ReportService {
         // last iteration: previousReport = report4, currentReport = report5
         if (previousReport && previousLeaves) {
           this.logger.log(
-            `Calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
+            `[calculateVaultMetrics] Calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
           );
           await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
           this.logger.log(
-            `Finished calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
+            `[calculateVaultMetrics] Finished calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
           );
         }
 
@@ -98,7 +110,7 @@ export class ReportService {
       skip += batchSize;
     }
 
-    this.logger.log('All reports statistic calculation complete!');
+    this.logger.log('[calculateVaultMetrics] All reports statistic calculation complete!');
     this.prometheusService.lastUpdateGauge
       .labels({ source: 'calculateVaultMetrics', type: 'timestamp' })
       .set(Date.now() / 1000);
@@ -208,7 +220,7 @@ export class ReportService {
         updatedAt: new Date(),
       });
 
-      this.logger.log(`Saved report metrics for ${vaultAddress}`);
+      this.logger.log(`[calculateForVaultsBasedPrevReport] Saved report metrics for ${vaultAddress}`);
     }
   }
 
