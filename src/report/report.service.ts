@@ -48,7 +48,7 @@ export class ReportService {
         fetchedCount++;
         cid = reportData.prevTreeCID && reportData.prevTreeCID.trim() !== '' ? reportData.prevTreeCID : null;
 
-        if (blockLimit <= 1 && fetchedCount >= 2) {
+        if (blockLimit < 1 && fetchedCount >= 2) {
           this.logger.log(
             `[fetchAllReports] Stop fetching because 'START_REPORT_BLOCK_NUMBER' is not set (zero) or negative — fetching only the last 2 reports`,
           );
