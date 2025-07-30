@@ -43,18 +43,29 @@ export class CustomLogger implements Logger {
       .trim()
       .toLowerCase();
 
-    if (stripped.startsWith('start transaction')) return 'start_transaction';
-    if (stripped.startsWith('begin')) return 'begin';
-    if (stripped.startsWith('commit')) return 'commit';
-    if (stripped.startsWith('rollback')) return 'rollback';
-    if (stripped.startsWith('with')) return 'with'; // CTE-запрос
-    if (stripped.startsWith('select')) return 'select';
-    if (stripped.startsWith('insert')) return 'insert';
-    if (stripped.startsWith('update')) return 'update';
-    if (stripped.startsWith('delete')) return 'delete';
-
-    // fallback: just first token
-    return stripped.split(/\s+/)[0];
+    switch (true) {
+      case stripped.startsWith('start transaction'):
+        return 'start_transaction';
+      case stripped.startsWith('begin'):
+        return 'begin';
+      case stripped.startsWith('commit'):
+        return 'commit';
+      case stripped.startsWith('rollback'):
+        return 'rollback';
+      case stripped.startsWith('with'):
+        return 'with';
+      case stripped.startsWith('select'):
+        return 'select';
+      case stripped.startsWith('insert'):
+        return 'insert';
+      case stripped.startsWith('update'):
+        return 'update';
+      case stripped.startsWith('delete'):
+        return 'delete';
+      default:
+        // fallback: just first token
+        return stripped.split(/\s+/)[0];
+    }
   }
 
   private static getQueryTag(query: string): string {
