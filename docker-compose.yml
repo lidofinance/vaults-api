@@ -8,15 +8,13 @@ services:
     env_file:
       - .env
     environment:
-      - PORT=${PORT}
       - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DATABASE=postgres
-
     ports:
-      - '3000:3000'
+      - "${PORT:-3000}:${PORT:-3000}"
     depends_on:
       - postgres
 
@@ -29,7 +27,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DATABASE=postgres
     ports:
-      - '${POSTGRES_PORT}:5432'
+      - '${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}'
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -41,10 +39,12 @@ services:
       - .env
     environment:
       - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DATABASE=postgres
+    ports:
+      - "${WORKER_PORT:-3001}:${WORKER_PORT:-3001}"
     depends_on:
       - postgres
 
