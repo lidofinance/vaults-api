@@ -31,14 +31,16 @@ export class LsvService {
     validatorIndex: number,
     clApiUrl: string,
   ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
-    const endTimer = this.prometheusService.clApiRequestDuration.startTimer();
+    // TODO: Rename or refactor the metric associated with _createProof,
+    //  since createPDGProof performs multiple requests to the CL API.
+    // const endTimer = this.prometheusService.clApiRequestDuration.startTimer();
     try {
       const proof = await createPDGProof(validatorIndex, clApiUrl);
-      endTimer({ result: 'success' });
+      // endTimer({ result: 'success' });
       return proof;
     } catch (error) {
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
-        endTimer({ result: 'error' });
+        // endTimer({ result: 'error' });
         console.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
         return VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR;
       }
