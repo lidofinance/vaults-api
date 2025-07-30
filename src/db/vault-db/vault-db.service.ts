@@ -8,6 +8,7 @@ import { LABEL_TO_ROLE } from 'vault/vault.constants';
 
 import { Direction, DirectionEnum, SortFields } from './enums';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
+import { QUERY_METRICS_COMMENTS } from './vault-db.constants';
 
 const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.rebaseReward AS "rebaseReward"',
@@ -68,7 +69,7 @@ export class VaultDbService {
         .leftJoinAndSelect('state.vault', 'vault')
         .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
         // for metrics
-        .comment('VaultDbService.getStateByVaultAddress')
+        .comment(QUERY_METRICS_COMMENTS.GET_STATE_BY_VAULT_ADDRESS)
         .getOne()
     );
   }
@@ -273,7 +274,7 @@ export class VaultDbService {
         .from(`(${vaultsSubQuery.getQuery()})`, 'vaults_sorted')
         .setParameters(vaultsSubQuery.getParameters())
         // for metrics
-        .comment('VaultDbService.getVaultsWithRoleAndSortingAndReportData.countQuery');
+        .comment(QUERY_METRICS_COMMENTS.GET_VAULTS_WITH_ROLE_AND_SORTING_AND_REPORT_DATA_COUNT);
       const totalVaults = parseInt((await countQuery.getRawOne()).total, 10);
 
       // Perform pagination and sorting on the final result set itself,
@@ -302,7 +303,7 @@ export class VaultDbService {
         .from(`(${vaultsQuery.getQuery()})`, 'vaults_formatted')
         .setParameters(vaultsQuery.getParameters())
         // for metrics
-        .comment('VaultDbService.getVaultsWithRoleAndSortingAndReportData.vaultsQuery');
+        .comment(QUERY_METRICS_COMMENTS.GET_VAULTS_WITH_ROLE_AND_SORTING_AND_REPORT_DATA_VAULTS);
 
       const vaults = await vaultsQuery.getRawMany();
 
@@ -323,7 +324,7 @@ export class VaultDbService {
         .orderBy('stats.updatedAt', 'DESC')
         .select(VAULT_REPORT_STATS_SELECT_FIELDS)
         // for metrics
-        .comment('VaultDbService.getLatestVaultReportStats')
+        .comment(QUERY_METRICS_COMMENTS.GET_LATEST_VAULT_REPORT_STATS)
         .getRawOne()
     );
   }
@@ -354,7 +355,7 @@ export class VaultDbService {
       query
         .select(VAULT_REPORT_STATS_SELECT_FIELDS)
         // for metrics
-        .comment('VaultDbService.getVaultReportStatsInRange')
+        .comment(QUERY_METRICS_COMMENTS.GET_VAULT_REPORT_STATS_IN_RANGE)
         .getRawMany()
     );
   }
