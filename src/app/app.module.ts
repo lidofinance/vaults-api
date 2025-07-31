@@ -2,13 +2,14 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { PrometheusModule } from 'common/prometheus';
+import { PrometheusModule, PrometheusService } from 'common/prometheus';
 import { ConfigModule } from 'common/config';
 import { ExecutionProviderModule } from 'common/execution-provider';
 import { ContractsModule } from 'common/contracts';
 import { SentryInterceptor } from 'common/sentry';
 import { HealthModule } from 'common/health';
 import { getTypeOrmConfig } from 'db/config';
+import { CustomLogger } from 'db/custom.logger';
 
 import { HTTPModule } from '../http';
 import { LsvModule } from '../lsv';
@@ -21,7 +22,14 @@ import { AppService } from './app.service';
     HealthModule,
     PrometheusModule,
     ConfigModule,
-    TypeOrmModule.forRoot(getTypeOrmConfig()),
+    TypeOrmModule.forRootAsync({
+      inject: [PrometheusService],
+      useFactory: (prometheusService: PrometheusService) => ({
+        ...getTypeOrmConfig(),
+        logging: ['query'],
+        logger: new CustomLogger(prometheusService.dbQueryDuration, prometheusService.dbQueryErrorCounter),
+      }),
+    }),
     ContractsModule,
     LsvModule,
   ],

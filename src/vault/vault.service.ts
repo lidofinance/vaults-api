@@ -3,9 +3,11 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 
 import { ConfigService } from 'common/config';
 import { ExecutionProviderService } from 'common/execution-provider';
+import { PrometheusService } from 'common/prometheus';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultViewerContractService, type RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
 import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
+import { TrackJob } from 'common/job/track-job.decorator';
 import { VaultDbService } from 'db/vault-db';
 import { ROLE_BYTES32 } from 'vault/vault.constants';
 import { LsvService } from 'lsv';
@@ -21,8 +23,10 @@ export class VaultService {
     private readonly vaultHubContractService: VaultHubContractService,
     private readonly executionProviderService: ExecutionProviderService,
     private readonly lsvService: LsvService,
+    private readonly prometheusService: PrometheusService,
   ) {}
 
+  @TrackJob('fetchAllVaultsAndCalculateStates')
   public async fetchAllVaultsAndCalculateStates(): Promise<void> {
     this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
 
@@ -120,8 +124,15 @@ export class VaultService {
     }
 
     this.logger.log('[fetchAllVaultsAndCalculateStates] finished');
+    this.prometheusService.lastUpdateGauge
+      .labels({ source: 'fetchAllVaultsAndCalculateStates', type: 'timestamp' })
+      .set(Date.now() / 1000);
+    this.prometheusService.lastUpdateGauge
+      .labels({ source: 'fetchAllVaultsAndCalculateStates', type: 'blockNumber' })
+      .set(blockNumber);
   }
 
+  @TrackJob('fetchAllVaultsRoleMembers')
   public async fetchAllVaultsRoleMembers(): Promise<void> {
     this.logger.log('[fetchAllVaultsRoleMembers] Started');
 
@@ -167,6 +178,12 @@ export class VaultService {
     }
 
     this.logger.log('[fetchAllVaultsRoleMembers] Finished');
+    this.prometheusService.lastUpdateGauge
+      .labels({ source: 'fetchAllVaultsRoleMembers', type: 'timestamp' })
+      .set(Date.now() / 1000);
+    this.prometheusService.lastUpdateGauge
+      .labels({ source: 'fetchAllVaultsRoleMembers', type: 'blockNumber' })
+      .set(blockNumber);
   }
 
   public subscribeToEvents() {
@@ -225,10 +242,16 @@ export class VaultService {
           this.logger.log(
             `[subscribeToEvents, event:VaultConnected] State added/updated for vault ${vault} at block ${blockNumber}`,
           );
+          this.prometheusService.contractEventHandledCounter
+            .labels({ eventName: 'VaultConnected', result: 'success' })
+            .inc();
         } catch (err) {
-          this.logger.warn(
+          this.logger.error(
             `[subscribeToEvents, event:VaultConnected] Failed to process VaultConnected for ${vault}: ${err}`,
           );
+          this.prometheusService.contractEventHandledCounter
+            .labels({ eventName: 'VaultConnected', result: 'error' })
+            .inc();
         }
       },
     );

@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 
-import { PrometheusModule } from 'common/prometheus';
+import { PrometheusModule, PrometheusService } from 'common/prometheus';
 import { ConfigModule } from 'common/config';
 import { ExecutionProviderModule } from 'common/execution-provider';
 import { LoggerModule } from 'common/logger';
 import { getTypeOrmConfig } from 'db/config';
+import { CustomLogger } from 'db/custom.logger';
 
 import { VaultJobsModule, ReportJobsModule } from '../jobs';
 
@@ -17,7 +18,14 @@ import { VaultJobsModule, ReportJobsModule } from '../jobs';
     ExecutionProviderModule,
     PrometheusModule,
     ConfigModule,
-    TypeOrmModule.forRoot(getTypeOrmConfig()),
+    TypeOrmModule.forRootAsync({
+      inject: [PrometheusService],
+      useFactory: (prometheusService: PrometheusService) => ({
+        ...getTypeOrmConfig(),
+        logging: ['query'],
+        logger: new CustomLogger(prometheusService.dbQueryDuration, prometheusService.dbQueryErrorCounter),
+      }),
+    }),
     VaultJobsModule,
     ReportJobsModule,
   ],

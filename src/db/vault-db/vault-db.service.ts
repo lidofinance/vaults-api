@@ -8,6 +8,7 @@ import { LABEL_TO_ROLE } from 'vault/vault.constants';
 
 import { Direction, DirectionEnum, SortFields } from './enums';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
+import { QUERY_METRICS_COMMENTS } from './vault-db.constants';
 
 const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.rebaseReward AS "rebaseReward"',
@@ -62,11 +63,15 @@ export class VaultDbService {
   }
 
   async getStateByVaultAddress(vaultAddress: string): Promise<VaultStateEntity | null> {
-    return this.vaultStateRepo
-      .createQueryBuilder('state')
-      .leftJoinAndSelect('state.vault', 'vault')
-      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
-      .getOne();
+    return (
+      this.vaultStateRepo
+        .createQueryBuilder('state')
+        .leftJoinAndSelect('state.vault', 'vault')
+        .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
+        // for metrics
+        .comment(QUERY_METRICS_COMMENTS.GET_STATE_BY_VAULT_ADDRESS)
+        .getOne()
+    );
   }
 
   async addOrUpdateState(entry: Partial<VaultStateEntity>): Promise<void> {
@@ -267,7 +272,9 @@ export class VaultDbService {
         .createQueryBuilder()
         .select('COUNT(*)', 'total')
         .from(`(${vaultsSubQuery.getQuery()})`, 'vaults_sorted')
-        .setParameters(vaultsSubQuery.getParameters());
+        .setParameters(vaultsSubQuery.getParameters())
+        // for metrics
+        .comment(QUERY_METRICS_COMMENTS.GET_VAULTS_WITH_ROLE_AND_SORTING_AND_REPORT_DATA_COUNT);
       const totalVaults = parseInt((await countQuery.getRawOne()).total, 10);
 
       // Perform pagination and sorting on the final result set itself,
@@ -294,7 +301,9 @@ export class VaultDbService {
           END AS "healthFactor"`,
         ])
         .from(`(${vaultsQuery.getQuery()})`, 'vaults_formatted')
-        .setParameters(vaultsQuery.getParameters());
+        .setParameters(vaultsQuery.getParameters())
+        // for metrics
+        .comment(QUERY_METRICS_COMMENTS.GET_VAULTS_WITH_ROLE_AND_SORTING_AND_REPORT_DATA_VAULTS);
 
       const vaults = await vaultsQuery.getRawMany();
 
@@ -307,13 +316,17 @@ export class VaultDbService {
   }
 
   async getLatestVaultReportStats(vaultAddress: string) {
-    return this.vaultReportStatRepo
-      .createQueryBuilder('stats')
-      .innerJoin('stats.vault', 'vault')
-      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
-      .orderBy('stats.updatedAt', 'DESC')
-      .select(VAULT_REPORT_STATS_SELECT_FIELDS)
-      .getRawOne();
+    return (
+      this.vaultReportStatRepo
+        .createQueryBuilder('stats')
+        .innerJoin('stats.vault', 'vault')
+        .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
+        .orderBy('stats.updatedAt', 'DESC')
+        .select(VAULT_REPORT_STATS_SELECT_FIELDS)
+        // for metrics
+        .comment(QUERY_METRICS_COMMENTS.GET_LATEST_VAULT_REPORT_STATS)
+        .getRawOne()
+    );
   }
 
   async getVaultReportStatsInRange(
@@ -338,7 +351,13 @@ export class VaultDbService {
       query.andWhere('currentReport.timestamp BETWEEN :fromTimestamp AND :toTimestamp', { fromTimestamp, toTimestamp });
     }
 
-    return query.select(VAULT_REPORT_STATS_SELECT_FIELDS).getRawMany();
+    return (
+      query
+        .select(VAULT_REPORT_STATS_SELECT_FIELDS)
+        // for metrics
+        .comment(QUERY_METRICS_COMMENTS.GET_VAULT_REPORT_STATS_IN_RANGE)
+        .getRawMany()
+    );
   }
 
   /**

@@ -20,17 +20,12 @@ export class ReportJobsService {
   async onModuleInit() {
     this.logger.log('ReportJobsService initialization started');
 
-    // one-time execution on startup
-    await this.vaultService.fetchAllVaultsAndCalculateStates();
-    await this.reportService.fetchAllReports();
-    await this.reportService.calculate();
-
     const job = new CronJob(
       this.configService.jobs['reportCron'],
       async () => {
         await this.vaultService.fetchAllVaultsAndCalculateStates();
         await this.reportService.fetchAllReports();
-        await this.reportService.calculate();
+        await this.reportService.calculateVaultMetrics();
       },
       null,
       false,
@@ -39,6 +34,9 @@ export class ReportJobsService {
 
     this.schedulerRegistry.addCronJob('reports-cron', job);
     job.start();
+
+    // one-time execution on startup
+    await job.fireOnTick();
 
     this.reportService.subscribeToEvents();
 

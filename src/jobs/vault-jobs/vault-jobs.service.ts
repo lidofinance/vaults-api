@@ -18,10 +18,6 @@ export class VaultJobsService {
   async onModuleInit() {
     this.logger.log('VaultJobsService initialization started');
 
-    // one-time execution on startup
-    await this.vaultService.fetchAllVaultsAndCalculateStates();
-    await this.vaultService.fetchAllVaultsRoleMembers();
-
     const job = new CronJob(
       this.configService.jobs['vaultsCron'],
       async () => {
@@ -35,6 +31,9 @@ export class VaultJobsService {
 
     this.schedulerRegistry.addCronJob('vaults-cron', job);
     job.start();
+
+    // one-time execution on startup
+    await job.fireOnTick();
 
     // subscribes to events
     this.vaultService.subscribeToEvents();
