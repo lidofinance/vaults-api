@@ -2,6 +2,7 @@ import chunk from 'lodash.chunk';
 import { Repository } from 'typeorm';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { type Report } from '@lidofinance/lsv-cli/dist/utils';
 
 import { ReportEntity, ReportLeafEntity } from './entities';
 
@@ -28,15 +29,15 @@ export class ReportDbService {
     return this.reportLeafRepo.find({ where: { report: { id: report.id } } });
   }
 
-  async saveReport(cid: string, reportData: any): Promise<ReportEntity> {
+  async saveReport(cid: string, reportData: Report): Promise<ReportEntity> {
     const exists = await this.reportRepo.exist({ where: { cid } });
     if (exists) return this.reportRepo.findOneOrFail({ where: { cid } });
 
     const report = this.reportRepo.create({
       cid,
-      merkleTreeRoot: reportData.merkleTreeRoot,
       refSlot: reportData.refSlot,
-      blockNumber: reportData.blockNumber,
+      // Safe: blockNumber is within Number.MAX_SAFE_INTEGER
+      blockNumber: Number(reportData.blockNumber),
       timestamp: reportData.timestamp,
       prevTreeCID: reportData.prevTreeCID || null,
       tree: reportData.tree,
@@ -45,7 +46,7 @@ export class ReportDbService {
     return await this.reportRepo.save(report);
   }
 
-  async saveLeaves(report: ReportEntity, reportData: any): Promise<void> {
+  async saveLeaves(report: ReportEntity, reportData: Report): Promise<void> {
     // reportData is json (see example: https://ipfs.io/ipfs/QmPCBnLZzQsaUgzLfhTxiQTU8nRe3siG29feWYEQN2e5W1)
     const values = reportData?.values;
     const extraValues = reportData?.extraValues;
@@ -59,15 +60,23 @@ export class ReportDbService {
 
         const treeIndex = entry.treeIndex;
         const inOutDelta = extraValues?.[vaultAddress]?.inOutDelta ?? '0';
+        const prevFee = extraValues?.[vaultAddress]?.prevFee ?? '0';
+        const infraFee = extraValues?.[vaultAddress]?.infraFee ?? '0';
+        const liquidityFee = extraValues?.[vaultAddress]?.liquidityFee ?? '0';
+        const reservationFee = extraValues?.[vaultAddress]?.reservationFee ?? '0';
 
         return this.reportLeafRepo.create({
           report,
           vaultAddress,
-          totalValueWei: BigInt(totalValueWei).toString(),
-          inOutDelta: BigInt(inOutDelta).toString(),
-          fee: BigInt(fee).toString(),
-          liabilityShares: BigInt(liabilityShares).toString(),
-          slashingReserve: BigInt(slashingReserve).toString(),
+          totalValueWei,
+          inOutDelta,
+          prevFee,
+          infraFee,
+          liquidityFee,
+          reservationFee,
+          fee,
+          liabilityShares,
+          slashingReserve,
           treeIndex,
         });
       });

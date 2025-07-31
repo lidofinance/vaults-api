@@ -16,6 +16,16 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
     if (name) {
       this.networkConfig = findNetworkConfig(name);
     }
+
+    const clApiUrls = this.get('CL_API_URLS');
+    if (!Array.isArray(clApiUrls) || clApiUrls.length === 0) {
+      throw new Error('[ConfigService] CL_API_URLS must be a non-empty array of URLs');
+    }
+
+    const gateways = this.get('IPFS_GATEWAYS');
+    if (!Array.isArray(gateways) || gateways.length === 0) {
+      throw new Error('[ConfigService] IPFS_GATEWAYS must be a non-empty array of URLs');
+    }
   }
 
   /**
@@ -27,6 +37,20 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
 
   public get<T extends keyof EnvironmentVariables>(key: T): EnvironmentVariables[T] {
     return super.get(key, { infer: true }) as EnvironmentVariables[T];
+  }
+
+  /**
+   * Safe getter that returns typed IPFS gateways
+   */
+  public get ipfsGateways(): [string, ...string[]] {
+    return this.get('IPFS_GATEWAYS') as [string, ...string[]];
+  }
+
+  /**
+   * Safe getter that returns typed IPFS gateways
+   */
+  public get clApiUrls(): [string, ...string[]] {
+    return this.get('CL_API_URLS') as [string, ...string[]];
   }
 
   public async getCustomConfigContractsAddressMap() {

@@ -61,11 +61,7 @@ export class ReportsHttpController {
 
     try {
       // vault report and proof
-      const report = await this.lsvService.getReportProofByVault({
-        vault,
-        cid,
-        gateway: this.configService.get('IPFS_GATEWAY'),
-      });
+      const report = await this.lsvService.getReportProofByVault(vault, cid);
       return { report };
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
@@ -95,11 +91,7 @@ export class ReportsHttpController {
 
     try {
       // vault report and proof
-      const report = await this.lsvService.getReportProofByVault({
-        vault,
-        cid: latestReportData.reportCid,
-        gateway: this.configService.get('IPFS_GATEWAY'),
-      });
+      const report = await this.lsvService.getReportProofByVault(vault, latestReportData.reportCid);
       return { report };
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
@@ -129,11 +121,7 @@ export class ReportsHttpController {
 
     let latestVaultReport;
     try {
-      latestVaultReport = await this.lsvService.getVaultReport({
-        vault,
-        cid: latestReportData.reportCid,
-        gateway: this.configService.get('IPFS_GATEWAY'),
-      });
+      latestVaultReport = await this.lsvService.getVaultReport(vault, latestReportData.reportCid);
     } catch (error) {
       this.logger.error(`Failed to getVaultReport ${vault}: ${error.message}`);
       throw new BadRequestException(`Vault by address not exist!`);
@@ -145,11 +133,7 @@ export class ReportsHttpController {
 
     try {
       // vault prev report and proof
-      const report = await this.lsvService.getReportProofByVault({
-        vault,
-        cid: latestVaultReport.prevTreeCID,
-        gateway: this.configService.get('IPFS_GATEWAY'),
-      });
+      const report = await this.lsvService.getReportProofByVault(vault, latestVaultReport.prevTreeCID);
       return { report };
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);

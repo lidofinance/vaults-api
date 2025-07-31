@@ -10,10 +10,6 @@ export class ReportEntity {
   @Column({ type: 'text', unique: true })
   cid: string;
 
-  @Index()
-  @Column({ type: 'varchar', length: 66, nullable: true })
-  merkleTreeRoot: string;
-
   @Column({ type: 'int' })
   refSlot: number;
 

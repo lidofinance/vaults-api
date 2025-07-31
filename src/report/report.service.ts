@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Inject, Injectable } from '@nestjs/common';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
@@ -25,38 +24,18 @@ export class ReportService {
     private readonly lsvService: LsvService,
   ) {}
 
-  async fetchReportFromIPFS(cid: string): Promise<any> {
-    const url = `${this.configService.get('IPFS_GATEWAY')}/${cid}`;
-    const res = await fetch(url);
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch IPFS report: ${res.status} ${res.statusText}`);
-    }
-
-    return await res.json();
-  }
-
-  async fetchAllReports(): Promise<void> {
+  public async fetchAllReports(): Promise<void> {
     let cid: string | null = (await this.lazyOracleContractService.getLatestReportData()).reportCid;
 
     while (cid) {
       try {
-        const reportData = await this.fetchReportFromIPFS(cid);
+        const reportData = await this.lsvService.fetchIPFS(cid);
         this.logger.log(`Fetched report for CID: ${cid}`);
-
-        // TODO: remove for new hoodie testnets
-        // skip all old reports, e.g. https://ipfs.io/ipfs/QmQfBBNh66bhJFd4EP3BvY1CURGsD6Gav33jvTozVHsyQo
-        const values = reportData?.values;
-        const extraValues = reportData?.extraValues;
-        if (!values?.length || !extraValues || Object.keys(extraValues).length === 0) {
-          this.logger.log(`Skip the report for CID: ${cid}`);
-          return;
-        }
 
         const report = await this.reportDbService.saveReport(cid, reportData);
         this.logger.log(`Saved the report for CID: ${cid}`);
 
-        await this.reportDbService.saveLeaves(report, reportData || []);
+        await this.reportDbService.saveLeaves(report, reportData);
         this.logger.log(`Saved leaves for CID: ${cid}`);
 
         cid = reportData.prevTreeCID && reportData.prevTreeCID.trim() !== '' ? reportData.prevTreeCID : null;
@@ -69,7 +48,7 @@ export class ReportService {
     this.logger.log(`Report fetching complete!`);
   }
 
-  async calculate(): Promise<void> {
+  public async calculate(): Promise<void> {
     const batchSize = this.configService.jobs['reportBatchSize'];
     let skip = 0;
     let previousReport: ReportEntity | null = null;
@@ -107,6 +86,35 @@ export class ReportService {
     this.logger.log('All reports statistic calculation complete!');
   }
 
+  public subscribeToEvents() {
+    this.logger.log('[subscribeToEvents, event:VaultsReportDataUpdated] Subscribing to VaultsReportDataUpdated event');
+
+    this.lazyOracleContractService.contract.on(
+      'VaultsReportDataUpdated',
+      async (timestamp: bigint, root: string, cid: string, event) => {
+        this.logger.log(
+          `[subscribeToEvents, event:VaultsReportDataUpdated] Event received: timestamp=${timestamp}, root=${root}, cid=${cid}, block=${event.blockNumber}`,
+        );
+
+        try {
+          const reportData = await this.lsvService.fetchIPFS(cid);
+          this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Fetched report for CID: ${cid}`);
+
+          const report = await this.reportDbService.saveReport(cid, reportData);
+          this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Saved the report for CID: ${cid}`);
+
+          await this.reportDbService.saveLeaves(report, reportData);
+          this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Saved leaves for CID: ${cid}`);
+        } catch (error) {
+          this.logger.error(
+            `[subscribeToEvents, event:VaultsReportDataUpdated] Failed to fetch/save report with CID: ${cid}`,
+            error,
+          );
+        }
+      },
+    );
+  }
+
   private async calculateForVaultsBasedPrevReport(
     currentReport: ReportEntity,
     previousReport: ReportEntity,
@@ -136,19 +144,21 @@ export class ReportService {
         this.nodeOperatorFeeRateByVault.set(vaultAddress, nodeOperatorFeeRate);
       }
 
-      const rebaseReward = await this.lsvService.calculateRebaseReward(
+      const rebaseReward = await this.lsvService.calculateRebaseReward({
         shareRatePrev,
         shareRateCurr,
-        BigInt(prevLeaf.liabilityShares),
-        BigInt(currLeaf.liabilityShares),
-      );
+        sharesPrev: BigInt(prevLeaf.liabilityShares),
+        sharesCurr: BigInt(currLeaf.liabilityShares),
+      });
 
-      const metrics = await this.lsvService.calcReportMetrics(
-        currentVaultReport,
-        previousVaultReport,
+      const metrics = await this.lsvService.calcReportMetrics({
+        reports: {
+          current: currentVaultReport,
+          previous: previousVaultReport,
+        },
         nodeOperatorFeeRate,
-        rebaseReward,
-      );
+        stEthLiabilityRebaseRewards: rebaseReward,
+      });
 
       const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(vaultAddress);
 

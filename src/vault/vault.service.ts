@@ -86,11 +86,11 @@ export class VaultService {
         }
 
         try {
-          const healthFactor = await this.lsvService.calculateHealth(
-            item.totalValue,
-            item.liabilityStETH,
-            item.forcedRebalanceThresholdBP,
-          );
+          const healthFactor = await this.lsvService.calculateHealth({
+            totalValue: item.totalValue,
+            liabilitySharesInStethWei: item.liabilityStETH,
+            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+          });
 
           await this.vaultDbService.addOrUpdateState({
             vault,
@@ -170,7 +170,7 @@ export class VaultService {
   }
 
   public subscribeToEvents() {
-    this.logger.log('[subscribeToEvents] Subscribing to VaultConnected event');
+    this.logger.log('[subscribeToEvents, event:VaultConnected] Subscribing to VaultConnected event');
 
     this.vaultHubContractService.contract.on(
       'VaultConnected',
@@ -196,11 +196,11 @@ export class VaultService {
 
           const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(item.vault);
 
-          const healthFactor = await this.lsvService.calculateHealth(
-            item.totalValue,
-            item.liabilityStETH,
-            item.forcedRebalanceThresholdBP,
-          );
+          const healthFactor = await this.lsvService.calculateHealth({
+            totalValue: item.totalValue,
+            liabilitySharesInStethWei: item.liabilityStETH,
+            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+          });
 
           await this.vaultDbService.addOrUpdateState({
             vault: vaultDbEntity,
@@ -218,13 +218,17 @@ export class VaultService {
             updatedAt: new Date(),
             blockNumber,
           });
-          this.logger.log(`[fetchAllVaultsAndCalculateStates] Saved 'vaultsState' data to DB for vault ${item.vault}`);
+          this.logger.log(
+            `[subscribeToEvents, event:VaultConnected] Saved 'vaultsState' data to DB for vault ${item.vault}`,
+          );
 
           this.logger.log(
             `[subscribeToEvents, event:VaultConnected] State added/updated for vault ${vault} at block ${blockNumber}`,
           );
         } catch (err) {
-          this.logger.warn(`[subscribeToEvents] Failed to process VaultConnected for ${vault}: ${err}`);
+          this.logger.warn(
+            `[subscribeToEvents, event:VaultConnected] Failed to process VaultConnected for ${vault}: ${err}`,
+          );
         }
       },
     );

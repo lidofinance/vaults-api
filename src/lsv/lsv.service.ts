@@ -1,28 +1,36 @@
-import { Hex } from 'viem';
-import { Injectable } from '@nestjs/common';
-
+import { Hex, Address } from 'viem';
+import { Inject, Injectable } from '@nestjs/common';
+import { iterateUrls } from '@lidofinance/rpc';
 import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof';
-import { type VaultReport as VaultReportCliType, type VaultReportArgs } from '@lidofinance/lsv-cli/dist/utils/report';
-import { getVaultReport, getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report';
-import { calculateRebaseReward } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
-import { calculateHealth } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
-import { reportMetrics } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
+import {
+  getVaultReport,
+  getReportProofByVault,
+  type VaultReport as VaultReportCliType,
+} from '@lidofinance/lsv-cli/dist/utils/report';
+import { fetchIPFS, type Report } from '@lidofinance/lsv-cli/dist/utils';
+import { calculateRebaseReward, type CalculateRebaseRewardArgs } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
+import { calculateHealth, type CalculateHealthArgs } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
+import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
 
-import { ReportEntity, ReportLeafEntity } from 'db/report-db';
 import { ConfigService } from 'common/config';
+import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { ReportEntity, ReportLeafEntity } from 'db/report-db';
 
 export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR';
 
 @Injectable()
 export class LsvService {
-  constructor(protected readonly configService: ConfigService) {}
+  constructor(
+    protected readonly configService: ConfigService,
+    @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
+  ) {}
 
-  public async createProof(
+  private async _createProof(
     validatorIndex: number,
+    clApiUrl: string,
   ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
     try {
-      // TODO: add fallback
-      return await createPDGProof(validatorIndex, this.configService.get('CL_API_URLS')[0]);
+      return await createPDGProof(validatorIndex, clApiUrl);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
         console.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
@@ -34,63 +42,101 @@ export class LsvService {
     }
   }
 
-  public async getVaultReport(args: VaultReportArgs): Promise<VaultReportCliType> {
-    return await getVaultReport(args, false);
+  public async createProof(
+    validatorIndex: number,
+  ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
+    return await iterateUrls(this.configService.clApiUrls, (url) => this._createProof(validatorIndex, url));
   }
 
-  public async getReportProofByVault(args: VaultReportArgs): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
+  private async _fetchIPFS(cid: string, gateway: string): Promise<Report> {
     try {
-      return await getReportProofByVault(args, false);
+      return await fetchIPFS(
+        {
+          cid,
+          gateway,
+          bigNumberType: 'string',
+        },
+        false,
+      );
     } catch (error) {
-      // This is the behavior of the CLI
-      if (error.message?.toLowerCase().includes(`vault ${args.vault.toLowerCase()} not found in report`)) {
-        return null;
-      }
-
+      this.logger.error(`[LsvService._fetchIPFS] Failed to fetch IPFS report (cid: ${cid}): ${error.message}`);
       throw error;
     }
   }
 
-  public async calculateHealth(
-    // TODO: get CalculateHealthArgs from '@lidofinance/lsv-cli/dist/utils/health/calculate-health'
-    totalValue: bigint,
-    liabilitySharesInStethWei: bigint,
-    forceRebalanceThresholdBP: number,
-  ): Promise<ReturnType<typeof calculateHealth>> {
-    return calculateHealth({
-      totalValue,
-      liabilitySharesInStethWei,
-      forceRebalanceThresholdBP,
-    });
+  public async fetchIPFS(cid: string): Promise<Report> {
+    return await iterateUrls(this.configService.ipfsGateways, (url) => this._fetchIPFS(cid, url));
   }
 
-  public async calculateRebaseReward(
-    // TODO: get CalculateHealthArgs from '@lidofinance/lsv-cli/dist/utils/rebase-rewards'
-    shareRatePrev: bigint,
-    shareRateCurr: bigint,
-    prevLeafLiabilityShares: bigint,
-    currLeafLiabilityShares: bigint,
-  ): Promise<bigint> {
-    return calculateRebaseReward({
-      shareRatePrev,
-      shareRateCurr,
-      sharesPrev: prevLeafLiabilityShares,
-      sharesCurr: currLeafLiabilityShares,
-    });
+  private async _getVaultReport(vault: Address, cid: string, gateway: string): Promise<VaultReportCliType> {
+    try {
+      return await getVaultReport(
+        {
+          vault,
+          cid,
+          gateway,
+          bigNumberType: 'string',
+        },
+        false,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[LsvService._getVaultReport] Failed to get vault report (vault: ${vault}, cid: ${cid}): ${error.message}`,
+      );
+      throw error;
+    }
   }
 
-  public async calcReportMetrics(
-    // TODO: get ReportMetricsArgs from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic'
-    currentVaultReport: VaultReportCliType,
-    previousVaultReport: VaultReportCliType,
-    nodeOperatorFeeRate: bigint,
-    rebaseReward: bigint,
-  ): Promise<ReturnType<typeof reportMetrics>> {
-    return reportMetrics({
-      reports: { current: currentVaultReport, previous: previousVaultReport },
-      nodeOperatorFeeRate,
-      stEthLiabilityRebaseRewards: rebaseReward,
-    });
+  public async getVaultReport(vault: Address, cid: string): Promise<VaultReportCliType> {
+    return await iterateUrls(this.configService.ipfsGateways, (url) => this._getVaultReport(vault, cid, url));
+  }
+
+  private async _getReportProofByVault(
+    vault: Address,
+    cid: string,
+    gateway: string,
+  ): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
+    try {
+      return await getReportProofByVault(
+        {
+          vault,
+          cid,
+          gateway,
+          bigNumberType: 'string',
+        },
+        false,
+      );
+    } catch (error) {
+      // This is the behavior of the CLI
+      if (error.message?.toLowerCase().includes(`vault ${vault.toLowerCase()} not found in report`)) {
+        this.logger.warn(`[LsvService._getReportProofByVault] ${error.message}`);
+        return null;
+      }
+
+      this.logger.error(
+        `[LsvService._getReportProofByVault] Failed to get vault report and proof (vault: ${vault}, cid: ${cid}): ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  public async getReportProofByVault(
+    vault: Address,
+    cid: string,
+  ): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
+    return await iterateUrls(this.configService.ipfsGateways, (url) => this._getReportProofByVault(vault, cid, url));
+  }
+
+  public async calculateHealth(args: CalculateHealthArgs): Promise<ReturnType<typeof calculateHealth>> {
+    return calculateHealth({ ...args });
+  }
+
+  public async calculateRebaseReward(args: CalculateRebaseRewardArgs): Promise<bigint> {
+    return calculateRebaseReward({ ...args });
+  }
+
+  public async calcReportMetrics(args: ReportMetricsArgs): Promise<ReturnType<typeof reportMetrics>> {
+    return reportMetrics({ ...args });
   }
 
   public static transformToVaultReportCli(report: ReportEntity, leaf: ReportLeafEntity): VaultReportCliType {
@@ -104,9 +150,12 @@ export class LsvService {
       },
       extraData: {
         inOutDelta: leaf.inOutDelta,
+        prevFee: leaf.prevFee,
+        infraFee: leaf.infraFee,
+        liquidityFee: leaf.liquidityFee,
+        reservationFee: leaf.reservationFee,
       },
-      // TODO
-      leaf: '',
+      leaf: report.tree[leaf.treeIndex],
       refSlot: report.refSlot,
       blockNumber: report.blockNumber,
       timestamp: report.timestamp,

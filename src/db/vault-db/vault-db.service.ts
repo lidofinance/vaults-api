@@ -4,16 +4,10 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
+import { LABEL_TO_ROLE } from 'vault/vault.constants';
 
-import { Direction, DirectionEnum, SortFields, SortFieldsEnum } from './enums';
+import { Direction, DirectionEnum, SortFields } from './enums';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
-import { toSnakeCaseColumn } from './utils';
-
-// because toSnakeCaseColumn('liabilityStETH') = 'liability_st_e_t_h'
-const camelToSnakeExceptions: Record<string, string> = {
-  liabilityStETH: 'liability_steth',
-  forcedRebalanceThresholdBP: 'forced_rebalance_threshold_bp',
-};
 
 const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.rebaseReward AS "rebaseReward"',
@@ -257,7 +251,7 @@ export class VaultDbService {
           `"member"."vault_id" = "vault"."id"
           AND "member"."role" = :role
           AND LOWER("member"."address") = LOWER(:address)`,
-          { role, address },
+          { role: LABEL_TO_ROLE[role], address },
         );
       } else if (address) {
         vaultsSubQuery.innerJoin(

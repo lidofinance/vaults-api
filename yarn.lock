@@ -1423,10 +1423,10 @@
   resolved "https://registry.yarnpkg.com/@lido-nestjs/middleware/-/middleware-1.2.0.tgz#0e64b69149ef1f7e4594896fd08d6e0bd9ef5382"
   integrity sha512-0rkXWKXEKJPRbq1W6cN+yelhc+CruqhUqmdkNKwl4vTk631fpG9yfSfxxQFDAs3LhsTORqqgKUBpdK+epRYjIQ==
 
-"@lidofinance/lsv-cli@1.0.0-alpha.59":
-  version "1.0.0-alpha.59"
-  resolved "https://registry.yarnpkg.com/@lidofinance/lsv-cli/-/lsv-cli-1.0.0-alpha.59.tgz#7c88d19eca440cf22e62ed7c4d9eff38737157a7"
-  integrity sha512-kmCC2Ckc87/bptQRy9w/sbkJszuJBnlNSiUpLSj6kZLRICPDUB0wP2R78IvrKbEMWiKUClA25AFyz5f4L+DMeQ==
+"@lidofinance/lsv-cli@1.0.0-alpha.60":
+  version "1.0.0-alpha.60"
+  resolved "https://registry.yarnpkg.com/@lidofinance/lsv-cli/-/lsv-cli-1.0.0-alpha.60.tgz#a04a2454dc04c825c4f452f2f0df9c6645a6da8f"
+  integrity sha512-t3c2WyLSj5q/HqMYsh2G6azoiS3b7AA0asizUYQ/ynUtCHp/qUrl1lUpvjFxSbeu+00ilsel2dJ03Fv5XUu69Q==
   dependencies:
     "@chainsafe/blst" "^2.2.0"
     "@chainsafe/persistent-merkle-tree" "^1.0.1"
@@ -1449,6 +1449,13 @@
     multiformats "^13.3.2"
     prompts "^2.4.2"
     viem "^2.21.37"
+
+"@lidofinance/rpc@^0.52.0":
+  version "0.52.0"
+  resolved "https://registry.yarnpkg.com/@lidofinance/rpc/-/rpc-0.52.0.tgz#6ba826ec99ea04516e94f8243d2997b2214e8594"
+  integrity sha512-d3TbG7hktieL0dT0l9m6zbMOf6rRSuMUiQ1vA5w8gRZ2LNTiPhUMmqL0MuVC2xD/PZKpOHxSB8u1PIA4Nkqibw==
+  dependencies:
+    isomorphic-fetch "^3.0.0"
 
 "@lidofinance/satanizer@^0.32.0":
   version "0.32.0"
@@ -4703,6 +4710,14 @@ isexe@^2.0.0:
   resolved "https://registry.yarnpkg.com/isexe/-/isexe-2.0.0.tgz#e8fbf374dc556ff8947a10dcb0572d633f2cfa10"
   integrity sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==
 
+isomorphic-fetch@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/isomorphic-fetch/-/isomorphic-fetch-3.0.0.tgz#0267b005049046d2421207215d45d6a262b8b8b4"
+  integrity sha512-qvUtwJ3j6qwsF3jLxkZ72qCgjMysPzDfeV240JHiGZsANBYd+EEuu35v7dfrJ9Up0Ak07D7GGSkGhCHTqg/5wA==
+  dependencies:
+    node-fetch "^2.6.1"
+    whatwg-fetch "^3.4.1"
+
 isows@1.0.6:
   version "1.0.6"
   resolved "https://registry.yarnpkg.com/isows/-/isows-1.0.6.tgz#0da29d706fa51551c663c627ace42769850f86e7"
@@ -7412,6 +7427,11 @@ webpack@5.75.0:
     terser-webpack-plugin "^5.1.3"
     watchpack "^2.4.0"
     webpack-sources "^3.2.3"
+
+whatwg-fetch@^3.4.1:
+  version "3.6.20"
+  resolved "https://registry.yarnpkg.com/whatwg-fetch/-/whatwg-fetch-3.6.20.tgz#580ce6d791facec91d37c72890995a0b48d31c70"
+  integrity sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==
 
 whatwg-url@^5.0.0:
   version "5.0.0"
