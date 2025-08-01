@@ -34,7 +34,7 @@ services:
   worker:
     container_name: vaults-api-worker
     build: ./
-    command: node dist/worker-entry.js
+    command: yarn start:worker
     env_file:
       - .env
     environment:
