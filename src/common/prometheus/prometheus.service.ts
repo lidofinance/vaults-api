@@ -84,12 +84,6 @@ export class PrometheusService {
     name: METRICS_PREFIX + 'job_duration_seconds',
     help: 'Job execution duration',
     buckets: [0.2, 0.6, 1, 2, 3, 5, 8, 13, 30, 60],
-    labelNames: ['name'],
-  });
-
-  public jobCount = this.getOrCreateMetric('Gauge', {
-    name: METRICS_PREFIX + 'job_count',
-    help: 'Count of passed or failed jobs',
     labelNames: ['name', 'status'],
   });
 }
