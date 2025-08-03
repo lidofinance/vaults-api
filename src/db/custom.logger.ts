@@ -1,30 +1,30 @@
 import { Logger } from 'typeorm';
 import { Counter, Histogram } from 'prom-client';
 
+const UNKNOWN = 'unknown';
+
 export class CustomLogger implements Logger {
   constructor(
     private readonly duration: Histogram<'operation' | 'detail'>,
-    private readonly counter: Counter<'operation' | 'detail'>,
+    private readonly counter: Counter<'operation' | 'detail' | 'status'>,
   ) {}
 
-  logQuery(query: string) {
-    const end = this.duration.startTimer({
-      operation: CustomLogger.getOperation(query) ?? 'unknown',
-      detail: CustomLogger.getQueryTag(query) ?? CustomLogger.getEntity(query) ?? 'unknown',
-    });
-    end();
+  logQuery() {
+    // Required by the TypeORM Logger interface — not used in this implementation
   }
 
   logQueryError(error: string | Error, query: string) {
-    console.error(`[DB.CustomLogger.Error] ${error}`);
-    this.counter.inc({
-      operation: `query:${CustomLogger.getOperation(query)}`,
-      detail: CustomLogger.getQueryTag(query),
-    });
+    const operation = CustomLogger.getOperation(query) ?? UNKNOWN;
+    const detail = CustomLogger.getQueryTag(query) ?? CustomLogger.getEntity(query) ?? UNKNOWN;
+    console.log(`[DBCustomLogger.logQueryError] operation=${operation}, detail=${detail}, error=${error}`);
+    this.counter.inc({ operation, detail, status: 'error' });
   }
 
-  logQuerySlow() {
-    // Required by the TypeORM Logger interface — not used in this implementation
+  logQuerySlow(time: number, query: string) {
+    const operation = CustomLogger.getOperation(query) ?? UNKNOWN;
+    const detail = CustomLogger.getQueryTag(query) ?? CustomLogger.getEntity(query) ?? UNKNOWN;
+    this.duration.observe({ operation, detail }, time); // time is ms
+    this.counter.inc({ operation, detail, status: 'success' });
   }
   logSchemaBuild() {
     // Required by the TypeORM Logger interface — not used in this implementation

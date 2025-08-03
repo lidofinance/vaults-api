@@ -22,8 +22,7 @@ import { VaultJobsModule, ReportJobsModule } from '../jobs';
       inject: [PrometheusService],
       useFactory: (prometheusService: PrometheusService) => ({
         ...getTypeOrmConfig(),
-        logging: ['query'],
-        logger: new CustomLogger(prometheusService.dbQueryDuration, prometheusService.dbQueryErrorCounter),
+        logger: new CustomLogger(prometheusService.dbQueryDuration, prometheusService.dbQueryCounter),
       }),
     }),
     VaultJobsModule,
