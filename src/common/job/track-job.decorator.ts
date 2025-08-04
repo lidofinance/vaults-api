@@ -15,25 +15,20 @@ export function TrackJob(name: string) {
         name: name,
       });
       this.logger.debug(`Task '${name}' in progress`);
+      let status;
       return originalValue
         .apply(this, args)
         .then((r) => {
-          this.prometheusService.jobCount.inc({
-            name: name,
-            status: TaskStatus.COMPLETE,
-          });
+          status = TaskStatus.COMPLETE;
           return r;
         })
         .catch((e) => {
           this.logger.error(`Task '${name}' ended with an error`, e.stack);
-          this.prometheusService.jobCount.inc({
-            name: name,
-            status: TaskStatus.ERROR,
-          });
+          status = TaskStatus.ERROR;
           throw e;
         })
         .finally(() => {
-          const duration = stop();
+          const duration = stop({ status });
           const used = process.memoryUsage().heapUsed / 1024 / 1024;
           this.logger.debug(`Task '${name}' is complete. Used MB: ${used}. Duration: ${duration}`);
         });

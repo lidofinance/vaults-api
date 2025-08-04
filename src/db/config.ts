@@ -13,6 +13,11 @@ export const ormConfig: DataSourceOptions = {
   migrations: ['dist/db/migrations/*.js'],
   migrationsTableName: 'migrations',
   ssl: false,
+  // This hack is required to get SQL query durations:
+  // unfortunately, TypeORM doesn't expose an official API to get the exact duration,
+  // so we have to treat all queries as "slow" by setting the minimum threshold maxQueryExecutionTime = 1ms.
+  maxQueryExecutionTime: 1, // It doesn’t work with 0
+  logging: ['query', 'error'],
 };
 
 // needs to export this as argument -d for typeorm migration:run

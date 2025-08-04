@@ -52,20 +52,23 @@ export class PrometheusService {
     name: METRICS_PREFIX + 'ipfs_requests_duration_seconds',
     help: 'CL API request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
-    labelNames: ['result'],
+    labelNames: ['result', 'gateway'],
   });
 
   public dbQueryDuration = this.getOrCreateMetric('Histogram', {
     name: METRICS_PREFIX + 'db_query_duration_seconds',
-    help: 'Duration of DB queries in seconds',
-    buckets: [0.005, 0.01, 0.05, 0.1, 0.5, 1, 2],
+    help: 'Duration of DB queries in seconds, labeled by operation, detail',
+    buckets: [5, 10, 50, 100, 500, 1000, 2000], // ms
     labelNames: ['operation', 'detail'],
   });
 
-  public dbQueryErrorCounter = this.getOrCreateMetric('Counter', {
-    name: METRICS_PREFIX + 'db_query_error_counter',
-    help: 'Total number of DB query errors, labeled by event name and result',
-    labelNames: ['operation', 'detail'],
+  // Unfortunately, the current Logger API in TypeORM does not allow
+  // to get both duration and error metrics in a single method.
+  // So we have to use two separate metrics: dbQueryDuration and dbQueryCounter.
+  public dbQueryCounter = this.getOrCreateMetric('Counter', {
+    name: METRICS_PREFIX + 'db_query_counter',
+    help: 'Total number of DB queries, labeled by operation, detail and status',
+    labelNames: ['operation', 'detail', 'status'],
   });
 
   public contractEventHandledCounter = this.getOrCreateMetric('Counter', {
@@ -84,12 +87,6 @@ export class PrometheusService {
     name: METRICS_PREFIX + 'job_duration_seconds',
     help: 'Job execution duration',
     buckets: [0.2, 0.6, 1, 2, 3, 5, 8, 13, 30, 60],
-    labelNames: ['name'],
-  });
-
-  public jobCount = this.getOrCreateMetric('Gauge', {
-    name: METRICS_PREFIX + 'job_count',
-    help: 'Count of passed or failed jobs',
     labelNames: ['name', 'status'],
   });
 }

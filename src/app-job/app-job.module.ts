@@ -6,6 +6,7 @@ import { PrometheusModule, PrometheusService } from 'common/prometheus';
 import { ConfigModule } from 'common/config';
 import { ExecutionProviderModule } from 'common/execution-provider';
 import { LoggerModule } from 'common/logger';
+import { HealthModule } from 'common/health';
 import { getTypeOrmConfig } from 'db/config';
 import { CustomLogger } from 'db/custom.logger';
 
@@ -15,6 +16,7 @@ import { VaultJobsModule, ReportJobsModule } from '../jobs';
   imports: [
     ScheduleModule.forRoot(),
     LoggerModule,
+    HealthModule,
     ExecutionProviderModule,
     PrometheusModule,
     ConfigModule,
@@ -22,8 +24,7 @@ import { VaultJobsModule, ReportJobsModule } from '../jobs';
       inject: [PrometheusService],
       useFactory: (prometheusService: PrometheusService) => ({
         ...getTypeOrmConfig(),
-        logging: ['query'],
-        logger: new CustomLogger(prometheusService.dbQueryDuration, prometheusService.dbQueryErrorCounter),
+        logger: new CustomLogger(prometheusService.dbQueryDuration, prometheusService.dbQueryCounter),
       }),
     }),
     VaultJobsModule,
