@@ -52,7 +52,7 @@ export class PrometheusService {
     name: METRICS_PREFIX + 'ipfs_requests_duration_seconds',
     help: 'CL API request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
-    labelNames: ['result'],
+    labelNames: ['result', 'gateway'],
   });
 
   public dbQueryDuration = this.getOrCreateMetric('Histogram', {

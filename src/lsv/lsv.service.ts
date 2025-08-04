@@ -67,10 +67,10 @@ export class LsvService {
         },
         false,
       );
-      endTimer({ result: 'success' });
+      endTimer({ result: 'success', gateway });
       return report;
     } catch (error) {
-      endTimer({ result: 'error' });
+      endTimer({ result: 'error', gateway });
       this.logger.error(`[LsvService._fetchIPFS] Failed to fetch IPFS report (cid: ${cid}): ${error.message}`);
       throw error;
     }
