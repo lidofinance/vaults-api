@@ -110,6 +110,10 @@ export class VaultService {
             reservationFeeBP: item.reservationFeeBP,
             nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
             isReportFresh: item.isReportFresh,
+            isQuarantineActive: item.isQuarantineActive,
+            quarantinePendingTotalValueIncrease: item.quarantinePendingTotalValueIncrease.toString(),
+            quarantineStartTimestamp: item.quarantineStartTimestamp,
+            quarantineEndTimestamp: item.quarantineEndTimestamp,
             updatedAt: new Date(),
             blockNumber,
           });
