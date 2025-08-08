@@ -30,7 +30,6 @@ export const vaultsExample = {
       "quarantinePendingTotalValueIncrease": "0",
       "quarantineStartTimestamp": 0,
       "quarantineEndTimestamp": 0,
-      "rebaseReward": 0,
       "rebaseReward": 17111723808928,
       "grossStakingRewards": "382803000000000",
       "nodeOperatorRewards": "3828030000000",
