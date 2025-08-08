@@ -19,8 +19,11 @@ export type VaultData = {
   liquidityFeeBP: number;
   reservationFeeBP: number;
   nodeOperatorFeeRate: bigint;
-  isOwnerDashboard: boolean;
   isReportFresh: boolean;
+  isQuarantineActive: boolean;
+  quarantinePendingTotalValueIncrease: bigint;
+  quarantineStartTimestamp: number;
+  quarantineEndTimestamp: number;
 };
 
 export type RoleMembers = Record<string, string[]>;
@@ -104,8 +107,13 @@ export class VaultViewerContractService {
       liquidityFeeBP: vaultData.connection.liquidityFeeBP,
       reservationFeeBP: vaultData.connection.reservationFeeBP,
       nodeOperatorFeeRate: vaultData.nodeOperatorFeeRate.toBigInt(),
-      isOwnerDashboard: vaultData.isOwnerDashboard,
       isReportFresh: vaultData.isReportFresh,
+      isQuarantineActive: vaultData.quarantineInfo.isActive,
+      quarantinePendingTotalValueIncrease: vaultData.quarantineInfo.pendingTotalValueIncrease.toBigInt(),
+      // toNumber() safe here!
+      quarantineStartTimestamp: vaultData.quarantineInfo.startTimestamp.toNumber(),
+      // toNumber() safe here!
+      quarantineEndTimestamp: vaultData.quarantineInfo.endTimestamp.toNumber(),
     };
   }
 

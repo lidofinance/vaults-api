@@ -47,6 +47,18 @@ export class VaultStateEntity {
   @Column({ name: 'is_report_fresh', type: 'boolean', default: false })
   isReportFresh: boolean;
 
+  @Column({ name: 'is_quarantine_active', type: 'boolean', default: false })
+  isQuarantineActive: boolean;
+
+  @Column({ name: 'quarantine_pending_total_value_increase', type: 'numeric', precision: 78, scale: 0, nullable: true })
+  quarantinePendingTotalValueIncrease: string;
+
+  @Column({ name: 'quarantine_start_timestamp', type: 'integer', nullable: true })
+  quarantineStartTimestamp: number;
+
+  @Column({ name: 'quarantine_end_timestamp', type: 'integer', nullable: true })
+  quarantineEndTimestamp: number;
+
   @Column({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 

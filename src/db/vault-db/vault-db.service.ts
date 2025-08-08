@@ -114,6 +114,10 @@ export class VaultDbService {
       updatedAt: Date;
       blockNumber: number;
       isReportFresh: boolean;
+      isQuarantineActive: boolean | null;
+      quarantinePendingTotalValueIncrease: bigint | null;
+      quarantineStartTimestamp: number | null;
+      quarantineEndTimestamp: number | null;
       rebaseReward: string | null;
       grossStakingRewards: string | null;
       nodeOperatorRewards: string | null;
@@ -222,6 +226,10 @@ export class VaultDbService {
           `state.updated_at AS "updatedAt"`,
           `state.block_number AS "blockNumber"`,
           `state.is_report_fresh AS "isReportFresh"`,
+          `state.is_quarantine_active AS "isQuarantineActive"`,
+          `state.quarantine_pending_total_value_increase AS "quarantinePendingTotalValueIncrease"`,
+          `state.quarantine_start_timestamp AS "quarantineStartTimestamp"`,
+          `state.quarantine_end_timestamp AS "quarantineEndTimestamp"`,
 
           // vault report metrics
           `report_metrics.rebase_reward AS "rebaseReward"`,

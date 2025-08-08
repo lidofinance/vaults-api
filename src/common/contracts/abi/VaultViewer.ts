@@ -3,7 +3,7 @@ export const VaultViewerAbi = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "_vaultHub",
+        "name": "_lidoLocator",
         "type": "address"
       }
     ],
@@ -45,6 +45,32 @@ export const VaultViewerAbi = [
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "LAZY_ORACLE",
+    "outputs": [
+      {
+        "internalType": "contract LazyOracle",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "LIDO_LOCATOR",
+    "outputs": [
+      {
+        "internalType": "contract ILidoLocator",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -309,6 +335,33 @@ export const VaultViewerAbi = [
             "internalType": "bool",
             "name": "isReportFresh",
             "type": "bool"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "isActive",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "pendingTotalValueIncrease",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "startTimestamp",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "endTimestamp",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct LazyOracle.QuarantineInfo",
+            "name": "quarantineInfo",
+            "type": "tuple"
           }
         ],
         "internalType": "struct VaultViewer.VaultData",
@@ -478,6 +531,33 @@ export const VaultViewerAbi = [
             "internalType": "bool",
             "name": "isReportFresh",
             "type": "bool"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "isActive",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "pendingTotalValueIncrease",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "startTimestamp",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "endTimestamp",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct LazyOracle.QuarantineInfo",
+            "name": "quarantineInfo",
+            "type": "tuple"
           }
         ],
         "internalType": "struct VaultViewer.VaultData[]",
