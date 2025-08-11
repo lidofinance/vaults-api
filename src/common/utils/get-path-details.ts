@@ -4,24 +4,29 @@ export const getPathDetails = (originalUrl: string) => {
   try {
     const path = originalUrl.split('?')[0];
     const parts = path.split('/');
-    const version = parseInt(parts[1].substring(1));
-    const [, , ...rest] = parts;
+    const version = parseInt(parts[1]?.substring(1));
+    const rest = parts.slice(2);
     const routeWithoutVersion = rest.join('/');
-    const rootPath = rest[0];
-    let route: string;
 
-    if (HTTP_PATHS[version][routeWithoutVersion]) {
-      route = routeWithoutVersion;
-    } else if (HTTP_PATHS[version][rootPath]) {
-      route = rootPath;
-    }
+    // check version and path
+    const httpPathMap = HTTP_PATHS[version as keyof typeof HTTP_PATHS] as Record<string, string> | undefined;
+    if (!version || !httpPathMap) return { version: 'unknown', route: 'unknown' as const };
 
-    if (isNaN(version) || !HTTP_PATHS[version] || !HTTP_PATHS[version][route]) {
-      return { version: HTTP_PATHS[version] ? version : 'unknown', route: 'unknown' };
-    }
+    // fast track if 'routeWithoutVersion' has exact match (no {args} in HTTP_PATHS)
+    if (routeWithoutVersion in httpPathMap) return { version, route: routeWithoutVersion };
 
-    return { version, route };
-  } catch (error) {
-    return { version: 'unknown', route: 'unknown' };
+    // find match with {args} in HTTP_PATHS
+    const match = Object.keys(httpPathMap).find((pathItem) => {
+      const templateSegments = pathItem.split('/');
+      return (
+        templateSegments.length === rest.length &&
+        templateSegments.every((seg, i) => (seg.startsWith('{') && seg.endsWith('}') ? !!rest[i] : seg === rest[i]))
+      );
+    });
+    if (match) return { version, route: match };
+
+    return { version, route: 'unknown' as const };
+  } catch {
+    return { version: 'unknown', route: 'unknown' as const };
   }
 };
