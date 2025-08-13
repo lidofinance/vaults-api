@@ -186,20 +186,16 @@ export class VaultDbService {
                 'report_stat.node_operator_rewards',
                 'report_stat.daily_lido_fees',
                 'report_stat.net_staking_rewards',
-                'report_stat.gross_staking_apr',
-                'report_stat.gross_staking_apr_bps',
                 'report_stat.gross_staking_apr_percent',
-                'report_stat.net_staking_apr',
-                'report_stat.net_staking_apr_bps',
                 'report_stat.net_staking_apr_percent',
                 'report_stat.bottom_line',
-                'report_stat.carry_spread_apr',
-                'report_stat.carry_spread_apr_bps',
                 'report_stat.carry_spread_apr_percent',
               ])
               .from(VaultReportStatEntity, 'report_stat')
+              .innerJoin(ReportEntity, 'r', 'r.id = report_stat.current_report_id')
               .orderBy('report_stat.vault_id', 'ASC') // required by 'DISTINCT ON (report_stat.vault_id) report_stat.vault_id'
-              .addOrderBy('report_stat.updated_at', 'DESC'); // get the latest data for each vault_id
+              .addOrderBy('r.blockNumber', 'DESC') // get the latest data by 'report.blockNumber'
+              .addOrderBy('report_stat.updated_at', 'DESC'); // get the latest data by 'report_stat.updated_at'
           },
           'report_metrics',
           'report_metrics.vault_id = vault.id',
@@ -253,7 +249,9 @@ export class VaultDbService {
           ) AS "lastReport"`,
         ])
         // required by `DISTINCT ON (vault.id) vault.address AS "address"`
-        .orderBy('vault.id', 'ASC');
+        .orderBy('vault.id', 'ASC')
+        .addOrderBy('state.block_number', 'DESC') // get the latest data by 'block_number'
+        .addOrderBy('state.updated_at', 'DESC'); // get the latest data by 'updated_at'
 
       if (role && address) {
         vaultsSubQuery.innerJoin(
