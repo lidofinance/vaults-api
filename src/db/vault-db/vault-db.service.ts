@@ -19,7 +19,6 @@ const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.grossStakingAprPercent AS "grossStakingAprPercent"',
   'stats.netStakingAprPercent AS "netStakingAprPercent"',
   'stats.bottomLine AS "bottomLine"',
-  'stats.carrySpreadAprBps AS "carrySpreadAprBps"',
   'stats.carrySpreadAprPercent AS "carrySpreadAprPercent"',
   'stats.updatedAt AS "updatedAt"',
 ];
