@@ -354,10 +354,14 @@ export class VaultDbService {
     if (fromTimestamp !== undefined && toTimestamp !== undefined) {
       query.andWhere('currentReport.timestamp BETWEEN :fromTimestamp AND :toTimestamp', { fromTimestamp, toTimestamp });
     }
-
     return (
       query
-        .select(VAULT_REPORT_STATS_SELECT_FIELDS)
+        .select([
+          ...VAULT_REPORT_STATS_SELECT_FIELDS,
+          'currentReport.blockNumber AS "blockNumber"',
+          'currentReport.timestamp AS "timestamp"',
+          'currentReport.cid AS "reportCid"',
+        ])
         // for metrics
         .comment(QUERY_METRICS_COMMENTS.GET_VAULT_REPORT_STATS_IN_RANGE)
         .getRawMany()

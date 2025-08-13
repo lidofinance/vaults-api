@@ -23,7 +23,7 @@ import { ALL_ROLE_VALUES } from 'vault/vault.constants';
 import { ErrorResponseType } from 'http/common/dto/error-response-type';
 
 import { GetVaultStatsRangeQueryDto } from './dto/get-vault-stats-range-query.dto';
-import { vaultsExample, vaultLatestMetricsExample } from './example';
+import { vaultsExample, vaultLatestMetricsExample, vaultLatestMetricsRangeExample } from './example';
 
 const limitQueryDefault = 10;
 const offsetQueryDefault = 0;
@@ -165,7 +165,7 @@ export class VaultsHttpController {
     status: 200,
     description: 'Vaults with latest metrics',
     schema: {
-      example: [vaultLatestMetricsExample, vaultLatestMetricsExample],
+      example: vaultLatestMetricsRangeExample,
     },
   })
   @ApiResponse({
