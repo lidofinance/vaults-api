@@ -16,9 +16,7 @@ const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.nodeOperatorRewards AS "nodeOperatorRewards"',
   'stats.dailyLidoFees AS "dailyLidoFees"',
   'stats.netStakingRewards AS "netStakingRewards"',
-  'stats.grossStakingAprBps AS "grossStakingAprBps"',
   'stats.grossStakingAprPercent AS "grossStakingAprPercent"',
-  'stats.netStakingAprBps AS "netStakingAprBps"',
   'stats.netStakingAprPercent AS "netStakingAprPercent"',
   'stats.bottomLine AS "bottomLine"',
   'stats.carrySpreadAprBps AS "carrySpreadAprBps"',
@@ -328,8 +326,9 @@ export class VaultDbService {
       this.vaultReportStatRepo
         .createQueryBuilder('stats')
         .innerJoin('stats.vault', 'vault')
+        .innerJoin('stats.currentReport', 'currentReport')
         .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
-        .orderBy('stats.updatedAt', 'DESC')
+        .orderBy('currentReport.timestamp', 'DESC')
         .select(VAULT_REPORT_STATS_SELECT_FIELDS)
         // for metrics
         .comment(QUERY_METRICS_COMMENTS.GET_LATEST_VAULT_REPORT_STATS)
@@ -349,7 +348,7 @@ export class VaultDbService {
       .innerJoin('stats.vault', 'vault')
       .innerJoin('stats.currentReport', 'currentReport')
       .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
-      .orderBy('currentReport.timestamp', 'ASC');
+      .orderBy('currentReport.timestamp', 'DESC');
 
     if (fromBlock !== undefined && toBlock !== undefined) {
       query.andWhere('currentReport.blockNumber BETWEEN :fromBlock AND :toBlock', { fromBlock, toBlock });
