@@ -9,6 +9,7 @@ import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-
 import { ErrorResponseType } from 'http/common/dto/error-response-type';
 import { ConfigService } from 'common/config';
 import { LsvService } from 'lsv';
+import { ReportsMerkleService } from 'report/reports-merkle.service';
 
 import { ReportByVaultParamsDto, ReportByCidAndVaultParamsDto } from './dto';
 import { reportByVaultExample } from './example';
@@ -21,6 +22,7 @@ export class ReportsHttpController {
     protected readonly configService: ConfigService,
     private readonly lsvService: LsvService,
     private readonly lazyOracleContractService: LazyOracleContractService,
+    private readonly reportsMerkleService: ReportsMerkleService,
   ) {}
 
   @Version('1')
@@ -52,7 +54,7 @@ export class ReportsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Report by CID not exist or failed to verify report!',
+    description: 'Report or vault by CID not exist or failed to verify report!',
     type: ErrorResponseType,
   })
   async getReportByCidAndVault(@Param() params: ReportByCidAndVaultParamsDto) {
@@ -61,11 +63,11 @@ export class ReportsHttpController {
 
     try {
       // vault report and proof
-      const report = await this.lsvService.getReportProofByVault(vault, cid);
+      const report = await this.reportsMerkleService.getReportProofByVault(vault, cid);
       return { report };
     } catch (error) {
       this.logger.error(`Failed to getReportProofByVault ${vault}: ${error.message}`);
-      throw new BadRequestException(`Report by CID not exist!`);
+      throw new BadRequestException(`Report or vault by CID not exist!`);
     }
   }
 

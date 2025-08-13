@@ -1,0 +1,80 @@
+import { Address, Hex } from 'viem';
+import { LRUCache } from 'lru-cache';
+import { StandardMerkleTree } from '@openzeppelin/merkle-tree';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { getVaultData, type Report } from '@lidofinance/lsv-cli/dist/utils/report';
+import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { LsvService } from 'lsv';
+
+type CachedTree = {
+  IPFSReportData: Report;
+  merkleTree: StandardMerkleTree<any>;
+  indexByVaultMap: Map<string, number>;
+};
+
+@Injectable()
+export class ReportsMerkleService {
+  private readonly cache: LRUCache<string, CachedTree>;
+
+  constructor(
+    @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
+    private readonly lsvService: LsvService,
+    private readonly configService: ConfigService,
+  ) {
+    const max = Number(configService.get('REPORT_MERKLE_TREE_CACHE_MAX') ?? 10);
+    const ttlMs = Number(configService.get('REPORT_MERKLE_TREE_CACHE_TTL_MS') ?? 0);
+
+    this.cache = new LRUCache<string, CachedTree>({
+      max,
+      ttl: ttlMs > 0 ? ttlMs : undefined,
+    });
+  }
+
+  async getReportProofByVault(
+    vault: Address,
+    cid: string,
+  ): Promise<{ proof: Hex[] } & ReturnType<typeof getVaultData>> {
+    const { IPFSReportData, merkleTree, indexByVaultMap } = await this.getOrBuildMerkleTree(cid);
+
+    const vaultIndex = indexByVaultMap.get(vault.toLowerCase());
+    if (vaultIndex === undefined) {
+      throw new NotFoundException(`Vault ${vault} not found in report ${cid}`);
+    }
+
+    const vaultReportData = getVaultData(IPFSReportData, vault);
+
+    return {
+      ...vaultReportData,
+      proof: merkleTree.getProof(vaultIndex) as Hex[],
+    };
+  }
+
+  private async getOrBuildMerkleTree(cid: string): Promise<CachedTree> {
+    const cached = this.cache.get(cid);
+    if (cached) {
+      return cached;
+    }
+
+    const IPFSReportData = await this.lsvService.fetchIPFS(cid);
+
+    const merkleTree = StandardMerkleTree.load({
+      ...IPFSReportData,
+      values: IPFSReportData.values.map(({ treeIndex, value }) => ({
+        value,
+        treeIndex: Number(treeIndex),
+      })),
+    });
+
+    // Build Map(address -> treeIndex) for O(1) vault index lookup
+    const indexByVaultMap = new Map<string, number>();
+    IPFSReportData.values.forEach(({ value }, idx) => {
+      const vaultAddress = String(value[0]).toLowerCase();
+      if (!indexByVaultMap.has(vaultAddress)) indexByVaultMap.set(vaultAddress, idx);
+    });
+
+    const packed: CachedTree = { IPFSReportData, merkleTree, indexByVaultMap };
+    this.cache.set(cid, packed);
+    return packed;
+  }
+}
