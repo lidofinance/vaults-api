@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ErrorResponseType {
@@ -13,7 +14,7 @@ export class ErrorResponseType {
   error: string;
 
   @ApiProperty({
-    example: 400,
+    example: HttpStatus.BAD_REQUEST,
     description: 'Http status code',
   })
   statusCode: number;

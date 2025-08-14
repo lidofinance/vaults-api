@@ -85,7 +85,7 @@ export class VaultsHttpController {
     description: 'Account address to filter vaults by',
   })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Vaults list with latest state',
     schema: {
       example: vaultsExample,
@@ -94,6 +94,11 @@ export class VaultsHttpController {
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: 'The "address" must be provided when "role" is specified.',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
     type: ErrorResponseType,
   })
   async getVaultsByRoleAndAddress(
@@ -134,11 +139,16 @@ export class VaultsHttpController {
   @CacheTTL(120 * 1000)
   @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Vault with latest metrics',
     schema: {
       example: vaultLatestMetricsExample,
     },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
+    type: ErrorResponseType,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -163,11 +173,16 @@ export class VaultsHttpController {
   @ApiQuery({ name: 'fromBlock', required: false, type: Number })
   @ApiQuery({ name: 'toBlock', required: false, type: Number })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Vaults with latest metrics',
     schema: {
       example: vaultLatestMetricsRangeExample,
     },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
+    type: ErrorResponseType,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,

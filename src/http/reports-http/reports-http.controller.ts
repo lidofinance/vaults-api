@@ -27,14 +27,14 @@ export class ReportsHttpController {
   @Get('/:cid/:vaultAddress')
   @CacheTTL(120 * 1000)
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Report data by CID for a vaultAddress',
     schema: {
       example: reportByVaultExample,
     },
   })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Report found by CID, but the vault address is not present in it.',
     schema: {
       example: null,
@@ -73,11 +73,16 @@ export class ReportsHttpController {
   @Get('/last/:vaultAddress')
   @CacheTTL(120 * 1000)
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Last report data for a vault',
     schema: {
       example: reportByVaultExample,
     },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'vaultAddress must be an Ethereum address',
+    type: ErrorResponseType,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,

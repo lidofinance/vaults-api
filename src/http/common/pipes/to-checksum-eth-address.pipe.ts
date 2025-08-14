@@ -8,13 +8,14 @@ export class ToChecksumEthAddressPipe implements PipeTransform {
 
   transform(value: string) {
     if (!this.strict && !value) {
+      // if the parameter is optional
       return undefined;
     }
 
     try {
       return getAddress(value);
     } catch {
-      throw new BadRequestException(`Invalid address: ${value}`);
+      throw new BadRequestException(`Address must be an Ethereum address: ${value}`);
     }
   }
 }
