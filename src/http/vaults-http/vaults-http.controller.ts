@@ -102,7 +102,7 @@ export class VaultsHttpController {
     @Query('sortBy', new DefaultValuePipe(defaultSortBy), new ParseEnumPipe(SortFieldsEnum)) sortBy: SortFieldsEnum,
     @Query('direction', new DefaultValuePipe(defaultDirection), new ParseEnumPipe(DirectionEnum))
     direction: DirectionEnum,
-    @Query('address', new ToChecksumEthAddressPipe()) address: string,
+    @Query('address', new ToChecksumEthAddressPipe(false)) address: string,
     @Query('role') role: string,
   ) {
     const hasRole = !!role;
