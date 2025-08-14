@@ -3,7 +3,8 @@ import { getAddress } from '@ethersproject/address';
 
 @Injectable()
 export class ToChecksumEthAddressPipe implements PipeTransform {
-  // strict = false when the parameter is optional
+  // use `new ToChecksumEthAddressPipe()` - when the parameter is mandatory
+  // use `new ToChecksumEthAddressPipe(false)` - when the parameter is optional
   constructor(private readonly strict = true) {}
 
   transform(value: string) {
