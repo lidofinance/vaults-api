@@ -11,6 +11,7 @@ import { LsvService } from 'lsv';
 // - IPFSReportData ≈ 4.36 MB
 // - merkleTree ≈ 2.51 MB
 // - indexByVaultMap ≈ 0.46 MB
+// Total ≈ 7.3 MB
 type CachedTree = {
   IPFSReportData: Report;
   merkleTree: StandardMerkleTree<any>;
@@ -26,12 +27,10 @@ export class ReportsMerkleService {
     private readonly lsvService: LsvService,
     private readonly configService: ConfigService,
   ) {
-    const max = Number(configService.get('REPORT_MERKLE_TREE_CACHE_MAX') ?? 10);
-    const ttlMs = Number(configService.get('REPORT_MERKLE_TREE_CACHE_TTL_MS') ?? 0);
-
     this.cache = new LRUCache<string, CachedTree>({
-      max,
-      ttl: ttlMs > 0 ? ttlMs : undefined,
+      max: configService.get('REPORT_MERKLE_TREE_CACHE_MAX'),
+      // https://isaacs.github.io/node-lru-cache/interfaces/LRUCache.OptionsBase.html#ttl
+      ttl: 0, // no time-based expiration, eviction only when max is exceeded
     });
   }
 

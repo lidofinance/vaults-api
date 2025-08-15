@@ -87,6 +87,10 @@ export class EnvironmentVariables {
   @IsNumber()
   @Transform(({ value }) => Number(value))
   START_REPORT_BLOCK_NUMBER: number = null;
+
+  @IsNumber()
+  @Transform(toNumber({ defaultValue: 5 }))
+  REPORT_MERKLE_TREE_CACHE_MAX: number;
 }
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
