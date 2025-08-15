@@ -7,6 +7,10 @@ import { getVaultData, type Report } from '@lidofinance/lsv-cli/dist/utils/repor
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { LsvService } from 'lsv';
 
+// Estimated size in MB for 10,000 vaults:
+// - IPFSReportData ≈ 4.36 MB
+// - merkleTree ≈ 2.51 MB
+// - indexByVaultMap ≈ 0.46 MB
 type CachedTree = {
   IPFSReportData: Report;
   merkleTree: StandardMerkleTree<any>;
