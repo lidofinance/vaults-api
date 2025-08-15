@@ -12,6 +12,8 @@ import { LsvService } from 'lsv';
 // - merkleTree ≈ 2.51 MB
 // - indexByVaultMap ≈ 0.46 MB
 // Total ≈ 7.3 MB
+// Calculated for IPFS CID: QmfVbCvPxvZsfuSH1dNbtpbs6XLWszQ6nZ9EkujvLjNDco
+// with https://www.npmjs.com/package/object-sizeof
 type CachedTree = {
   IPFSReportData: Report;
   merkleTree: StandardMerkleTree<any>;
