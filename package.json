@@ -28,6 +28,7 @@
     "typeorm:schema:drop": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js schema:drop"
   },
   "dependencies": {
+    "@ethersproject/address": "^5.8.0",
     "@ethersproject/providers": "^5.8.0",
     "@fastify/static": "^6.6.0",
     "@lido-nestjs/contracts": "^9.8.0",

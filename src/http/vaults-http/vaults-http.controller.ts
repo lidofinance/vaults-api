@@ -21,6 +21,7 @@ import { ConfigService } from 'common/config';
 import { VaultDbService, SortFieldsEnum, DirectionEnum } from 'db/vault-db';
 import { ALL_ROLE_VALUES } from 'vault/vault.constants';
 import { ErrorResponseType } from 'http/common/dto/error-response-type';
+import { ToChecksumEthAddressPipe } from 'http/common/pipes';
 
 import { GetVaultStatsRangeQueryDto } from './dto/get-vault-stats-range-query.dto';
 import { vaultsExample, vaultLatestMetricsExample, vaultLatestMetricsRangeExample } from './example';
@@ -84,7 +85,7 @@ export class VaultsHttpController {
     description: 'Account address to filter vaults by',
   })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Vaults list with latest state',
     schema: {
       example: vaultsExample,
@@ -95,13 +96,18 @@ export class VaultsHttpController {
     description: 'The "address" must be provided when "role" is specified.',
     type: ErrorResponseType,
   })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
+    type: ErrorResponseType,
+  })
   async getVaultsByRoleAndAddress(
     @Query('limit', new DefaultValuePipe(limitQueryDefault), ParseIntPipe) limit: number,
     @Query('offset', new DefaultValuePipe(offsetQueryDefault), ParseIntPipe) offset: number,
     @Query('sortBy', new DefaultValuePipe(defaultSortBy), new ParseEnumPipe(SortFieldsEnum)) sortBy: SortFieldsEnum,
     @Query('direction', new DefaultValuePipe(defaultDirection), new ParseEnumPipe(DirectionEnum))
     direction: DirectionEnum,
-    @Query('address') address: string,
+    @Query('address', new ToChecksumEthAddressPipe(false)) address: string,
     @Query('role') role: string,
   ) {
     const hasRole = !!role;
@@ -133,7 +139,7 @@ export class VaultsHttpController {
   @CacheTTL(120 * 1000)
   @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Vault with latest metrics',
     schema: {
       example: vaultLatestMetricsExample,
@@ -141,10 +147,15 @@ export class VaultsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
     description: 'Vault not found or has no stats.',
     type: ErrorResponseType,
   })
-  async getLatestVaultStatsByAddress(@Param('vaultAddress') vaultAddress: string) {
+  async getLatestVaultStatsByAddress(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
     const latestStats = await this.vaultDbService.getLatestVaultReportStats(vaultAddress);
     if (!latestStats) {
       throw new BadRequestException('Vault not found or has no stats.');
@@ -162,7 +173,7 @@ export class VaultsHttpController {
   @ApiQuery({ name: 'fromBlock', required: false, type: Number })
   @ApiQuery({ name: 'toBlock', required: false, type: Number })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Vaults with latest metrics',
     schema: {
       example: vaultLatestMetricsRangeExample,
@@ -170,11 +181,16 @@ export class VaultsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
     description: 'You must provide either both "fromBlock" & "toBlock" or both "fromTimestamp" & "toTimestamp".',
     type: ErrorResponseType,
   })
   async getVaultStatsRangeByAddress(
-    @Param('vaultAddress') vaultAddress: string,
+    @Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string,
     @Query() query: GetVaultStatsRangeQueryDto,
   ) {
     const { fromBlock, toBlock, fromTimestamp, toTimestamp } = query;

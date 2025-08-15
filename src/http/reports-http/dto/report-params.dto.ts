@@ -1,6 +1,8 @@
 import { IsEthereumAddress, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
+import { ToChecksumEthAddress } from 'http/common/decorators';
+
 export class ReportByVaultParamsDto {
   @ApiProperty({
     name: 'vaultAddress',
@@ -10,6 +12,7 @@ export class ReportByVaultParamsDto {
     description: 'Vault address',
   })
   @IsEthereumAddress()
+  @ToChecksumEthAddress()
   vaultAddress: `0x${string}`;
 }
 
@@ -32,5 +35,6 @@ export class ReportByCidAndVaultParamsDto {
     description: 'Vault address',
   })
   @IsEthereumAddress()
+  @ToChecksumEthAddress()
   vaultAddress: `0x${string}`;
 }
