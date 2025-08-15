@@ -95,15 +95,42 @@ export const vaultLatestMetricsExample = {
   "nodeOperatorRewards": "1901800000000",
   "dailyLidoFees": "5404649809954",
   "netStakingRewards": "182873550190046",
-  // "grossStakingAPR": "2",
-  "grossStakingAprBps": 200.173300708,
   "grossStakingAprPercent": 2.00173300708,
-  // "netStakingAPR": "1",
-  "netStakingAprBps": 192.482922251,
   "netStakingAprPercent": 1.9248292225099999,
   "bottomLine": "174253498120759",
-  // "carrySpreadAPR": "1",
-  "carrySpreadAprBps": 183.409916283,
   "carrySpreadAprPercent": 1.83409916283,
   "updatedAt": "2025-07-01T09:05:01.036Z"
 };
+
+export const vaultLatestMetricsRangeExample = [
+  {
+    "rebaseReward": 91045487192767,
+    "grossStakingRewards": "180669000000000",
+    "nodeOperatorRewards": "1806690000000",
+    "dailyLidoFees": "5360615224230",
+    "netStakingRewards": "173501694775770",
+    "grossStakingAprPercent": 1.89542624499,
+    "netStakingAprPercent": 1.82023294438,
+    "bottomLine": "82456207583003",
+    "carrySpreadAprPercent": 0.86506074598,
+    "updatedAt": "2025-08-13T20:44:52.574Z",
+    "blockNumber": 1000360,
+    "timestamp": 1755113484,
+    "reportCid": "QmS4GrsfDBkFVggKj4Fn7zWLrDb9SgRjNz2GfmMJxrWnU5"
+  },
+  {
+    "rebaseReward": 12515272803860,
+    "grossStakingRewards": "355431000000000",
+    "nodeOperatorRewards": "3554310000000",
+    "dailyLidoFees": "38457404424114",
+    "netStakingRewards": "313419285575886",
+    "grossStakingAprPercent": 1.86444828376,
+    "netStakingAprPercent": 1.64407170193,
+    "bottomLine": "300904012772026",
+    "carrySpreadAprPercent": 1.57842160698,
+    "updatedAt": "2025-08-13T20:44:51.873Z",
+    "blockNumber": 1000009,
+    "timestamp": 1755108876,
+    "reportCid": "QmczZwXmYg6aZaZuXMxrPbomE98PkNRoXieByjJH28oWej"
+  },
+];
