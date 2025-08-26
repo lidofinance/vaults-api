@@ -68,7 +68,7 @@ export class ReportService {
       }
     }
 
-    this.logger.log(`[fetchAllReports] Report fetching complete, fetchedCount={fetchedCount}!`);
+    this.logger.log(`[fetchAllReports] Report fetching complete, fetchedCount=${fetchedCount}!`);
     this.prometheusService.lastUpdateGauge
       .labels({ source: 'fetchAllReports', type: 'timestamp' })
       .set(Date.now() / 1000);
