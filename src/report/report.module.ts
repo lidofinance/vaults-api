@@ -9,7 +9,7 @@ import { ReportsMerkleService } from './reports-merkle.service';
 
 @Module({
   imports: [VaultDbModule, ReportDbModule, LsvModule],
-  providers: [],
+  providers: [ReportService, ReportsMerkleService],
   exports: [ReportService, ReportsMerkleService],
 })
 export class ReportModule {}
