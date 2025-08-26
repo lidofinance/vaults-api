@@ -25,7 +25,7 @@ export class ReportByCidAndVaultParamsDto {
     description: 'IPFS CID',
   })
   @Matches(/^[Qm][1-9A-HJ-NP-Za-km-z]{44,}$/)
-  cid: `0x${string}`;
+  cid: string;
 
   @ApiProperty({
     name: 'vaultAddress',

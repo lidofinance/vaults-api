@@ -5,10 +5,11 @@ import { ReportDbModule } from 'db/report-db';
 import { LsvModule } from 'lsv';
 
 import { ReportService } from './report.service';
+import { ReportsMerkleService } from './reports-merkle.service';
 
 @Module({
   imports: [VaultDbModule, ReportDbModule, LsvModule],
-  providers: [ReportService],
-  exports: [ReportService],
+  providers: [],
+  exports: [ReportService, ReportsMerkleService],
 })
 export class ReportModule {}
