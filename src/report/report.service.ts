@@ -1,3 +1,4 @@
+import { LRUCache } from 'lru-cache';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Inject, Injectable } from '@nestjs/common';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
@@ -14,6 +15,7 @@ import { LsvService } from 'lsv';
 @Injectable()
 export class ReportService {
   private nodeOperatorFeeRateByVault = new Map<string, bigint>();
+  private readonly shareRateCache: LRUCache<number, bigint>;
 
   constructor(
     private readonly configService: ConfigService,
@@ -25,7 +27,24 @@ export class ReportService {
     private readonly vaultDbService: VaultDbService,
     private readonly lsvService: LsvService,
     private readonly prometheusService: PrometheusService,
-  ) {}
+  ) {
+    this.shareRateCache = new LRUCache<number, bigint>({
+      // Prevents recalculation of ShareRate (see this.calculateShareRate)
+      // for `previousReport` and `currentReport` in 'calculateForVaultsBasedPrevReport'
+      max: 2,
+      // https://isaacs.github.io/node-lru-cache/interfaces/LRUCache.OptionsBase.html#ttl
+      ttl: 0, // no time-based expiration, eviction only when max is exceeded
+      // dedupe parallel requests of one blockNumber
+      fetchMethod: async (blockNumber: number) => {
+        const [totalSupply, totalShares] = await Promise.all([
+          this.totalSupply(blockNumber),
+          this.totalShares(blockNumber),
+        ]);
+        // https://github.com/lidofinance/lido-staking-vault-cli/blob/develop/utils/share-rate.ts
+        return totalShares !== 0n ? (totalSupply * 10n ** 27n) / totalShares : 0n;
+      },
+    });
+  }
 
   @TrackJob('fetchAllReports')
   public async fetchAllReports(): Promise<void> {
@@ -224,21 +243,15 @@ export class ReportService {
     }
   }
 
-  private async totalSupply(blockNumber: number) {
+  private async totalSupply(blockNumber: number): Promise<bigint> {
     return (await this.lidoContract.totalSupply({ blockTag: blockNumber })).toBigInt();
   }
 
-  private async totalShares(blockNumber: number) {
+  private async totalShares(blockNumber: number): Promise<bigint> {
     return (await this.lidoContract.getTotalShares({ blockTag: blockNumber })).toBigInt();
   }
 
-  // https://github.com/lidofinance/lido-staking-vault-cli/blob/develop/utils/share-rate.ts
   private calculateShareRate = async (blockNumber: number): Promise<bigint> => {
-    const [totalSupply, totalShares] = await Promise.all([
-      this.totalSupply(blockNumber),
-      this.totalShares(blockNumber),
-    ]);
-
-    return totalShares !== 0n ? (totalSupply * 10n ** 27n) / totalShares : 0n;
+    return this.shareRateCache.fetch(blockNumber);
   };
 }
