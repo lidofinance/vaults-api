@@ -95,12 +95,14 @@ export class ReportService {
 
   @TrackJob('calculateVaultMetrics')
   public async calculateVaultMetrics(): Promise<void> {
+    const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
     const batchSize = this.configService.jobs['reportBatchSize'];
     let skip = 0;
     let previousReport: ReportEntity | null = null;
     let previousLeaves: ReportLeafEntity[] | null = null;
+    let calculatedCount = 0;
 
-    while (true) {
+    reportFetchLoop: while (true) {
       const batch = await this.reportDbService.getAllReportsSortedDesc(skip, batchSize);
       if (batch.length === 0) break;
 
@@ -122,6 +124,24 @@ export class ReportService {
           );
         }
 
+        calculatedCount++;
+
+        // 'calculatedCount >= 3' because the very first iteration has previousReport = null,
+        // i.e. the first valid pair starts from the second report
+        if (blockLimit < 1 && calculatedCount >= 3) {
+          this.logger.log(
+            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' is not set (zero) or negative — calculating only the last 2 reports`,
+          );
+          break reportFetchLoop;
+        }
+
+        if (blockLimit > Number(currentReport.blockNumber)) {
+          this.logger.log(
+            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' has been reached at report CID=${previousReport.cid}`,
+          );
+          break reportFetchLoop;
+        }
+
         previousReport = currentReport;
         previousLeaves = currentLeaves;
       }
@@ -129,7 +149,9 @@ export class ReportService {
       skip += batchSize;
     }
 
-    this.logger.log('[calculateVaultMetrics] All reports statistic calculation complete!');
+    this.logger.log(
+      `[calculateVaultMetrics] Reports statistic calculation complete, calculatedCount=${calculatedCount}!`,
+    );
     this.prometheusService.lastUpdateGauge
       .labels({ source: 'calculateVaultMetrics', type: 'timestamp' })
       .set(Date.now() / 1000);
