@@ -3,6 +3,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { Injectable, Inject } from '@nestjs/common';
 
 import { ConfigService } from 'common/config';
+import { ExecutionProviderService } from 'common/execution-provider';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultService } from 'vault';
 
@@ -13,6 +14,7 @@ export class VaultJobsService {
     private readonly schedulerRegistry: SchedulerRegistry,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     private readonly vaultService: VaultService,
+    private readonly executionProviderService: ExecutionProviderService,
   ) {}
 
   async onModuleInit() {
@@ -21,8 +23,16 @@ export class VaultJobsService {
     const job = new CronJob(
       this.configService.jobs['vaultsCron'],
       async () => {
-        await this.vaultService.fetchAllVaultsAndCalculateStates();
-        await this.vaultService.fetchAllVaultsRoleMembers();
+        let blockNumber: number;
+        try {
+          blockNumber = await this.executionProviderService.getBlockNumber();
+        } catch (err) {
+          this.logger.error(`[VaultJobsService.onModuleInit.CronJob] Failed to fetch blockNumber: ${err}`);
+          return;
+        }
+
+        await this.vaultService.fetchAllVaultsAndCalculateStates(blockNumber);
+        await this.vaultService.fetchAllVaultsRoleMembers(blockNumber);
       },
       null,
       false,

@@ -2,7 +2,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
 import { ConfigService } from 'common/config';
-import { ExecutionProviderService } from 'common/execution-provider';
 import { PrometheusService } from 'common/prometheus';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultViewerContractService, type RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
@@ -23,19 +22,24 @@ export class VaultService {
     private readonly vaultDbService: VaultDbService,
     private readonly vaultViewerContractService: VaultViewerContractService,
     private readonly vaultHubContractService: VaultHubContractService,
-    private readonly executionProviderService: ExecutionProviderService,
     private readonly lsvService: LsvService,
     private readonly prometheusService: PrometheusService,
   ) {}
 
-  public async fetchAllVaultsAndCalculateStates(): Promise<void> {
+  /**
+   * ⚠️ Important: passing `blockNumber` here does not guarantee it will be used.
+   * This method can be called from multiple places (VaultJobsService, ReportJobsService)
+   * and is guarded by a single-flight mechanism: if a run is already in progress,
+   * subsequent calls will join the same Promise and ignore the new `blockNumber`.
+   */
+  public async fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
     // prevent concurrent runs: return the same Promise if already running
     if (this.fetchAllVaultsAndCalculateStatesInFlight) {
       this.logger.warn('[fetchAllVaultsAndCalculateStates] Already running — skip (joining current run)');
       return this.fetchAllVaultsAndCalculateStatesInFlight.catch(() => undefined);
     }
 
-    this.fetchAllVaultsAndCalculateStatesInFlight = this._fetchAllVaultsAndCalculateStates()
+    this.fetchAllVaultsAndCalculateStatesInFlight = this._fetchAllVaultsAndCalculateStates(blockNumber)
       .catch((err) => {
         this.logger.error('[fetchAllVaultsAndCalculateStates] Run failed', err);
         throw err;
@@ -48,18 +52,10 @@ export class VaultService {
   }
 
   @TrackJob('fetchAllVaultsAndCalculateStates')
-  private async _fetchAllVaultsAndCalculateStates(): Promise<void> {
+  private async _fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
     this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
 
     const batchSize = this.configService.jobs['vaultsBatchSize'];
-
-    let blockNumber: number;
-    try {
-      blockNumber = await this.executionProviderService.getBlockNumber();
-    } catch (err) {
-      this.logger.error(`[fetchAllVaultsAndCalculateStates] Failed to fetch blockNumber for batch: ${err}`);
-      return;
-    }
 
     // 1. Get vaultsCount, vaultsConnectedBound (0, 0) - works and return:
     // - vaults empty array
@@ -158,21 +154,13 @@ export class VaultService {
   }
 
   @TrackJob('fetchAllVaultsRoleMembers')
-  public async fetchAllVaultsRoleMembers(): Promise<void> {
+  public async fetchAllVaultsRoleMembers(blockNumber: number): Promise<void> {
     this.logger.log('[fetchAllVaultsRoleMembers] Started');
 
     const totalVaults = await this.vaultDbService.getVaultsCount();
     this.logger.log(`[fetchAllVaultsRoleMembers] Total vaults: ${totalVaults}`);
 
     const batchSize = this.configService.jobs['vaultMembersBatchSize'];
-
-    let blockNumber: number;
-    try {
-      blockNumber = await this.executionProviderService.getBlockNumber();
-    } catch (err) {
-      this.logger.error(`[fetchAllVaultsAndStateHourly] Failed to fetch blockNumber for batch: ${err}`);
-      return;
-    }
 
     for (let offset = 0; offset < totalVaults; offset += batchSize) {
       const vaultEntities = await this.vaultDbService.getVaults(batchSize, offset);
