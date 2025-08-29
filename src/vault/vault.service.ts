@@ -243,8 +243,17 @@ export class VaultService {
             `[subscribeToEvents, event:VaultConnected] Saved 'vaultsState' data to DB for vault ${item.vault}`,
           );
 
+          const roleMembersMap = await this.vaultViewerContractService.getRoleMembers(vault, ROLE_BYTES32, {
+            blockTag: blockNumber,
+          });
+
+          await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
           this.logger.log(
-            `[subscribeToEvents, event:VaultConnected] State added/updated for vault ${vault} at block ${blockNumber}`,
+            `[subscribeToEvents, event:VaultConnected] Saved 'membersForVault' data to DB for vault ${vault}`,
+          );
+
+          this.logger.log(
+            `[subscribeToEvents, event:VaultConnected] State and roles added/updated for vault ${vault} at block ${blockNumber}`,
           );
           this.prometheusService.contractEventHandledCounter
             .labels({ eventName: 'VaultConnected', result: 'success' })
