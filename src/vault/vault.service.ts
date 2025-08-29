@@ -14,6 +14,8 @@ import { LsvService } from 'lsv';
 
 @Injectable()
 export class VaultService {
+  private fetchAllVaultsAndCalculateStatesInFlight?: Promise<void>;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
@@ -28,6 +30,25 @@ export class VaultService {
 
   @TrackJob('fetchAllVaultsAndCalculateStates')
   public async fetchAllVaultsAndCalculateStates(): Promise<void> {
+    // prevent concurrent runs: return the same Promise if already running
+    if (this.fetchAllVaultsAndCalculateStatesInFlight) {
+      this.logger.warn('[fetchAllVaultsAndCalculateStates] Already running — skip (joining current run)');
+      return this.fetchAllVaultsAndCalculateStatesInFlight.catch(() => undefined);
+    }
+
+    this.fetchAllVaultsAndCalculateStatesInFlight = this._fetchAllVaultsAndCalculateStates()
+      .catch((err) => {
+        this.logger.error('[fetchAllVaultsAndCalculateStates] Run failed', err);
+        throw err;
+      })
+      .finally(() => {
+        this.fetchAllVaultsAndCalculateStatesInFlight = undefined;
+      });
+
+    return this.fetchAllVaultsAndCalculateStatesInFlight;
+  }
+
+  private async _fetchAllVaultsAndCalculateStates(): Promise<void> {
     this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
 
     const batchSize = this.configService.jobs['vaultsBatchSize'];
@@ -40,20 +61,20 @@ export class VaultService {
       return;
     }
 
-    // 1. Get vaultsCount with first batch (0, batchSize - 1) + leftover
+    // 1. Get vaultsCount, vaultsConnectedBound (0, 0) - works and return:
+    // - vaults empty array
+    // - vaults count
     let initialBatch = [];
     let leftoverVaults = 0;
     try {
-      const result = await this.vaultViewerContractService.getVaultsConnectedBound(0, batchSize - 1, {
+      const result = await this.vaultViewerContractService.getVaultsConnectedBound(0, 0, {
         blockTag: blockNumber,
       });
       initialBatch = result.addresses;
       leftoverVaults = result.leftoverVaults;
     } catch (err: any) {
       this.logger.error(
-        `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsConnectedBound (0 - ${
-          batchSize - 1
-        }) at block ${blockNumber}: ${err}`,
+        `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsConnectedBound (0, 0) at block ${blockNumber}: ${err}`,
       );
       return;
     }
