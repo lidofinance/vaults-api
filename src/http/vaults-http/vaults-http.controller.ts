@@ -42,7 +42,7 @@ export class VaultsHttpController {
 
   @Version('1')
   @Get('')
-  @CacheTTL(120 * 1000)
+  @CacheTTL(10 * 1000)
   @ApiQuery({
     name: 'limit',
     required: false,
@@ -136,7 +136,7 @@ export class VaultsHttpController {
 
   @Version('1')
   @Get(':vaultAddress/latest-metrics')
-  @CacheTTL(120 * 1000)
+  @CacheTTL(10 * 1000)
   @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -166,7 +166,7 @@ export class VaultsHttpController {
 
   @Version('1')
   @Get(':vaultAddress/metrics-range')
-  @CacheTTL(120 * 1000)
+  @CacheTTL(10 * 1000)
   @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
   @ApiQuery({ name: 'fromTimestamp', required: false, type: Number })
   @ApiQuery({ name: 'toTimestamp', required: false, type: Number })
