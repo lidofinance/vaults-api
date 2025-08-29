@@ -28,7 +28,6 @@ export class VaultService {
     private readonly prometheusService: PrometheusService,
   ) {}
 
-  @TrackJob('fetchAllVaultsAndCalculateStates')
   public async fetchAllVaultsAndCalculateStates(): Promise<void> {
     // prevent concurrent runs: return the same Promise if already running
     if (this.fetchAllVaultsAndCalculateStatesInFlight) {
@@ -48,6 +47,7 @@ export class VaultService {
     return this.fetchAllVaultsAndCalculateStatesInFlight;
   }
 
+  @TrackJob('fetchAllVaultsAndCalculateStates')
   private async _fetchAllVaultsAndCalculateStates(): Promise<void> {
     this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
 
