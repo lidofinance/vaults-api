@@ -165,17 +165,27 @@ export class VaultService {
   @TrackJob('fetchAllVaultsRoleMembers')
   public async fetchAllVaultsRoleMembers(blockNumber: number): Promise<void> {
     this.logger.log('[fetchAllVaultsRoleMembers] Started');
+    const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
+    const batchSize = this.configService.jobs['vaultMembersBatchSize'];
 
     const totalVaults = await this.vaultDbService.getVaultsCount();
     this.logger.log(`[fetchAllVaultsRoleMembers] Total vaults: ${totalVaults}`);
 
-    const batchSize = this.configService.jobs['vaultMembersBatchSize'];
-
-    for (let offset = 0; offset < totalVaults; offset += batchSize) {
-      const vaultEntities = await this.vaultDbService.getVaults(batchSize, offset);
+    let vaultsLimit = totalVaults;
+    if (blockLimit < 1 && totalVaults > 0) {
+      vaultsLimit = Math.min(VAULTS_MIN_FETCH_COUNT, totalVaults);
+      this.logger.log(
+        `[fetchAllVaultsRoleMembers] Running in minimal vaults fetching mode, vaultsLimit=${vaultsLimit}`,
+      );
+    }
+    for (let offset = 0; offset < vaultsLimit; offset += batchSize) {
+      const limit = Math.min(batchSize, vaultsLimit - offset);
+      const vaultEntities = await this.vaultDbService.getVaults(limit, offset);
       if (vaultEntities.length === 0) break;
 
-      this.logger.log(`[fetchAllVaultsRoleMembers] Fetching vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      this.logger.log(
+        `[fetchAllVaultsRoleMembers] Loaded vaults range(${offset}..${offset + vaultEntities.length - 1})`,
+      );
       const vaultAddresses = vaultEntities.map((vault) => vault.address);
 
       let batchResults: Array<{ vault: string; roleMembersMap: RoleMembers }>;
@@ -188,7 +198,9 @@ export class VaultService {
         continue;
       }
 
-      this.logger.log(`[fetchAllVaultsRoleMembers] Saving vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      this.logger.log(
+        `[fetchAllVaultsRoleMembers] Saving vaults range(${offset}..${offset + vaultEntities.length - 1})`,
+      );
       for (const { vault, roleMembersMap } of batchResults) {
         try {
           await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
