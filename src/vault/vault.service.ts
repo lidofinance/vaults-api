@@ -11,6 +11,8 @@ import { VaultDbService } from 'db/vault-db';
 import { ROLE_BYTES32 } from 'vault/vault.constants';
 import { LsvService } from 'lsv';
 
+const VAULTS_MIN_FETCH_COUNT = 2;
+
 @Injectable()
 export class VaultService {
   private fetchAllVaultsAndCalculateStatesInFlight?: Promise<void>;
@@ -54,7 +56,7 @@ export class VaultService {
   @TrackJob('fetchAllVaultsAndCalculateStates')
   private async _fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
     this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
-
+    const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
     const batchSize = this.configService.jobs['vaultsBatchSize'];
 
     // 1. Get vaultsCount, vaultsConnectedBound (0, 0) - works and return:
@@ -79,8 +81,15 @@ export class VaultService {
     this.logger.log(`[fetchAllVaultsAndCalculateStates] Total vaults: ${vaultsCount}`);
 
     // 2. Starting to fetch vaults data
-    for (let from = 0; from < vaultsCount; from += batchSize) {
-      const to = Math.min(from + batchSize, vaultsCount);
+    let vaultsLimit = vaultsCount;
+    if (blockLimit < 1 && vaultsCount > 0) {
+      vaultsLimit = Math.min(VAULTS_MIN_FETCH_COUNT, vaultsCount);
+      this.logger.log(
+        `[fetchAllVaultsAndCalculateStates] Running in minimal vaults fetching mode, vaultsLimit=${vaultsLimit}`,
+      );
+    }
+    for (let from = 0; from < vaultsLimit; from += batchSize) {
+      const to = Math.min(from + batchSize, vaultsLimit);
       this.logger.log(`[fetchAllVaultsAndCalculateStates] Fetching vaults batch: ${from} to ${to}`);
 
       let vaultsDataBatch;
