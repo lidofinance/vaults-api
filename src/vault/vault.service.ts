@@ -11,8 +11,6 @@ import { VaultDbService } from 'db/vault-db';
 import { ROLE_BYTES32 } from 'vault/vault.constants';
 import { LsvService } from 'lsv';
 
-const VAULTS_MIN_FETCH_COUNT = 2;
-
 @Injectable()
 export class VaultService {
   private fetchAllVaultsAndCalculateStatesInFlight?: Promise<void>;
@@ -56,7 +54,7 @@ export class VaultService {
   @TrackJob('fetchAllVaultsAndCalculateStates')
   private async _fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
     this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
-    const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
+    const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
     const batchSize = this.configService.jobs['vaultsBatchSize'];
 
     // 1. Get vaultsCount, vaultsConnectedBound (0, 0) - works and return:
@@ -82,8 +80,8 @@ export class VaultService {
 
     // 2. Starting to fetch vaults data
     let vaultsLimit = vaultsCount;
-    if (blockLimit < 1 && vaultsCount > 0) {
-      vaultsLimit = Math.min(VAULTS_MIN_FETCH_COUNT, vaultsCount);
+    if (minimalVaultsFetchingCount > 0 && vaultsCount > 0) {
+      vaultsLimit = Math.min(minimalVaultsFetchingCount, vaultsCount);
       this.logger.log(
         `[fetchAllVaultsAndCalculateStates] Running in minimal vaults fetching mode, vaultsLimit=${vaultsLimit}`,
       );
@@ -165,15 +163,15 @@ export class VaultService {
   @TrackJob('fetchAllVaultsRoleMembers')
   public async fetchAllVaultsRoleMembers(blockNumber: number): Promise<void> {
     this.logger.log('[fetchAllVaultsRoleMembers] Started');
-    const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
+    const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
     const batchSize = this.configService.jobs['vaultMembersBatchSize'];
 
     const totalVaults = await this.vaultDbService.getVaultsCount();
     this.logger.log(`[fetchAllVaultsRoleMembers] Total vaults: ${totalVaults}`);
 
     let vaultsLimit = totalVaults;
-    if (blockLimit < 1 && totalVaults > 0) {
-      vaultsLimit = Math.min(VAULTS_MIN_FETCH_COUNT, totalVaults);
+    if (minimalVaultsFetchingCount > 0 && totalVaults > 0) {
+      vaultsLimit = Math.min(minimalVaultsFetchingCount, totalVaults);
       this.logger.log(
         `[fetchAllVaultsRoleMembers] Running in minimal vaults fetching mode, vaultsLimit=${vaultsLimit}`,
       );
