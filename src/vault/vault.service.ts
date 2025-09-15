@@ -2,7 +2,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
 import { ConfigService } from 'common/config';
-import { ExecutionProviderService } from 'common/execution-provider';
 import { PrometheusService } from 'common/prometheus';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultViewerContractService, type RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
@@ -14,6 +13,8 @@ import { LsvService } from 'lsv';
 
 @Injectable()
 export class VaultService {
+  private fetchAllVaultsAndCalculateStatesInFlight?: Promise<void>;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
@@ -21,39 +22,55 @@ export class VaultService {
     private readonly vaultDbService: VaultDbService,
     private readonly vaultViewerContractService: VaultViewerContractService,
     private readonly vaultHubContractService: VaultHubContractService,
-    private readonly executionProviderService: ExecutionProviderService,
     private readonly lsvService: LsvService,
     private readonly prometheusService: PrometheusService,
   ) {}
 
-  @TrackJob('fetchAllVaultsAndCalculateStates')
-  public async fetchAllVaultsAndCalculateStates(): Promise<void> {
-    this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
-
-    const batchSize = this.configService.jobs['vaultsBatchSize'];
-
-    let blockNumber: number;
-    try {
-      blockNumber = await this.executionProviderService.getBlockNumber();
-    } catch (err) {
-      this.logger.error(`[fetchAllVaultsAndCalculateStates] Failed to fetch blockNumber for batch: ${err}`);
-      return;
+  /**
+   * ⚠️ Important: passing `blockNumber` here does not guarantee it will be used.
+   * This method can be called from multiple places (VaultJobsService, ReportJobsService)
+   * and is guarded by a single-flight mechanism: if a run is already in progress,
+   * subsequent calls will join the same Promise and ignore the new `blockNumber`.
+   */
+  public async fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
+    // prevent concurrent runs: return the same Promise if already running
+    if (this.fetchAllVaultsAndCalculateStatesInFlight) {
+      this.logger.warn('[fetchAllVaultsAndCalculateStates] Already running — skip (joining current run)');
+      return this.fetchAllVaultsAndCalculateStatesInFlight.catch(() => undefined);
     }
 
-    // 1. Get vaultsCount with first batch (0, batchSize - 1) + leftover
+    this.fetchAllVaultsAndCalculateStatesInFlight = this._fetchAllVaultsAndCalculateStates(blockNumber)
+      .catch((err) => {
+        this.logger.error('[fetchAllVaultsAndCalculateStates] Run failed', err);
+        throw err;
+      })
+      .finally(() => {
+        this.fetchAllVaultsAndCalculateStatesInFlight = undefined;
+      });
+
+    return this.fetchAllVaultsAndCalculateStatesInFlight;
+  }
+
+  @TrackJob('fetchAllVaultsAndCalculateStates')
+  private async _fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
+    this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
+    const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
+    const batchSize = this.configService.jobs['vaultsBatchSize'];
+
+    // 1. Get vaultsCount, vaultsConnectedBound (0, 0) - works and return:
+    // - vaults empty array
+    // - vaults count
     let initialBatch = [];
     let leftoverVaults = 0;
     try {
-      const result = await this.vaultViewerContractService.getVaultsConnectedBound(0, batchSize - 1, {
+      const result = await this.vaultViewerContractService.getVaultsConnectedBound(0, 0, {
         blockTag: blockNumber,
       });
       initialBatch = result.addresses;
       leftoverVaults = result.leftoverVaults;
     } catch (err: any) {
       this.logger.error(
-        `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsConnectedBound (0 - ${
-          batchSize - 1
-        }) at block ${blockNumber}: ${err}`,
+        `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsConnectedBound (0, 0) at block ${blockNumber}: ${err}`,
       );
       return;
     }
@@ -62,8 +79,15 @@ export class VaultService {
     this.logger.log(`[fetchAllVaultsAndCalculateStates] Total vaults: ${vaultsCount}`);
 
     // 2. Starting to fetch vaults data
-    for (let from = 0; from < vaultsCount; from += batchSize) {
-      const to = Math.min(from + batchSize, vaultsCount);
+    let vaultsLimit = vaultsCount;
+    if (minimalVaultsFetchingCount > 0 && vaultsCount > 0) {
+      vaultsLimit = Math.min(minimalVaultsFetchingCount, vaultsCount);
+      this.logger.log(
+        `[fetchAllVaultsAndCalculateStates] Running in minimal vaults fetching mode, vaultsLimit=${vaultsLimit}`,
+      );
+    }
+    for (let from = 0; from < vaultsLimit; from += batchSize) {
+      const to = Math.min(from + batchSize, vaultsLimit);
       this.logger.log(`[fetchAllVaultsAndCalculateStates] Fetching vaults batch: ${from} to ${to}`);
 
       let vaultsDataBatch;
@@ -137,27 +161,29 @@ export class VaultService {
   }
 
   @TrackJob('fetchAllVaultsRoleMembers')
-  public async fetchAllVaultsRoleMembers(): Promise<void> {
+  public async fetchAllVaultsRoleMembers(blockNumber: number): Promise<void> {
     this.logger.log('[fetchAllVaultsRoleMembers] Started');
+    const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
+    const batchSize = this.configService.jobs['vaultMembersBatchSize'];
 
     const totalVaults = await this.vaultDbService.getVaultsCount();
     this.logger.log(`[fetchAllVaultsRoleMembers] Total vaults: ${totalVaults}`);
 
-    const batchSize = this.configService.jobs['vaultMembersBatchSize'];
-
-    let blockNumber: number;
-    try {
-      blockNumber = await this.executionProviderService.getBlockNumber();
-    } catch (err) {
-      this.logger.error(`[fetchAllVaultsAndStateHourly] Failed to fetch blockNumber for batch: ${err}`);
-      return;
+    let vaultsLimit = totalVaults;
+    if (minimalVaultsFetchingCount > 0 && totalVaults > 0) {
+      vaultsLimit = Math.min(minimalVaultsFetchingCount, totalVaults);
+      this.logger.log(
+        `[fetchAllVaultsRoleMembers] Running in minimal vaults fetching mode, vaultsLimit=${vaultsLimit}`,
+      );
     }
-
-    for (let offset = 0; offset < totalVaults; offset += batchSize) {
-      const vaultEntities = await this.vaultDbService.getVaults(batchSize, offset);
+    for (let offset = 0; offset < vaultsLimit; offset += batchSize) {
+      const limit = Math.min(batchSize, vaultsLimit - offset);
+      const vaultEntities = await this.vaultDbService.getVaults(limit, offset);
       if (vaultEntities.length === 0) break;
 
-      this.logger.log(`[fetchAllVaultsRoleMembers] Fetching vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      this.logger.log(
+        `[fetchAllVaultsRoleMembers] Loaded vaults range(${offset}..${offset + vaultEntities.length - 1})`,
+      );
       const vaultAddresses = vaultEntities.map((vault) => vault.address);
 
       let batchResults: Array<{ vault: string; roleMembersMap: RoleMembers }>;
@@ -170,7 +196,9 @@ export class VaultService {
         continue;
       }
 
-      this.logger.log(`[fetchAllVaultsRoleMembers] Saving vaults ${offset}..${offset + vaultEntities.length - 1}`);
+      this.logger.log(
+        `[fetchAllVaultsRoleMembers] Saving vaults range(${offset}..${offset + vaultEntities.length - 1})`,
+      );
       for (const { vault, roleMembersMap } of batchResults) {
         try {
           await this.vaultDbService.setMembersForVault(vault, roleMembersMap);

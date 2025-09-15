@@ -88,6 +88,11 @@ export class EnvironmentVariables {
   @Transform(({ value }) => Number(value))
   START_REPORT_BLOCK_NUMBER: number = null;
 
+  @IsOptional()
+  @IsNumber()
+  @Transform(({ value }) => Number(value))
+  MINIMAL_VAULTS_FETCHING_MODE_COUNT: number = null;
+
   @IsNumber()
   @Transform(toNumber({ defaultValue: 5 }))
   REPORT_MERKLE_TREE_CACHE_MAX: number;
