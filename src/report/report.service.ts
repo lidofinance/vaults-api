@@ -54,6 +54,12 @@ export class ReportService {
     let cid: string | null = (await this.lazyOracleContractService.getLatestReportData()).reportCid;
 
     while (cid) {
+      // tail sync
+      if (await this.reportDbService.existsByCid(cid)) {
+        this.logger.log(`[fetchAllReports] Stop fetching: CID already in DB (tail reached): ${cid}`);
+        break;
+      }
+
       try {
         const reportData = await this.lsvService.fetchIPFS(cid);
         this.logger.log(`[fetchAllReports] Fetched report for CID: ${cid}`);

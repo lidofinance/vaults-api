@@ -29,6 +29,10 @@ export class ReportDbService {
     return this.reportLeafRepo.find({ where: { report: { id: report.id } } });
   }
 
+  async existsByCid(cid: string): Promise<boolean> {
+    return this.reportRepo.exist({ where: { cid } });
+  }
+
   async saveReport(cid: string, reportData: Report): Promise<ReportEntity> {
     const exists = await this.reportRepo.exist({ where: { cid } });
     if (exists) return this.reportRepo.findOneOrFail({ where: { cid } });
