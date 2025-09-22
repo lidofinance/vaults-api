@@ -6,7 +6,9 @@ const toNumber =
   ({ defaultValue }) =>
   ({ value }) => {
     if (value === '' || value == null) return defaultValue;
-    return Number(value);
+    // TODO
+    const n = Number(value);
+    return Number.isNaN(n) ? defaultValue : n;
   };
 
 export class EnvironmentVariables {
@@ -96,6 +98,39 @@ export class EnvironmentVariables {
   @IsNumber()
   @Transform(toNumber({ defaultValue: 5 }))
   REPORT_MERKLE_TREE_CACHE_MAX: number;
+
+  // TODO
+  @IsOptional()
+  @IsNumber()
+  @Transform(toNumber({ defaultValue: 50 }))
+  VAULTS_BATCH_SIZE: number;
+
+  // TODO
+  @IsOptional()
+  @IsString()
+  VAULTS_CRON = '0 * * * *';
+
+  // TODO
+  @IsOptional()
+  @IsNumber()
+  @Transform(toNumber({ defaultValue: 10 }))
+  VAULT_MEMBERS_BATCH_SIZE: number;
+
+  // TODO
+  @IsOptional()
+  @IsString()
+  VAULT_MEMBERS_CRON = '2 0 * * *';
+
+  // TODO
+  @IsOptional()
+  @IsNumber()
+  @Transform(toNumber({ defaultValue: 100 }))
+  REPORT_BATCH_SIZE: number;
+
+  // TODO
+  @IsOptional()
+  @IsString()
+  REPORT_CRON = '4 * * * *';
 }
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());

@@ -81,17 +81,16 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
 
   public get jobs() {
     return {
-      // TODO: move to the ENVs ???
-      vaultsBatchSize: 50,
-      vaultsCron: '0 * * * *', // every hour at **:00 UTC
+      vaultsBatchSize: this.get('VAULTS_BATCH_SIZE'),
+      vaultsCron: this.get('VAULTS_CRON'),
       vaultsCronTZ: 'UTC',
 
-      vaultMembersBatchSize: 10,
-      vaultMembersCron: '2 0 * * *', // once per day at 00:02 UTC
+      vaultMembersBatchSize: this.get('VAULT_MEMBERS_BATCH_SIZE'),
+      vaultMembersCron: this.get('VAULT_MEMBERS_CRON'),
       vaultMembersCronTZ: 'UTC',
 
-      reportBatchSize: 100,
-      reportCron: '4 * * * *', // every hour at **:04 UTC
+      reportBatchSize: this.get('REPORT_BATCH_SIZE'),
+      reportCron: this.get('REPORT_CRON'),
       reportCronTZ: 'UTC',
     };
   }
