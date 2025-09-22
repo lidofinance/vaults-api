@@ -1,0 +1,8 @@
+{
+  "contracts": {
+    "lido": " 0xF6AAf706b8A43Ee0e7bBE434662E4974186b0Db9",
+    "lidoLocator": "0x861051869BE0240988918641A9417B10bf4Eed6a",
+    "vaultViewer": "0x86c0858a9a15591246e673EF852eeC9Abc3B20C3"
+  },
+  "apis": {}
+}
