@@ -1,0 +1,29 @@
+name: CI Dev Testnet-2 Hoodi
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - testnet-2
+    paths-ignore:
+      - '.github/**'
+
+permissions: {}
+
+jobs:
+  # test:
+  #   ...
+
+  deploy:
+    runs-on: ubuntu-latest
+    # needs: test
+    name: Build and deploy
+    steps:
+      - name: Testnet deploy
+        uses: lidofinance/dispatch-workflow@v1
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          TARGET_REPO: 'lidofinance/infra-mainnet'
+          TARGET_WORKFLOW: 'deploy_hoodi_testnet_vaults_api_devnet.yaml'
+          TARGET: 'testnet-2'
