@@ -173,8 +173,7 @@ export class LsvService {
       blockNumber: report.blockNumber,
       timestamp: report.timestamp,
       prevTreeCID: report.prevTreeCID,
-      // todo
-      cid: '',
+      cid: report.cid,
     };
   }
 }
