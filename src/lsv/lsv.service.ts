@@ -158,6 +158,7 @@ export class LsvService {
         totalValueWei: leaf.totalValueWei,
         fee: leaf.fee,
         liabilityShares: leaf.liabilityShares,
+        maxLiabilityShares: leaf.maxLiabilityShares,
         slashingReserve: leaf.slashingReserve,
       },
       extraData: {
@@ -172,6 +173,7 @@ export class LsvService {
       blockNumber: report.blockNumber,
       timestamp: report.timestamp,
       prevTreeCID: report.prevTreeCID,
+      cid: report.cid,
     };
   }
 }

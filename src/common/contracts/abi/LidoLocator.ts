@@ -1,5 +1,133 @@
 export const LidoLocatorAbi = [
   {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "accountingOracle",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "depositSecurityModule",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "elRewardsVault",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "lido",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "oracleReportSanityChecker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "postTokenRebaseReceiver",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "burner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "stakingRouter",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "treasury",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "validatorsExitBusOracle",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "withdrawalQueue",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "withdrawalVault",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "oracleDaemonConfig",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "validatorExitDelayVerifier",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "triggerableWithdrawalsGateway",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "accounting",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "predepositGuarantee",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "wstETH",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "vaultHub",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "vaultFactory",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "lazyOracle",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "operatorGrid",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct LidoLocator.Config",
+        "name": "_config",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
     "inputs": [],
     "name": "accounting",
     "outputs": [
@@ -44,32 +172,32 @@ export const LidoLocatorAbi = [
     "outputs": [
       {
         "internalType": "address",
-        "name": "elRewardsVault",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "oracleReportSanityChecker",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "stakingRouter",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "treasury",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "withdrawalQueue",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "withdrawalVault",
+        "name": "",
         "type": "address"
       }
     ],
@@ -160,37 +288,37 @@ export const LidoLocatorAbi = [
     "outputs": [
       {
         "internalType": "address",
-        "name": "accountingOracle",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "oracleReportSanityChecker",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "burner",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "withdrawalQueue",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "postTokenRebaseReceiver",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "stakingRouter",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "vaultHub",
+        "name": "",
         "type": "address"
       }
     ],

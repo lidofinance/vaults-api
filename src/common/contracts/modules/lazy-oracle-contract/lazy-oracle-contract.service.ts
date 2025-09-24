@@ -6,6 +6,7 @@ import { LazyOracleAbi } from '../../abi/LazyOracle';
 
 export type LatestReportData = {
   timestamp: bigint;
+  refSlot: bigint;
   treeRoot: string;
   reportCid: string;
 };
@@ -20,11 +21,12 @@ export class LazyOracleContractService {
   }
 
   async getLatestReportData(): Promise<LatestReportData> {
-    const [timestamp, treeRoot, reportCid] = await this.contract.latestReportData();
+    const [timestamp, refSlot, treeRoot, reportCid] = await this.contract.latestReportData();
 
     return {
       // BigNumber to bigint
       timestamp: BigInt(timestamp),
+      refSlot: BigInt(refSlot),
       treeRoot,
       reportCid,
     };
