@@ -1,5 +1,5 @@
 import { ConfigService as ConfigServiceSource } from '@nestjs/config';
-import { LidoContractModule, LidoLocatorContractModule } from '@lido-nestjs/contracts';
+import { LidoLocatorContractModule, LidoContractModule } from '@lido-nestjs/contracts';
 
 import { VAULT_VIEWER_CONTRACT } from 'common/contracts/contracts.constants';
 

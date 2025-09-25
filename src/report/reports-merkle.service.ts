@@ -47,7 +47,7 @@ export class ReportsMerkleService {
       throw new NotFoundException(`Vault ${vault} not found in report ${cid}`);
     }
 
-    const vaultReportData = getVaultData(IPFSReportData, vault);
+    const vaultReportData = getVaultData(IPFSReportData, vault, cid);
 
     return {
       ...vaultReportData,

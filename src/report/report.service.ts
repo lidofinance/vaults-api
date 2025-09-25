@@ -1,12 +1,12 @@
 import { LRUCache } from 'lru-cache';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Inject, Injectable } from '@nestjs/common';
-import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
 import { PrometheusService } from 'common/prometheus';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
+import { LidoContractService } from 'common/contracts/modules/lido-contract';
 import { ReportEntity, ReportLeafEntity, ReportDbService } from 'db/report-db';
 import { VaultDbService } from 'db/vault-db';
 import { TrackJob } from 'common/job/track-job.decorator';
@@ -21,7 +21,7 @@ export class ReportService {
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
-    @Inject(LIDO_CONTRACT_TOKEN) private readonly lidoContract: Lido,
+    private readonly lidoContractService: LidoContractService,
     private readonly lazyOracleContractService: LazyOracleContractService,
     private readonly reportDbService: ReportDbService,
     private readonly vaultDbService: VaultDbService,
@@ -285,11 +285,11 @@ export class ReportService {
   }
 
   private async totalSupply(blockNumber: number): Promise<bigint> {
-    return (await this.lidoContract.totalSupply({ blockTag: blockNumber })).toBigInt();
+    return (await this.lidoContractService.contract.totalSupply({ blockTag: blockNumber })).toBigInt();
   }
 
   private async totalShares(blockNumber: number): Promise<bigint> {
-    return (await this.lidoContract.getTotalShares({ blockTag: blockNumber })).toBigInt();
+    return (await this.lidoContractService.contract.getTotalShares({ blockTag: blockNumber })).toBigInt();
   }
 
   private calculateShareRate = async (blockNumber: number): Promise<bigint> => {
