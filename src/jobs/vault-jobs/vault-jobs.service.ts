@@ -41,7 +41,7 @@ export class VaultJobsService {
     jobVaults.start();
 
     const jobVaultsMembers = new CronJob(
-      this.configService.jobs['vaultsCron'],
+      this.configService.jobs['vaultMembersCron'],
       async () => {
         await this.vaultService.fetchAllVaultsRoleMembers(blockNumber);
       },
