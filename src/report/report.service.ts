@@ -54,6 +54,12 @@ export class ReportService {
     let cid: string | null = (await this.lazyOracleContractService.getLatestReportData()).reportCid;
 
     while (cid) {
+      // tail sync
+      if (await this.reportDbService.existsByCid(cid)) {
+        this.logger.log(`[fetchAllReports] Stop fetching: CID already in DB (tail reached): ${cid}`);
+        break;
+      }
+
       try {
         const reportData = await this.lsvService.fetchIPFS(cid);
         this.logger.log(`[fetchAllReports] Fetched report for CID: ${cid}`);
@@ -118,6 +124,19 @@ export class ReportService {
           this.logger.log(
             `[calculateVaultMetrics] Calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
           );
+
+          // Tail sync
+          const reportStatsExist = await this.vaultDbService.existsAnyStatsForReportPair(
+            previousReport.id,
+            currentReport.id,
+          );
+          if (reportStatsExist) {
+            this.logger.log(
+              `[calculateVaultMetrics] Tail sync: pair already calculated (previous=${previousReport.cid}, current=${currentReport.cid}), stop!`,
+            );
+            break reportFetchLoop;
+          }
+
           await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
           this.logger.log(
             `[calculateVaultMetrics] Finished calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,

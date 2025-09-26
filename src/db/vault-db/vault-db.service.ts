@@ -419,4 +419,16 @@ export class VaultDbService {
       skipUpdateIfNoValuesChanged: false,
     });
   }
+
+  async existsAnyStatsForReportPair(prevReportId: number, currReportId: number): Promise<boolean> {
+    const row = await this.vaultReportStatRepo.findOne({
+      where: {
+        previousReport: { id: prevReportId },
+        currentReport: { id: currReportId },
+      },
+      select: { id: true },
+      loadRelationIds: true,
+    });
+    return !!row;
+  }
 }

@@ -2,12 +2,10 @@ import { plainToClass, Transform } from 'class-transformer';
 import { IsArray, ArrayMinSize, IsEnum, IsNumber, IsString, IsOptional, validateSync, Min } from 'class-validator';
 import { Environment, LogLevel, LogFormat } from './interfaces';
 
-const toNumber =
-  ({ defaultValue }) =>
-  ({ value }) => {
-    if (value === '' || value == null) return defaultValue;
-    return Number(value);
-  };
+export const toNumber =
+  () =>
+  ({ value }: { value: any }) =>
+    value === '' || value == null ? undefined : Number(value);
 
 export class EnvironmentVariables {
   @IsEnum(Environment)
@@ -16,14 +14,14 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Transform(toNumber({ defaultValue: 3000 }))
-  PORT: number;
+  @Transform(toNumber())
+  PORT = 3000;
 
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Transform(toNumber({ defaultValue: 3001 }))
-  WORKER_PORT: number;
+  @Transform(toNumber())
+  WORKER_PORT = 3001;
 
   @IsOptional()
   @IsString()
@@ -32,20 +30,20 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Transform(toNumber({ defaultValue: 5 }))
-  GLOBAL_THROTTLE_TTL: number;
+  @Transform(toNumber())
+  GLOBAL_THROTTLE_TTL = 5;
 
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Transform(toNumber({ defaultValue: 100 }))
-  GLOBAL_THROTTLE_LIMIT: number;
+  @Transform(toNumber())
+  GLOBAL_THROTTLE_LIMIT = 100;
 
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Transform(toNumber({ defaultValue: 1 }))
-  GLOBAL_CACHE_TTL: number;
+  @Transform(toNumber())
+  GLOBAL_CACHE_TTL = 1;
 
   @IsOptional()
   @IsString()
@@ -94,8 +92,35 @@ export class EnvironmentVariables {
   MINIMAL_VAULTS_FETCHING_MODE_COUNT: number = null;
 
   @IsNumber()
-  @Transform(toNumber({ defaultValue: 5 }))
-  REPORT_MERKLE_TREE_CACHE_MAX: number;
+  @Transform(toNumber())
+  REPORT_MERKLE_TREE_CACHE_MAX = 5;
+
+  @IsOptional()
+  @IsNumber()
+  @Transform(toNumber())
+  VAULTS_BATCH_SIZE = 50;
+
+  @IsOptional()
+  @IsString()
+  VAULTS_CRON = '0 * * * *';
+
+  @IsOptional()
+  @IsNumber()
+  @Transform(toNumber())
+  VAULT_MEMBERS_BATCH_SIZE = 10;
+
+  @IsOptional()
+  @IsString()
+  VAULT_MEMBERS_CRON = '2 0 * * *';
+
+  @IsOptional()
+  @IsNumber()
+  @Transform(toNumber())
+  REPORT_BATCH_SIZE = 100;
+
+  @IsOptional()
+  @IsString()
+  REPORT_CRON = '4 * * * *';
 }
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
