@@ -1,7 +1,8 @@
 import { DataSource, Repository } from 'typeorm';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
+import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
 import { LABEL_TO_ROLE } from 'vault/vault.constants';
@@ -26,6 +27,7 @@ const VAULT_REPORT_STATS_SELECT_FIELDS = [
 @Injectable()
 export class VaultDbService {
   constructor(
+    @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
     @InjectDataSource() private readonly dataSource: DataSource,
     @InjectRepository(VaultEntity)
     private readonly vaultRepo: Repository<VaultEntity>,
@@ -385,13 +387,13 @@ export class VaultDbService {
     });
 
     if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-      console.log('before if (!vault) {:');
+      this.logger.log('before if (!vault) {:');
     }
     if (!vault) {
       throw new NotFoundException(`Vault with address=${vaultAddress} not found`);
     }
     if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-      console.log('after if (!vault) {:');
+      this.logger.log('after if (!vault) {:');
     }
 
     // Perform an atomic operation: 1) delete old records and 2) save new ones
@@ -401,7 +403,7 @@ export class VaultDbService {
         vault: { id: vault.id },
       });
       if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-        console.log('deleted');
+        this.logger.log('deleted');
       }
 
       // 2) Save new ones
@@ -417,14 +419,14 @@ export class VaultDbService {
         }
       }
       if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-        console.log('Before Save new ones');
+        this.logger.log('Before Save new ones');
       }
 
       if (toInsert.length > 0) {
         await transactionalEntityManager.save(VaultMemberEntity, toInsert);
       }
       if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-        console.log('Save new ones');
+        this.logger.log('Save new ones');
       }
     });
   }
