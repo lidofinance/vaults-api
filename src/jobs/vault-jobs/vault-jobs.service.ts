@@ -53,10 +53,6 @@ export class VaultJobsService {
     this.schedulerRegistry.addCronJob('vaults-members-cron', jobVaultsMembers);
     jobVaultsMembers.start();
 
-    // TEMP!!!
-    // one-time execution on startup
-    await jobVaultsMembers.fireOnTick();
-
     // subscribes to events
     this.vaultService.subscribeToEvents();
 

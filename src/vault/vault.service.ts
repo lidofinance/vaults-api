@@ -201,10 +201,6 @@ export class VaultService {
       );
       for (const { vault, roleMembersMap } of batchResults) {
         try {
-          if (vault === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-            console.log('vault:', vault);
-            console.log('roleMembersMap:', roleMembersMap);
-          }
           await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
           this.logger.log(`[fetchAllVaultsRoleMembers] Saved 'membersForVault' data to DB for vault ${vault}`);
         } catch (err) {

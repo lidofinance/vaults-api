@@ -386,14 +386,8 @@ export class VaultDbService {
       where: { address: vaultAddress },
     });
 
-    if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-      this.logger.log('before if (!vault) {:');
-    }
     if (!vault) {
       throw new NotFoundException(`Vault with address=${vaultAddress} not found`);
-    }
-    if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-      this.logger.log('after if (!vault) {:');
     }
 
     // Perform an atomic operation: 1) delete old records and 2) save new ones
@@ -402,9 +396,6 @@ export class VaultDbService {
       await transactionalEntityManager.delete(VaultMemberEntity, {
         vault: { id: vault.id },
       });
-      if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-        this.logger.log('deleted');
-      }
 
       // 2) Save new ones
       const toInsert: VaultMemberEntity[] = [];
@@ -418,15 +409,9 @@ export class VaultDbService {
           toInsert.push(member);
         }
       }
-      if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-        this.logger.log('Before Save new ones');
-      }
 
       if (toInsert.length > 0) {
         await transactionalEntityManager.save(VaultMemberEntity, toInsert);
-      }
-      if (vaultAddress === '0x267f8DAEA3018D520613E8C01D512a0819C06e1b') {
-        this.logger.log('Save new ones');
       }
     });
   }
