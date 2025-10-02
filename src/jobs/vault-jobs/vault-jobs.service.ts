@@ -23,6 +23,7 @@ export class VaultJobsService {
     let blockNumber: number;
     try {
       blockNumber = await this.executionProviderService.getBlockNumber();
+      this.logger.log(`[VaultJobsService.onModuleInit] blockNumber=${blockNumber}`);
     } catch (err) {
       this.logger.error(`[VaultJobsService.onModuleInit] Failed to fetch blockNumber: ${err}`);
       return;
