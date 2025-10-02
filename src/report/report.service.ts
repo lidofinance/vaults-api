@@ -181,9 +181,9 @@ export class ReportService {
 
     this.lazyOracleContractService.contract.on(
       'VaultsReportDataUpdated',
-      async (timestamp: bigint, root: string, cid: string, event) => {
+      async (timestamp: bigint, refSlot: bigint, root: string, cid: string, event) => {
         this.logger.log(
-          `[subscribeToEvents, event:VaultsReportDataUpdated] Event received: timestamp=${timestamp}, root=${root}, cid=${cid}, block=${event.blockNumber}`,
+          `[subscribeToEvents, event:VaultsReportDataUpdated] Event received: timestamp=${timestamp}, refSlot=${refSlot}, root=${root}, cid=${cid}, block=${event.blockNumber}`,
         );
 
         try {
