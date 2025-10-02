@@ -45,9 +45,6 @@ export class ReportJobsService {
     this.schedulerRegistry.addCronJob('reports-cron', job);
     job.start();
 
-    // one-time execution on startup
-    await job.fireOnTick();
-
     this.reportService.subscribeToEvents();
 
     this.logger.log('ReportJobsService initialization finished');
