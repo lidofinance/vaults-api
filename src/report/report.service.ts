@@ -137,7 +137,7 @@ export class ReportService {
 
         if (blockLimit > Number(currentReport.blockNumber)) {
           this.logger.log(
-            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' has been reached at report CID=${previousReport.cid}`,
+            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' has been reached at report CID=${previousReport?.cid}`,
           );
           break reportFetchLoop;
         }
