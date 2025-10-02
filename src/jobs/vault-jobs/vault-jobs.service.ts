@@ -20,30 +20,37 @@ export class VaultJobsService {
   async onModuleInit() {
     this.logger.log('VaultJobsService initialization started');
 
-    const job = new CronJob(
+    let blockNumber: number;
+    try {
+      blockNumber = await this.executionProviderService.getBlockNumber();
+    } catch (err) {
+      this.logger.error(`[VaultJobsService.onModuleInit.CronJob] Failed to fetch blockNumber: ${err}`);
+      return;
+    }
+
+    const jobVaults = new CronJob(
       this.configService.jobs['vaultsCron'],
       async () => {
-        let blockNumber: number;
-        try {
-          blockNumber = await this.executionProviderService.getBlockNumber();
-        } catch (err) {
-          this.logger.error(`[VaultJobsService.onModuleInit.CronJob] Failed to fetch blockNumber: ${err}`);
-          return;
-        }
-
         await this.vaultService.fetchAllVaultsAndCalculateStates(blockNumber);
-        await this.vaultService.fetchAllVaultsRoleMembers(blockNumber);
       },
       null,
       false,
       this.configService.jobs['vaultsCronTZ'],
     );
+    this.schedulerRegistry.addCronJob('vaults-cron', jobVaults);
+    jobVaults.start();
 
-    this.schedulerRegistry.addCronJob('vaults-cron', job);
-    job.start();
-
-    // one-time execution on startup
-    await job.fireOnTick();
+    const jobVaultsMembers = new CronJob(
+      this.configService.jobs['vaultMembersCron'],
+      async () => {
+        await this.vaultService.fetchAllVaultsRoleMembers(blockNumber);
+      },
+      null,
+      false,
+      this.configService.jobs['vaultMembersCronTZ'],
+    );
+    this.schedulerRegistry.addCronJob('vaults-members-cron', jobVaultsMembers);
+    jobVaultsMembers.start();
 
     // subscribes to events
     this.vaultService.subscribeToEvents();

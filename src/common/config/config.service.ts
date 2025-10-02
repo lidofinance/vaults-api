@@ -84,11 +84,18 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
       // TODO: move to the ENVs ???
       vaultsBatchSize: 50,
       vaultsCron: '0 * * * *', // every hour at **:00 UTC
+      // vaultsCron: '43 * * * *',
       vaultsCronTZ: 'UTC',
-      reportCron: '3 * * * *', // every hour at **:03 UTC
-      reportCronTZ: 'UTC',
+
       vaultMembersBatchSize: 10,
+      vaultMembersCron: '2 0 * * *', // once per day at 00:02 UTC
+      // vaultMembersCron: '46 * * * *',
+      vaultMembersCronTZ: 'UTC',
+
       reportBatchSize: 100,
+      // reportCron: '3 * * * *', // every hour at **:03 UTC
+      reportCron: '48 * * * *',
+      reportCronTZ: 'UTC',
     };
   }
 }
