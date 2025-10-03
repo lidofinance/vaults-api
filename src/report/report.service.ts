@@ -186,14 +186,16 @@ export class ReportService {
           `[subscribeToEvents, event:VaultsReportDataUpdated] Event received: timestamp=${timestamp}, refSlot=${refSlot}, root=${root}, cid=${cid}, block=${event.blockNumber}`,
         );
 
+        let currentReportData;
+        let currentReport;
         try {
-          const reportData = await this.lsvService.fetchIPFS(cid);
+          currentReportData = await this.lsvService.fetchIPFS(cid);
           this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Fetched report for CID: ${cid}`);
 
-          const report = await this.reportDbService.saveReport(cid, reportData);
+          currentReport = await this.reportDbService.saveReport(cid, currentReportData);
           this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Saved the report for CID: ${cid}`);
 
-          await this.reportDbService.saveLeaves(report, reportData);
+          await this.reportDbService.saveLeaves(currentReport, currentReportData);
           this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Saved leaves for CID: ${cid}`);
           this.prometheusService.contractEventHandledCounter
             .labels({ eventName: 'VaultsReportDataUpdated', result: 'success' })
@@ -201,6 +203,26 @@ export class ReportService {
         } catch (error) {
           this.logger.error(
             `[subscribeToEvents, event:VaultsReportDataUpdated] Failed to fetch/save report with CID: ${cid}`,
+            error,
+          );
+          this.prometheusService.contractEventHandledCounter
+            .labels({ eventName: 'VaultsReportDataUpdated', result: 'error' })
+            .inc();
+        }
+
+        try {
+          const prevCid = currentReportData.prevTreeCID.trim();
+          const previousReport = await this.reportDbService.findByCid(prevCid);
+
+          const [currentLeaves, previousLeaves] = await Promise.all([
+            this.reportDbService.getLeavesByReport(currentReport),
+            this.reportDbService.getLeavesByReport(previousReport),
+          ]);
+
+          await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
+        } catch (error) {
+          this.logger.error(
+            `[subscribeToEvents, event:VaultsReportDataUpdated] Failed to findByCid/getLeavesByReport/calculateForVaultsBasedPrevReport report with cid=${cid}`,
             error,
           );
           this.prometheusService.contractEventHandledCounter
