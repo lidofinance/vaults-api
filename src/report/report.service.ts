@@ -126,7 +126,7 @@ export class ReportService {
         const previousLeaves = await this.reportDbService.getLeavesByReport(previousReport);
 
         this.logger.log(
-          `[calculateVaultMetrics] Calculating metrics: previous=${previousReport.cid}, current=${currentReport.cid}`,
+          `[calculateVaultMetrics] Calculating metrics: current=${currentReport.cid}, previous=${previousReport.cid},`,
         );
 
         // Tail sync
@@ -136,8 +136,10 @@ export class ReportService {
         );
         if (reportStatsExist) {
           this.logger.log(
-            `[calculateVaultMetrics] Tail sync: pair already calculated current=${currentReport.cid}), (previous=${previousReport.cid}, stop!`,
+            `[calculateVaultMetrics] Tail sync: pair already calculated current=${currentReport.cid}), (previous=${previousReport.cid}, calc by last 2 reports and stop!`,
           );
+          // Any way calc by last 2 reports
+          await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
           break reportFetchLoop;
         }
 
@@ -147,7 +149,7 @@ export class ReportService {
 
         if (blockLimit < 1 && pairsCalculated >= 1) {
           this.logger.log(
-            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' is not set (zero) or negative — calculating only for last 2 reports`,
+            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' is not set (zero) or negative — calculating only by last 2 reports`,
           );
           break reportFetchLoop;
         }
