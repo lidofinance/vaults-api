@@ -9,6 +9,7 @@ import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-
 import { LidoContractService } from 'common/contracts/modules/lido-contract';
 import { ReportEntity, ReportLeafEntity, ReportDbService } from 'db/report-db';
 import { VaultDbService } from 'db/vault-db';
+import { SingleFlight } from 'common/job/single-flight.decorator';
 import { TrackJob } from 'common/job/track-job.decorator';
 import { LsvService } from 'lsv';
 
@@ -47,6 +48,7 @@ export class ReportService {
   }
 
   @TrackJob('fetchAllReports')
+  @SingleFlight({ key: 'fetchAllReports', log: true })
   public async fetchAllReports(): Promise<void> {
     const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
 
@@ -100,6 +102,7 @@ export class ReportService {
   }
 
   @TrackJob('calculateVaultMetrics')
+  @SingleFlight({ key: 'calculateVaultMetrics', log: true })
   public async calculateVaultMetrics(): Promise<void> {
     const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
     const batchSize = this.configService.jobs['reportBatchSize'];
