@@ -120,7 +120,7 @@ export class ReportService {
 
       for (const previousReport of batch) {
         if (!currentReport) {
-          // skip first iteration, because previousReport = undefined
+          // skip first iteration, because currentReport = undefined
           currentReport = previousReport;
           currentLeaves = await this.reportDbService.getLeavesByReport(currentReport);
           continue;
