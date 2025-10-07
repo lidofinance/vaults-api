@@ -6,6 +6,7 @@ import { PrometheusService } from 'common/prometheus';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultViewerContractService, type RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
 import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
+import { SingleFlight } from 'common/job/single-flight.decorator';
 import { TrackJob } from 'common/job/track-job.decorator';
 import { VaultDbService } from 'db/vault-db';
 import { ROLE_BYTES32 } from 'vault/vault.constants';
@@ -26,33 +27,9 @@ export class VaultService {
     private readonly prometheusService: PrometheusService,
   ) {}
 
-  /**
-   * ⚠️ Important: passing `blockNumber` here does not guarantee it will be used.
-   * This method can be called from multiple places (VaultJobsService, ReportJobsService)
-   * and is guarded by a single-flight mechanism: if a run is already in progress,
-   * subsequent calls will join the same Promise and ignore the new `blockNumber`.
-   */
-  public async fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
-    // prevent concurrent runs: return the same Promise if already running
-    if (this.fetchAllVaultsAndCalculateStatesInFlight) {
-      this.logger.warn('[fetchAllVaultsAndCalculateStates] Already running — skip (joining current run)');
-      return this.fetchAllVaultsAndCalculateStatesInFlight.catch(() => undefined);
-    }
-
-    this.fetchAllVaultsAndCalculateStatesInFlight = this._fetchAllVaultsAndCalculateStates(blockNumber)
-      .catch((err) => {
-        this.logger.error('[fetchAllVaultsAndCalculateStates] Run failed', err);
-        throw err;
-      })
-      .finally(() => {
-        this.fetchAllVaultsAndCalculateStatesInFlight = undefined;
-      });
-
-    return this.fetchAllVaultsAndCalculateStatesInFlight;
-  }
-
   @TrackJob('fetchAllVaultsAndCalculateStates')
-  private async _fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
+  @SingleFlight({ key: 'fetchAllVaultsAndCalculateStates', log: true })
+  public async fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
     this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
     const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
     const batchSize = this.configService.jobs['vaultsBatchSize'];
@@ -161,6 +138,7 @@ export class VaultService {
   }
 
   @TrackJob('fetchAllVaultsRoleMembers')
+  @SingleFlight({ key: 'fetchAllVaultsRoleMembers', log: true })
   public async fetchAllVaultsRoleMembers(blockNumber: number): Promise<void> {
     this.logger.log('[fetchAllVaultsRoleMembers] Started');
     const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');

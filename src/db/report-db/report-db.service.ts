@@ -33,6 +33,12 @@ export class ReportDbService {
     return this.reportRepo.exist({ where: { cid } });
   }
 
+  async findByCid(cid: string): Promise<ReportEntity | null> {
+    const normalizedCid = cid?.trim();
+    if (!normalizedCid) return null;
+    return this.reportRepo.findOne({ where: { cid: normalizedCid } });
+  }
+
   async saveReport(cid: string, reportData: Report): Promise<ReportEntity> {
     const exists = await this.reportRepo.exist({ where: { cid } });
     if (exists) return this.reportRepo.findOneOrFail({ where: { cid } });

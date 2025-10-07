@@ -9,6 +9,7 @@ import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-
 import { LidoContractService } from 'common/contracts/modules/lido-contract';
 import { ReportEntity, ReportLeafEntity, ReportDbService } from 'db/report-db';
 import { VaultDbService } from 'db/vault-db';
+import { SingleFlight } from 'common/job/single-flight.decorator';
 import { TrackJob } from 'common/job/track-job.decorator';
 import { LsvService } from 'lsv';
 
@@ -47,6 +48,7 @@ export class ReportService {
   }
 
   @TrackJob('fetchAllReports')
+  @SingleFlight({ key: 'fetchAllReports', log: true })
   public async fetchAllReports(): Promise<void> {
     const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
 
@@ -100,76 +102,76 @@ export class ReportService {
   }
 
   @TrackJob('calculateVaultMetrics')
+  @SingleFlight({ key: 'calculateVaultMetrics', log: true })
   public async calculateVaultMetrics(): Promise<void> {
     const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
     const batchSize = this.configService.jobs['reportBatchSize'];
-    let skip = 0;
-    let previousReport: ReportEntity | null = null;
-    let previousLeaves: ReportLeafEntity[] | null = null;
-    let calculatedCount = 0;
+    let skipPagination = 0;
+    let pairsCalculated = 0;
+
+    // to pass along the "current" (newer one) between batches
+    let currentReport: ReportEntity | null = null;
+    let currentLeaves: ReportLeafEntity[] | null = null;
 
     reportFetchLoop: while (true) {
-      const batch = await this.reportDbService.getAllReportsSortedDesc(skip, batchSize);
+      // [new report -> ... -> old report ]
+      const batch = await this.reportDbService.getAllReportsSortedDesc(skipPagination, batchSize);
       if (batch.length === 0) break;
 
-      // batch = [report5, report4, report3, report2, report1] (new → old)
-      // ordered = [report1, report2, report3, report4, report5] (old → new)
-      const ordered = batch.reverse();
-      for (const currentReport of ordered) {
-        const currentLeaves = await this.reportDbService.getLeavesByReport(currentReport);
-
-        // skip first iteration, because previousReport = undefined, currentReport = report1
-        // last iteration: previousReport = report4, currentReport = report5
-        if (previousReport && previousLeaves) {
-          this.logger.log(
-            `[calculateVaultMetrics] Calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
-          );
-
-          // Tail sync
-          const reportStatsExist = await this.vaultDbService.existsAnyStatsForReportPair(
-            previousReport.id,
-            currentReport.id,
-          );
-          if (reportStatsExist) {
-            this.logger.log(
-              `[calculateVaultMetrics] Tail sync: pair already calculated (previous=${previousReport.cid}, current=${currentReport.cid}), stop!`,
-            );
-            break reportFetchLoop;
-          }
-
-          await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
-          this.logger.log(
-            `[calculateVaultMetrics] Finished calculating metrics for report pair: previous=${previousReport.cid}, current=${currentReport.cid}`,
-          );
+      for (const previousReport of batch) {
+        if (!currentReport) {
+          // skip first iteration, because currentReport = undefined
+          currentReport = previousReport;
+          currentLeaves = await this.reportDbService.getLeavesByReport(currentReport);
+          continue;
         }
 
-        calculatedCount++;
+        const previousLeaves = await this.reportDbService.getLeavesByReport(previousReport);
 
-        // 'calculatedCount >= 3' because the very first iteration has previousReport = null,
-        // i.e. the first valid pair starts from the second report
-        if (blockLimit < 1 && calculatedCount >= 3) {
+        this.logger.log(
+          `[calculateVaultMetrics] Calculating metrics: current=${currentReport.cid}, previous=${previousReport.cid},`,
+        );
+
+        // Tail sync
+        const reportStatsExist = await this.vaultDbService.existsAnyStatsForReportPair(
+          previousReport.id,
+          currentReport.id,
+        );
+        if (reportStatsExist) {
           this.logger.log(
-            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' is not set (zero) or negative — calculating only the last 2 reports`,
+            `[calculateVaultMetrics] Tail sync: pair already calculated current=${currentReport.cid}), (previous=${previousReport.cid}, calc by last 2 reports and stop!`,
           );
+          // Any way calc by last 2 reports
+          await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
           break reportFetchLoop;
         }
 
+        await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
+
+        pairsCalculated++;
+
+        if (blockLimit < 1 && pairsCalculated >= 1) {
+          this.logger.log(
+            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' is not set (zero) or negative — calculating only by last 2 reports`,
+          );
+          break reportFetchLoop;
+        }
         if (blockLimit > Number(currentReport.blockNumber)) {
           this.logger.log(
-            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' has been reached at report CID=${previousReport?.cid}`,
+            `[calculateVaultMetrics] Stop calculating because 'START_REPORT_BLOCK_NUMBER' has been reached at report CID=${currentReport.cid}`,
           );
           break reportFetchLoop;
         }
 
-        previousReport = currentReport;
-        previousLeaves = currentLeaves;
+        currentReport = previousReport;
+        currentLeaves = previousLeaves;
       }
 
-      skip += batchSize;
+      skipPagination += batchSize;
     }
 
     this.logger.log(
-      `[calculateVaultMetrics] Reports statistic calculation complete, calculatedCount=${calculatedCount}!`,
+      `[calculateVaultMetrics] Reports statistic calculation complete, pairsCalculated=${pairsCalculated}!`,
     );
     this.prometheusService.lastUpdateGauge
       .labels({ source: 'calculateVaultMetrics', type: 'timestamp' })
@@ -186,14 +188,16 @@ export class ReportService {
           `[subscribeToEvents, event:VaultsReportDataUpdated] Event received: timestamp=${timestamp}, refSlot=${refSlot}, root=${root}, cid=${cid}, block=${event.blockNumber}`,
         );
 
+        let currentReportData;
+        let currentReport;
         try {
-          const reportData = await this.lsvService.fetchIPFS(cid);
+          currentReportData = await this.lsvService.fetchIPFS(cid);
           this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Fetched report for CID: ${cid}`);
 
-          const report = await this.reportDbService.saveReport(cid, reportData);
+          currentReport = await this.reportDbService.saveReport(cid, currentReportData);
           this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Saved the report for CID: ${cid}`);
 
-          await this.reportDbService.saveLeaves(report, reportData);
+          await this.reportDbService.saveLeaves(currentReport, currentReportData);
           this.logger.log(`[subscribeToEvents, event:VaultsReportDataUpdated] Saved leaves for CID: ${cid}`);
           this.prometheusService.contractEventHandledCounter
             .labels({ eventName: 'VaultsReportDataUpdated', result: 'success' })
@@ -201,6 +205,26 @@ export class ReportService {
         } catch (error) {
           this.logger.error(
             `[subscribeToEvents, event:VaultsReportDataUpdated] Failed to fetch/save report with CID: ${cid}`,
+            error,
+          );
+          this.prometheusService.contractEventHandledCounter
+            .labels({ eventName: 'VaultsReportDataUpdated', result: 'error' })
+            .inc();
+        }
+
+        try {
+          const prevCid = currentReportData.prevTreeCID.trim();
+          const previousReport = await this.reportDbService.findByCid(prevCid);
+
+          const [currentLeaves, previousLeaves] = await Promise.all([
+            this.reportDbService.getLeavesByReport(currentReport),
+            this.reportDbService.getLeavesByReport(previousReport),
+          ]);
+
+          await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
+        } catch (error) {
+          this.logger.error(
+            `[subscribeToEvents, event:VaultsReportDataUpdated] Failed to findByCid/getLeavesByReport/calculateForVaultsBasedPrevReport report with cid=${cid}`,
             error,
           );
           this.prometheusService.contractEventHandledCounter
