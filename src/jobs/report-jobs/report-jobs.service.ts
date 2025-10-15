@@ -27,7 +27,7 @@ export class ReportJobsService {
       async () => {
         let blockNumber: number;
         try {
-          blockNumber = await this.executionProviderService.getBlockNumber();
+          blockNumber = await this.executionProviderService.getSafeBlockNumber();
           this.logger.log(`[ReportJobsService.onModuleInit.CronJob] blockNumber=${blockNumber}`);
         } catch (err) {
           this.logger.error(`[ReportJobsService.onModuleInit.CronJob] Failed to fetch blockNumber: ${err}`);

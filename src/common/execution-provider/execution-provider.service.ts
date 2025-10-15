@@ -9,6 +9,8 @@ import { LOGGER_PROVIDER } from '../logger';
 
 @Injectable()
 export class ExecutionProviderService {
+  private confirmationBlocks = 8;
+
   constructor(
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     // protected readonly prometheusService: PrometheusService,
@@ -29,5 +31,10 @@ export class ExecutionProviderService {
 
   public async getBlockNumber(): Promise<number> {
     return await this.provider.getBlockNumber();
+  }
+
+  public async getSafeBlockNumber(): Promise<number> {
+    const latest = await this.provider.getBlockNumber();
+    return Math.max(0, latest - this.confirmationBlocks);
   }
 }

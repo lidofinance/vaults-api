@@ -30,7 +30,7 @@ export class VaultService {
   @TrackJob('fetchAllVaultsAndCalculateStates')
   @SingleFlight({ key: 'fetchAllVaultsAndCalculateStates', log: true })
   public async fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
-    this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
+    this.logger.log(`[fetchAllVaultsAndCalculateStates] Started at blockNumber=${blockNumber}`);
     const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
     const batchSize = this.configService.jobs['vaultsBatchSize'];
 
@@ -140,7 +140,7 @@ export class VaultService {
   @TrackJob('fetchAllVaultsRoleMembers')
   @SingleFlight({ key: 'fetchAllVaultsRoleMembers', log: true })
   public async fetchAllVaultsRoleMembers(blockNumber: number): Promise<void> {
-    this.logger.log('[fetchAllVaultsRoleMembers] Started');
+    this.logger.log(`[fetchAllVaultsRoleMembers] Started at blockNumber=${blockNumber}`);
     const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
     const batchSize = this.configService.jobs['vaultMembersBatchSize'];
 
@@ -181,6 +181,15 @@ export class VaultService {
         try {
           await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
           this.logger.log(`[fetchAllVaultsRoleMembers] Saved 'membersForVault' data to DB for vault ${vault}`);
+          // zero response is
+          // roleMembersMap: {
+          //   'vaults.StakingVault.owner': [ '0x0000000000000000000000000000000000000000' ],
+          //   'vaults.StakingVault.nodeOperator': [ '0x0000000000000000000000000000000000000000' ]
+          // }
+          // Object.keys(roleMembersMap).length = 2
+          this.logger.log(
+            `[fetchAllVaultsRoleMembers] Object.keys(roleMembersMap).length ${Object.keys(roleMembersMap).length}`,
+          );
         } catch (err) {
           this.logger.error(`[fetchAllVaultsRoleMembers] Error saving role members for vault ${vault}: ${err.message}`);
         }
@@ -256,6 +265,17 @@ export class VaultService {
           await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
           this.logger.log(
             `[subscribeToEvents, event:VaultConnected] Saved 'membersForVault' data to DB for vault ${vault}`,
+          );
+          // zero response is
+          // roleMembersMap: {
+          //   'vaults.StakingVault.owner': [ '0x0000000000000000000000000000000000000000' ],
+          //   'vaults.StakingVault.nodeOperator': [ '0x0000000000000000000000000000000000000000' ]
+          // }
+          // Object.keys(roleMembersMap).length = 2
+          this.logger.log(
+            `[subscribeToEvents, event:VaultConnected] Object.keys(roleMembersMap).length ${
+              Object.keys(roleMembersMap).length
+            }`,
           );
 
           this.logger.log(
