@@ -181,6 +181,15 @@ export class VaultService {
         try {
           await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
           this.logger.log(`[fetchAllVaultsRoleMembers] Saved 'membersForVault' data to DB for vault ${vault}`);
+          // zero response is
+          // roleMembersMap: {
+          //   'vaults.StakingVault.owner': [ '0x0000000000000000000000000000000000000000' ],
+          //   'vaults.StakingVault.nodeOperator': [ '0x0000000000000000000000000000000000000000' ]
+          // }
+          // Object.keys(roleMembersMap).length = 2
+          this.logger.log(
+            `[fetchAllVaultsRoleMembers] Object.keys(roleMembersMap).length ${Object.keys(roleMembersMap).length}`,
+          );
         } catch (err) {
           this.logger.error(`[fetchAllVaultsRoleMembers] Error saving role members for vault ${vault}: ${err.message}`);
         }
@@ -256,6 +265,17 @@ export class VaultService {
           await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
           this.logger.log(
             `[subscribeToEvents, event:VaultConnected] Saved 'membersForVault' data to DB for vault ${vault}`,
+          );
+          // zero response is
+          // roleMembersMap: {
+          //   'vaults.StakingVault.owner': [ '0x0000000000000000000000000000000000000000' ],
+          //   'vaults.StakingVault.nodeOperator': [ '0x0000000000000000000000000000000000000000' ]
+          // }
+          // Object.keys(roleMembersMap).length = 2
+          this.logger.log(
+            `[subscribeToEvents, event:VaultConnected] Object.keys(roleMembersMap).length ${
+              Object.keys(roleMembersMap).length
+            }`,
           );
 
           this.logger.log(
