@@ -30,7 +30,7 @@ export class VaultService {
   @TrackJob('fetchAllVaultsAndCalculateStates')
   @SingleFlight({ key: 'fetchAllVaultsAndCalculateStates', log: true })
   public async fetchAllVaultsAndCalculateStates(blockNumber: number): Promise<void> {
-    this.logger.log('[fetchAllVaultsAndCalculateStates] Started');
+    this.logger.log(`[fetchAllVaultsAndCalculateStates] Started at blockNumber=${blockNumber}`);
     const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
     const batchSize = this.configService.jobs['vaultsBatchSize'];
 
@@ -140,7 +140,7 @@ export class VaultService {
   @TrackJob('fetchAllVaultsRoleMembers')
   @SingleFlight({ key: 'fetchAllVaultsRoleMembers', log: true })
   public async fetchAllVaultsRoleMembers(blockNumber: number): Promise<void> {
-    this.logger.log('[fetchAllVaultsRoleMembers] Started');
+    this.logger.log(`[fetchAllVaultsRoleMembers] Started at blockNumber=${blockNumber}`);
     const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
     const batchSize = this.configService.jobs['vaultMembersBatchSize'];
 
