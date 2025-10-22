@@ -229,7 +229,7 @@ export class VaultsHttpController {
   @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Vault APRs SMA metrics',
+    description: 'Vault Simple Moving Average Aprs for last 7 days',
     schema: {
       example: getVaultAprsSmaForDaysExample,
     },
