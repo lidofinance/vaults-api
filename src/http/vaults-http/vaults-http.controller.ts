@@ -224,12 +224,12 @@ export class VaultsHttpController {
   }
 
   @Version('1')
-  @Get(':vaultAddress/aprs/sma')
+  @Get(':vaultAddress/apr/sma')
   @CacheTTL(10 * 1000)
   @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Vault Simple Moving Average Aprs for last 7 days',
+    description: 'Vault Simple Moving Average APR for last 7 days',
     schema: {
       example: getVaultAprsSmaForDaysExample,
     },
