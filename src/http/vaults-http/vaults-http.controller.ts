@@ -217,4 +217,31 @@ export class VaultsHttpController {
     const interval = CronExpressionParser.parse(this.configService.jobs['vaultsCron'], options);
     return interval.next().toDate();
   }
+
+  @Version('1')
+  @Get(':vaultAddress/aprs/sma')
+  @CacheTTL(10 * 1000)
+  @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
+  // @ApiResponse({
+  //   status: HttpStatus.OK,
+  //   description: 'Vault with latest metrics',
+  //   schema: {
+  //     example: vaultLatestMetricsExample,
+  //   },
+  // })
+  // @ApiResponse({
+  //   status: HttpStatus.BAD_REQUEST,
+  //   description: 'Address must be an Ethereum address',
+  //   type: ErrorResponseType,
+  // })
+  // @ApiResponse({
+  //   status: HttpStatus.BAD_REQUEST,
+  //   description: 'Vault not found or has no stats.',
+  //   type: ErrorResponseType,
+  // })
+  async getVaultAprSmaForLastDays(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
+    // todo
+    const data = await this.vaultDbService.getVaultAprSmaForDays(vaultAddress, 7);
+    return data;
+  }
 }

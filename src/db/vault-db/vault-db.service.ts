@@ -8,6 +8,7 @@ import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
 import { LABEL_TO_ROLE } from 'vault/vault.constants';
 
 import { Direction, DirectionEnum, SortFields } from './enums';
+import { SeriesTimePoint, VaultAprsSma } from './vault-db.types';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
 import { QUERY_METRICS_COMMENTS } from './vault-db.constants';
 
@@ -368,6 +369,68 @@ export class VaultDbService {
         .comment(QUERY_METRICS_COMMENTS.GET_VAULT_REPORT_STATS_IN_RANGE)
         .getRawMany()
     );
+  }
+
+  async getLatestReportTimestampForVault(vaultAddress: string): Promise<number | null> {
+    const latestReport = await this.vaultReportStatRepo
+      .createQueryBuilder('stats')
+      .innerJoin('stats.vault', 'vault')
+      .innerJoin('stats.currentReport', 'currentReport')
+      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
+      .select('currentReport.timestamp', 'timestamp')
+      .orderBy('currentReport.timestamp', 'DESC')
+      .limit(1)
+      .getRawOne<{ timestamp: number }>();
+
+    return latestReport?.timestamp ?? null;
+  }
+
+  async getVaultAprSmaForDays(vaultAddress: string, days: number): Promise<VaultAprsSma | null> {
+    const toTimestamp = await this.getLatestReportTimestampForVault(vaultAddress);
+    if (!toTimestamp) return null;
+
+    const fromTimestamp = toTimestamp - days * 24 * 60 * 60; // math for converting days to seconds
+
+    const rows = await this.getVaultReportStatsInRange(vaultAddress, fromTimestamp, toTimestamp, undefined, undefined);
+
+    const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+
+    const grossStakingAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
+      cid: row.cid,
+      timestamp: row.timestamp,
+      value: row.grossStakingAprPercent ?? 0,
+    }));
+
+    const netStakingAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
+      cid: row.cid,
+      timestamp: row.timestamp,
+      value: row.netStakingAprPercent ?? 0,
+    }));
+
+    const carrySpreadAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
+      cid: row.cid,
+      timestamp: row.timestamp,
+      value: row.carrySpreadAprPercent ?? 0,
+    }));
+
+    return {
+      windowDays: days,
+      count: rows.length,
+      range: { fromTimestamp, toTimestamp },
+
+      grossStakingAprPercent: {
+        sma: avg(grossStakingAprPercentSeries.map((x) => x.value)),
+        series: grossStakingAprPercentSeries,
+      },
+      netStakingAprPercent: {
+        sma: avg(netStakingAprPercentSeries.map((x) => x.value)),
+        series: netStakingAprPercentSeries,
+      },
+      carrySpreadAprPercent: {
+        sma: avg(carrySpreadAprPercentSeries.map((x) => x.value)),
+        series: carrySpreadAprPercentSeries,
+      },
+    };
   }
 
   /**
