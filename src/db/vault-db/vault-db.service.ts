@@ -396,25 +396,25 @@ export class VaultDbService {
     const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
 
     const grossStakingAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
-      cid: row.cid,
+      reportCid: row.reportCid,
       timestamp: row.timestamp,
       value: row.grossStakingAprPercent ?? 0,
     }));
 
     const netStakingAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
-      cid: row.cid,
+      reportCid: row.reportCid,
       timestamp: row.timestamp,
       value: row.netStakingAprPercent ?? 0,
     }));
 
     const carrySpreadAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
-      cid: row.cid,
+      reportCid: row.reportCid,
       timestamp: row.timestamp,
       value: row.carrySpreadAprPercent ?? 0,
     }));
 
     return {
-      windowDays: days,
+      days,
       count: rows.length,
       range: { fromTimestamp, toTimestamp },
 

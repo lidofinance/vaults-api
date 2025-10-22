@@ -1,9 +1,9 @@
-export type SeriesTimePoint = { cid: string; timestamp: number; value: number };
+export type SeriesTimePoint = { reportCid: string; timestamp: number; value: number };
 
 export type AprSma = { series: SeriesTimePoint[]; sma: number };
 
 export type VaultAprsSma = {
-  windowDays: number;
+  days: number;
   count: number;
   range: { fromTimestamp: number; toTimestamp: number };
   grossStakingAprPercent: AprSma;
