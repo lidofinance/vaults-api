@@ -24,7 +24,12 @@ import { ErrorResponseType } from 'http/common/dto/error-response-type';
 import { ToChecksumEthAddressPipe } from 'http/common/pipes';
 
 import { GetVaultStatsRangeQueryDto } from './dto/get-vault-stats-range-query.dto';
-import { vaultsExample, vaultLatestMetricsExample, vaultLatestMetricsRangeExample } from './example';
+import {
+  vaultsExample,
+  vaultLatestMetricsExample,
+  vaultLatestMetricsRangeExample,
+  getVaultAprsSmaForDaysExample,
+} from './example';
 
 const limitQueryDefault = 10;
 const offsetQueryDefault = 0;
@@ -222,26 +227,29 @@ export class VaultsHttpController {
   @Get(':vaultAddress/aprs/sma')
   @CacheTTL(10 * 1000)
   @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
-  // @ApiResponse({
-  //   status: HttpStatus.OK,
-  //   description: 'Vault with latest metrics',
-  //   schema: {
-  //     example: vaultLatestMetricsExample,
-  //   },
-  // })
-  // @ApiResponse({
-  //   status: HttpStatus.BAD_REQUEST,
-  //   description: 'Address must be an Ethereum address',
-  //   type: ErrorResponseType,
-  // })
-  // @ApiResponse({
-  //   status: HttpStatus.BAD_REQUEST,
-  //   description: 'Vault not found or has no stats.',
-  //   type: ErrorResponseType,
-  // })
-  async getVaultAprSmaForLastDays(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
-    // todo
-    const data = await this.vaultDbService.getVaultAprSmaForDays(vaultAddress, 7);
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Vault APRs SMA metrics',
+    schema: {
+      example: getVaultAprsSmaForDaysExample,
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Vault not found or has no stats.',
+    type: ErrorResponseType,
+  })
+  async getVaultAprsSmaForDays(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
+    const data = await this.vaultDbService.getVaultAprsSmaForDays(vaultAddress, 7);
+    if (!data) {
+      throw new BadRequestException('Vault not found or has no stats.');
+    }
+
     return data;
   }
 }

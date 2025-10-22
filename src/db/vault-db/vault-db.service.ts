@@ -385,7 +385,7 @@ export class VaultDbService {
     return latestReport?.timestamp ?? null;
   }
 
-  async getVaultAprSmaForDays(vaultAddress: string, days: number): Promise<VaultAprsSma | null> {
+  async getVaultAprsSmaForDays(vaultAddress: string, days: number): Promise<VaultAprsSma | null> {
     const toTimestamp = await this.getLatestReportTimestampForVault(vaultAddress);
     if (!toTimestamp) return null;
 
