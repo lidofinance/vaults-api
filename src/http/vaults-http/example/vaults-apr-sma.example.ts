@@ -95,15 +95,15 @@ export const vaultAprSmaForDaysExample = {
       "timestamp": 1760504460
     }
   ],
-  "grossStakingAprPercent": {
+  "grossStakingApr": {
     "sma": 0,
     "aprs": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   },
-  "netStakingAprPercent": {
+  "netStakingApr": {
     "sma": -0.0220740984390909,
     "aprs": [-0.01994711612, -0.02192580333, -0.02330681827, -0.02399126173, -0.02337163386, -0.02267376923, -0.02377027339, -0.02385788817, -0.02318214217, -0.02393052895, -0.02261727046, -0.02288910614, -0.02251275898, -0.02242472127, -0.02303303852, -0.02235143381, -0.02158067241, -0.01940299826, -0.0197175999, -0.01906211486, -0.01911352797, -0.02096768786]
   },
-  "carrySpreadAprPercent": {
+  "carrySpreadApr": {
     "sma": -0.0220740984390909,
     "aprs": [-0.01994711612, -0.02192580333, -0.02330681827, -0.02399126173, -0.02337163386, -0.02267376923, -0.02377027339, -0.02385788817, -0.02318214217, -0.02393052895, -0.02261727046, -0.02288910614, -0.02251275898, -0.02242472127, -0.02303303852, -0.02235143381, -0.02158067241, -0.01940299826, -0.0197175999, -0.01906211486, -0.01911352797, -0.02096768786]
   }
@@ -114,7 +114,7 @@ export const zeroVaultAprSmaForDaysExample = {
   count: 0,
   range: { fromTimestamp: 0, toTimestamp: 0 },
   reportSeries: [],
-  grossStakingAprPercent: { sma: 0, aprs: [] },
-  netStakingAprPercent: { sma: 0, aprs: [] },
-  carrySpreadAprPercent: { sma: 0, aprs: [] },
+  grossStakingApr: { sma: 0, aprs: [] },
+  netStakingApr: { sma: 0, aprs: [] },
+  carrySpreadApr: { sma: 0, aprs: [] },
 };

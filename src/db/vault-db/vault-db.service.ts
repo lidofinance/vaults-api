@@ -412,9 +412,9 @@ export class VaultDbService {
       count: 0,
       range: { fromTimestamp, toTimestamp },
       reportSeries: [],
-      grossStakingAprPercent: { sma: 0, aprs: [] },
-      netStakingAprPercent: { sma: 0, aprs: [] },
-      carrySpreadAprPercent: { sma: 0, aprs: [] },
+      grossStakingApr: { sma: 0, aprs: [] },
+      netStakingApr: { sma: 0, aprs: [] },
+      carrySpreadApr: { sma: 0, aprs: [] },
     });
 
     const SECONDS_PER_DAY = 24 * 60 * 60;
@@ -473,15 +473,15 @@ export class VaultDbService {
       count: rows.length,
       range: { fromTimestamp, toTimestamp },
       reportSeries,
-      grossStakingAprPercent: {
+      grossStakingApr: {
         sma: grossStakingAprPercentSum / rows.length,
         aprs: grossStakingAprPercentSeries,
       },
-      netStakingAprPercent: {
+      netStakingApr: {
         sma: netStakingAprPercentSum / rows.length,
         aprs: netStakingAprPercentSeries,
       },
-      carrySpreadAprPercent: {
+      carrySpreadApr: {
         sma: carrySpreadAprPercentSum / rows.length,
         aprs: carrySpreadAprPercentSeries,
       },

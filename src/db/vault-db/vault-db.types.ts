@@ -7,7 +7,7 @@ export type VaultAprSma = {
   count: number;
   range: { fromTimestamp: number; toTimestamp: number };
   reportSeries: SeriesReportPoint[];
-  grossStakingAprPercent: AprSma;
-  netStakingAprPercent: AprSma;
-  carrySpreadAprPercent: AprSma;
+  grossStakingApr: AprSma;
+  netStakingApr: AprSma;
+  carrySpreadApr: AprSma;
 };
