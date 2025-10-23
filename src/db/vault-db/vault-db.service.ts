@@ -322,18 +322,36 @@ export class VaultDbService {
   }
 
   async getLatestVaultReportStats(vaultAddress: string) {
-    return (
-      this.vaultReportStatRepo
-        .createQueryBuilder('stats')
-        .innerJoin('stats.vault', 'vault')
-        .innerJoin('stats.currentReport', 'currentReport')
-        .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
-        .orderBy('currentReport.timestamp', 'DESC')
-        .select(VAULT_REPORT_STATS_SELECT_FIELDS)
-        // for metrics
-        .comment(QUERY_METRICS_COMMENTS.GET_LATEST_VAULT_REPORT_STATS)
-        .getRawOne()
-    );
+    const exists = await this.existsVaultByAddress(vaultAddress);
+    if (!exists) return null;
+
+    const latestStats = await this.vaultReportStatRepo
+      .createQueryBuilder('stats')
+      .innerJoin('stats.vault', 'vault')
+      .innerJoin('stats.currentReport', 'currentReport')
+      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
+      .orderBy('currentReport.timestamp', 'DESC')
+      .select(VAULT_REPORT_STATS_SELECT_FIELDS)
+      // for metrics
+      .comment(QUERY_METRICS_COMMENTS.GET_LATEST_VAULT_REPORT_STATS)
+      .getRawOne();
+
+    if (!latestStats) {
+      return {
+        rebaseReward: 0,
+        grossStakingRewards: '0',
+        nodeOperatorRewards: '0',
+        dailyLidoFees: '0',
+        netStakingRewards: '0',
+        grossStakingAprPercent: 0,
+        netStakingAprPercent: 0,
+        bottomLine: '0',
+        carrySpreadAprPercent: 0,
+        updatedAt: null,
+      };
+    }
+
+    return latestStats;
   }
 
   async getVaultReportStatsInRange(

@@ -159,13 +159,13 @@ export class VaultsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Vault not found or has no stats.',
+    description: 'Vault not found',
     type: ErrorResponseType,
   })
   async getLatestVaultStatsByAddress(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
     const latestStats = await this.vaultDbService.getLatestVaultReportStats(vaultAddress);
     if (!latestStats) {
-      throw new BadRequestException('Vault not found or has no stats.');
+      throw new BadRequestException('Vault not found');
     }
 
     return latestStats;
