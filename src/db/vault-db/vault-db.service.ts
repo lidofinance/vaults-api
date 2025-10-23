@@ -417,11 +417,25 @@ export class VaultDbService {
       carrySpreadAprPercent: { sma: 0, aprs: [] },
     });
 
+    const SECONDS_PER_DAY = 24 * 60 * 60;
+
     const toTimestamp = await this.getLatestReportTimestampForVault(vaultAddress);
     if (!toTimestamp) return zeroData();
-
-    const SECONDS_PER_DAY = 24 * 60 * 60;
-    const fromTimestamp = toTimestamp - days * SECONDS_PER_DAY;
+    // Round the fromTimestamp report down to 00:00 UTC.
+    // This ensures a consistent N-day window ending at midnight.
+    // Example:
+    //  - fromTimestamp = 2025-10-16 00:00:00 UTC
+    //  - toTimestamp = 2025-10-22 xx:yy:zz UTC
+    //  - Reports:
+    //    1) 2025-10-16 03:30
+    //    2) 2025-10-17 05:30
+    //    3) 2025-10-18 05:30
+    //    4) 2025-10-19 06:30
+    //    5) 2025-10-20 05:30
+    //    6) 2025-10-21 04:31
+    //    7) 2025-10-22 05:30
+    let fromTimestamp = toTimestamp - (days - 1) * SECONDS_PER_DAY;
+    fromTimestamp = fromTimestamp - (fromTimestamp % SECONDS_PER_DAY);
 
     const rows = await this.getVaultReportStatsInRange(vaultAddress, fromTimestamp, toTimestamp, undefined, undefined);
     if (rows.length === 0) return zeroData(fromTimestamp, toTimestamp);
