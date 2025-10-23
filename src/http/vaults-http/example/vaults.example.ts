@@ -135,7 +135,7 @@ export const vaultLatestMetricsRangeExample = [
   },
 ];
 
-export const getVaultAprsSmaForDaysExample = {
+export const getVaultAprSmaForDaysExample = {
   "windowDays": 7,
   "count": 22,
   "range": {

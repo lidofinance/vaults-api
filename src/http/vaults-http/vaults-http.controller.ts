@@ -28,8 +28,9 @@ import {
   vaultsExample,
   vaultLatestMetricsExample,
   vaultLatestMetricsRangeExample,
-  getVaultAprsSmaForDaysExample,
+  getVaultAprSmaForDaysExample,
 } from './example';
+import { VAULT_APR_SMA_DAYS } from './vaults-http.constants';
 
 const limitQueryDefault = 10;
 const offsetQueryDefault = 0;
@@ -231,7 +232,7 @@ export class VaultsHttpController {
     status: HttpStatus.OK,
     description: 'Vault Simple Moving Average APR for last 7 days',
     schema: {
-      example: getVaultAprsSmaForDaysExample,
+      example: getVaultAprSmaForDaysExample,
     },
   })
   @ApiResponse({
@@ -244,8 +245,8 @@ export class VaultsHttpController {
     description: 'Vault not found or has no stats.',
     type: ErrorResponseType,
   })
-  async getVaultAprsSmaForDays(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
-    const data = await this.vaultDbService.getVaultAprsSmaForDays(vaultAddress, 7);
+  async getVaultAprSmaForDays(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
+    const data = await this.vaultDbService.getVaultAprSmaForDays(vaultAddress, VAULT_APR_SMA_DAYS);
     if (!data) {
       throw new BadRequestException('Vault not found or has no stats.');
     }

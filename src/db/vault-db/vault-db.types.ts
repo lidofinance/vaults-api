@@ -2,7 +2,7 @@ export type SeriesTimePoint = { reportCid: string; timestamp: number; value: num
 
 export type AprSma = { series: SeriesTimePoint[]; sma: number };
 
-export type VaultAprsSma = {
+export type VaultAprSma = {
   days: number;
   count: number;
   range: { fromTimestamp: number; toTimestamp: number };

@@ -8,7 +8,7 @@ import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
 import { LABEL_TO_ROLE } from 'vault/vault.constants';
 
 import { Direction, DirectionEnum, SortFields } from './enums';
-import { SeriesTimePoint, VaultAprsSma } from './vault-db.types';
+import { SeriesTimePoint, VaultAprSma } from './vault-db.types';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
 import { QUERY_METRICS_COMMENTS } from './vault-db.constants';
 
@@ -385,7 +385,7 @@ export class VaultDbService {
     return latestReport?.timestamp ?? null;
   }
 
-  async getVaultAprsSmaForDays(vaultAddress: string, days: number): Promise<VaultAprsSma | null> {
+  async getVaultAprSmaForDays(vaultAddress: string, days: number): Promise<VaultAprSma | null> {
     const toTimestamp = await this.getLatestReportTimestampForVault(vaultAddress);
     if (!toTimestamp) return null;
 
@@ -398,19 +398,19 @@ export class VaultDbService {
     const grossStakingAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
       reportCid: row.reportCid,
       timestamp: row.timestamp,
-      value: row.grossStakingAprPercent ?? 0,
+      value: row.grossStakingAprPercent,
     }));
 
     const netStakingAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
       reportCid: row.reportCid,
       timestamp: row.timestamp,
-      value: row.netStakingAprPercent ?? 0,
+      value: row.netStakingAprPercent,
     }));
 
     const carrySpreadAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
       reportCid: row.reportCid,
       timestamp: row.timestamp,
-      value: row.carrySpreadAprPercent ?? 0,
+      value: row.carrySpreadAprPercent,
     }));
 
     return {
