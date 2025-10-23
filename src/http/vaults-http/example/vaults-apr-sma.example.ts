@@ -5,7 +5,7 @@ export const vaultAprSmaForDaysExample = {
     "fromTimestamp": 1760504460,
     "toTimestamp": 1761109260
   },
-  "reportSeries": [
+  "meta": [
     {
       "reportCid": "QmY6Yxr7dGZ4bcj9GvSxaWAnczys9nHzQ9tgYAK1DfsgHw",
       "timestamp": 1761109260
@@ -113,7 +113,7 @@ export const zeroVaultAprSmaForDaysExample = {
   days: 7,
   count: 0,
   range: { fromTimestamp: 0, toTimestamp: 0 },
-  reportSeries: [],
+  meta: [],
   grossStakingApr: { sma: 0, aprs: [] },
   netStakingApr: { sma: 0, aprs: [] },
   carrySpreadApr: { sma: 0, aprs: [] },

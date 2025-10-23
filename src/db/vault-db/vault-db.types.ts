@@ -6,7 +6,7 @@ export type VaultAprSma = {
   days: number;
   count: number;
   range: { fromTimestamp: number; toTimestamp: number };
-  reportSeries: SeriesReportPoint[];
+  meta: SeriesReportPoint[];
   grossStakingApr: AprSma;
   netStakingApr: AprSma;
   carrySpreadApr: AprSma;

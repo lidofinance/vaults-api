@@ -411,7 +411,7 @@ export class VaultDbService {
       days,
       count: 0,
       range: { fromTimestamp, toTimestamp },
-      reportSeries: [],
+      meta: [],
       grossStakingApr: { sma: 0, aprs: [] },
       netStakingApr: { sma: 0, aprs: [] },
       carrySpreadApr: { sma: 0, aprs: [] },
@@ -440,7 +440,7 @@ export class VaultDbService {
     const rows = await this.getVaultReportStatsInRange(vaultAddress, fromTimestamp, toTimestamp, undefined, undefined);
     if (rows.length === 0) return zeroData(fromTimestamp, toTimestamp);
 
-    const reportSeries: SeriesReportPoint[] = [];
+    const meta: SeriesReportPoint[] = [];
     const grossStakingAprPercentSeries: number[] = [];
     const netStakingAprPercentSeries: number[] = [];
     const carrySpreadAprPercentSeries: number[] = [];
@@ -451,7 +451,7 @@ export class VaultDbService {
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      reportSeries[i] = { reportCid: row.reportCid, timestamp: row.timestamp };
+      meta[i] = { reportCid: row.reportCid, timestamp: row.timestamp };
 
       // grossStakingAprPercent, netStakingAprPercent, carrySpreadAprPercent can be NULL in the DB
       // see: VaultReportStatEntity entity in the `src/db/vault-db/entities/vault-report-stat.entity.ts`
@@ -472,7 +472,7 @@ export class VaultDbService {
       days,
       count: rows.length,
       range: { fromTimestamp, toTimestamp },
-      reportSeries,
+      meta,
       grossStakingApr: {
         sma: grossStakingAprPercentSum / rows.length,
         aprs: grossStakingAprPercentSeries,
