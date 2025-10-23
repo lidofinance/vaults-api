@@ -17,16 +17,16 @@ export class ReportLeafEntity {
   @Column({ type: 'numeric', precision: 78, scale: 0, name: 'in_out_delta' })
   inOutDelta: string;
 
-  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'prev_fee', nullable: true })
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'prev_fee' })
   prevFee: string;
 
-  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'infra_fee', nullable: true })
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'infra_fee' })
   infraFee: string;
 
-  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'liquidity_fee', nullable: true })
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'liquidity_fee' })
   liquidityFee: string;
 
-  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'reservation_fee', nullable: true })
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'reservation_fee' })
   reservationFee: string;
 
   @Column({ type: 'numeric', precision: 78, scale: 0, name: 'fee' })
@@ -35,7 +35,7 @@ export class ReportLeafEntity {
   @Column({ type: 'numeric', precision: 78, scale: 0, name: 'liability_shares' })
   liabilityShares: string;
 
-  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'max_liability_shares', nullable: true })
+  @Column({ type: 'numeric', precision: 78, scale: 0, name: 'max_liability_shares' })
   maxLiabilityShares: string;
 
   @Column({ type: 'numeric', precision: 78, scale: 0, name: 'slashing_reserve' })

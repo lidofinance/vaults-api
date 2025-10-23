@@ -21,49 +21,49 @@ export class VaultReportStatEntity {
   previousReport: ReportEntity;
 
   @Column({ name: 'rebase_reward', type: 'float8' })
-  rebaseReward?: string;
+  rebaseReward: string;
 
   @Column({ name: 'gross_staking_rewards', type: 'numeric', precision: 78, scale: 0 })
-  grossStakingRewards?: string;
+  grossStakingRewards: string;
 
   @Column({ name: 'node_operator_rewards', type: 'numeric', precision: 78, scale: 0 })
-  nodeOperatorRewards?: string;
+  nodeOperatorRewards: string;
 
   @Column({ name: 'daily_lido_fees', type: 'numeric', precision: 78, scale: 0 })
-  dailyLidoFees?: string;
+  dailyLidoFees: string;
 
   @Column({ name: 'net_staking_rewards', type: 'numeric', precision: 78, scale: 0 })
-  netStakingRewards?: string;
+  netStakingRewards: string;
 
   @Column({ name: 'gross_staking_apr', type: 'numeric', precision: 78, scale: 0 })
-  grossStakingAPR?: string;
+  grossStakingAPR: string;
 
   @Column({ name: 'gross_staking_apr_bps', type: 'float8' })
-  grossStakingAprBps?: number;
+  grossStakingAprBps: number;
 
   @Column({ name: 'gross_staking_apr_percent', type: 'float8' })
-  grossStakingAprPercent?: number;
+  grossStakingAprPercent: number;
 
   @Column({ name: 'net_staking_apr', type: 'numeric', precision: 78, scale: 0 })
-  netStakingAPR?: string;
+  netStakingAPR: string;
 
   @Column({ name: 'net_staking_apr_bps', type: 'float8' })
-  netStakingAprBps?: number;
+  netStakingAprBps: number;
 
   @Column({ name: 'net_staking_apr_percent', type: 'float8' })
-  netStakingAprPercent?: number;
+  netStakingAprPercent: number;
 
   @Column({ name: 'bottom_line', type: 'numeric', precision: 78, scale: 0 })
-  bottomLine?: string;
+  bottomLine: string;
 
   @Column({ name: 'carry_spread_apr', type: 'numeric', precision: 78, scale: 0 })
-  carrySpreadAPR?: string;
+  carrySpreadAPR: string;
 
   @Column({ name: 'carry_spread_apr_bps', type: 'float8' })
-  carrySpreadAprBps?: number;
+  carrySpreadAprBps: number;
 
   @Column({ name: 'carry_spread_apr_percent', type: 'float8' })
-  carrySpreadAprPercent?: number;
+  carrySpreadAprPercent: number;
 
   @Column({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
