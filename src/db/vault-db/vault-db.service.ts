@@ -453,19 +453,13 @@ export class VaultDbService {
       const row = rows[i];
       meta[i] = { reportCid: row.reportCid, timestamp: row.timestamp };
 
-      // grossStakingAprPercent, netStakingAprPercent, carrySpreadAprPercent can be NULL in the DB
-      // see: VaultReportStatEntity entity in the `src/db/vault-db/entities/vault-report-stat.entity.ts`
-      const gsAPR = Number(row.grossStakingAprPercent ?? 0);
-      const nsAPR = Number(row.netStakingAprPercent ?? 0);
-      const csAPR = Number(row.carrySpreadAprPercent ?? 0);
+      grossStakingAprPercentSeries[i] = row.grossStakingAprPercent;
+      netStakingAprPercentSeries[i] = row.netStakingAprPercent;
+      carrySpreadAprPercentSeries[i] = row.carrySpreadAprPercent;
 
-      grossStakingAprPercentSeries[i] = gsAPR;
-      netStakingAprPercentSeries[i] = nsAPR;
-      carrySpreadAprPercentSeries[i] = csAPR;
-
-      grossStakingAprPercentSum += gsAPR;
-      netStakingAprPercentSum += nsAPR;
-      carrySpreadAprPercentSum += csAPR;
+      grossStakingAprPercentSum += row.grossStakingAprPercent;
+      netStakingAprPercentSum += row.netStakingAprPercent;
+      carrySpreadAprPercentSum += row.carrySpreadAprPercent;
     }
 
     return {
