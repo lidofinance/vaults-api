@@ -1,11 +1,12 @@
-export type SeriesTimePoint = { reportCid: string; timestamp: number; value: number };
+export type SeriesReportPoint = { reportCid: string; timestamp: number };
 
-export type AprSma = { series: SeriesTimePoint[]; sma: number };
+export type AprSma = { aprs: number[]; sma: number };
 
 export type VaultAprSma = {
   days: number;
   count: number;
   range: { fromTimestamp: number; toTimestamp: number };
+  reportSeries: SeriesReportPoint[];
   grossStakingAprPercent: AprSma;
   netStakingAprPercent: AprSma;
   carrySpreadAprPercent: AprSma;

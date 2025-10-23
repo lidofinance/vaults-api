@@ -8,7 +8,7 @@ import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
 import { LABEL_TO_ROLE } from 'vault/vault.constants';
 
 import { Direction, DirectionEnum, SortFields } from './enums';
-import { SeriesTimePoint, VaultAprSma } from './vault-db.types';
+import { SeriesReportPoint, VaultAprSma } from './vault-db.types';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
 import { QUERY_METRICS_COMMENTS } from './vault-db.constants';
 
@@ -389,46 +389,56 @@ export class VaultDbService {
     const toTimestamp = await this.getLatestReportTimestampForVault(vaultAddress);
     if (!toTimestamp) return null;
 
-    const fromTimestamp = toTimestamp - days * 24 * 60 * 60; // math for converting days to seconds
+    const SECONDS_PER_DAY = 24 * 60 * 60;
+    const fromTimestamp = toTimestamp - days * SECONDS_PER_DAY;
 
     const rows = await this.getVaultReportStatsInRange(vaultAddress, fromTimestamp, toTimestamp, undefined, undefined);
+    if (rows.length === 0) return null;
 
-    const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+    const reportSeries: SeriesReportPoint[] = [];
+    const grossStakingAprPercentSeries: number[] = [];
+    const netStakingAprPercentSeries: number[] = [];
+    const carrySpreadAprPercentSeries: number[] = [];
 
-    const grossStakingAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
-      reportCid: row.reportCid,
-      timestamp: row.timestamp,
-      value: row.grossStakingAprPercent,
-    }));
+    let grossStakingAprPercentSum = 0;
+    let netStakingAprPercentSum = 0;
+    let carrySpreadAprPercentSum = 0;
 
-    const netStakingAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
-      reportCid: row.reportCid,
-      timestamp: row.timestamp,
-      value: row.netStakingAprPercent,
-    }));
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      reportSeries[i] = { reportCid: row.reportCid, timestamp: row.timestamp };
 
-    const carrySpreadAprPercentSeries: SeriesTimePoint[] = rows.map((row) => ({
-      reportCid: row.reportCid,
-      timestamp: row.timestamp,
-      value: row.carrySpreadAprPercent,
-    }));
+      // grossStakingAprPercent, netStakingAprPercent, carrySpreadAprPercent can be NULL in the DB
+      // see: VaultReportStatEntity entity in the `src/db/vault-db/entities/vault-report-stat.entity.ts`
+      const gsAPR = Number(row.grossStakingAprPercent ?? 0);
+      const nsAPR = Number(row.netStakingAprPercent ?? 0);
+      const csAPR = Number(row.carrySpreadAprPercent ?? 0);
+
+      grossStakingAprPercentSeries[i] = gsAPR;
+      netStakingAprPercentSeries[i] = nsAPR;
+      carrySpreadAprPercentSeries[i] = csAPR;
+
+      grossStakingAprPercentSum += gsAPR;
+      netStakingAprPercentSum += nsAPR;
+      carrySpreadAprPercentSum += csAPR;
+    }
 
     return {
       days,
       count: rows.length,
       range: { fromTimestamp, toTimestamp },
-
+      reportSeries,
       grossStakingAprPercent: {
-        sma: avg(grossStakingAprPercentSeries.map((x) => x.value)),
-        series: grossStakingAprPercentSeries,
+        sma: grossStakingAprPercentSum / rows.length,
+        aprs: grossStakingAprPercentSeries,
       },
       netStakingAprPercent: {
-        sma: avg(netStakingAprPercentSeries.map((x) => x.value)),
-        series: netStakingAprPercentSeries,
+        sma: netStakingAprPercentSum / rows.length,
+        aprs: netStakingAprPercentSeries,
       },
       carrySpreadAprPercent: {
-        sma: avg(carrySpreadAprPercentSeries.map((x) => x.value)),
-        series: carrySpreadAprPercentSeries,
+        sma: carrySpreadAprPercentSum / rows.length,
+        aprs: carrySpreadAprPercentSeries,
       },
     };
   }
