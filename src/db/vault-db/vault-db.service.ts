@@ -385,15 +385,28 @@ export class VaultDbService {
     return latestReport?.timestamp ?? null;
   }
 
-  async getVaultAprSmaForDays(vaultAddress: string, days: number): Promise<VaultAprSma | null> {
+  async getVaultAprSmaForDays(vaultAddress: string, days: number): Promise<VaultAprSma> {
+    const exists = await this.existsVaultByAddress(vaultAddress);
+    if (!exists) return null;
+
+    const zeroData = (fromTimestamp = 0, toTimestamp = 0): VaultAprSma => ({
+      days,
+      count: 0,
+      range: { fromTimestamp, toTimestamp },
+      reportSeries: [],
+      grossStakingAprPercent: { sma: 0, aprs: [] },
+      netStakingAprPercent: { sma: 0, aprs: [] },
+      carrySpreadAprPercent: { sma: 0, aprs: [] },
+    });
+
     const toTimestamp = await this.getLatestReportTimestampForVault(vaultAddress);
-    if (!toTimestamp) return null;
+    if (!toTimestamp) return zeroData();
 
     const SECONDS_PER_DAY = 24 * 60 * 60;
     const fromTimestamp = toTimestamp - days * SECONDS_PER_DAY;
 
     const rows = await this.getVaultReportStatsInRange(vaultAddress, fromTimestamp, toTimestamp, undefined, undefined);
-    if (rows.length === 0) return null;
+    if (rows.length === 0) return zeroData(fromTimestamp, toTimestamp);
 
     const reportSeries: SeriesReportPoint[] = [];
     const grossStakingAprPercentSeries: number[] = [];
@@ -494,6 +507,13 @@ export class VaultDbService {
       conflictPaths: ['vault', 'currentReport', 'previousReport'],
       skipUpdateIfNoValuesChanged: false,
     });
+  }
+
+  async existsVaultByAddress(vaultAddress: string): Promise<boolean> {
+    return this.vaultRepo
+      .createQueryBuilder('vault')
+      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
+      .getExists();
   }
 
   async existsAnyStatsForReportPair(prevReportId: number, currReportId: number): Promise<boolean> {
