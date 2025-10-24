@@ -258,7 +258,7 @@ export class VaultService {
             `[subscribeToEvents, event:VaultConnected] Saved 'vaultsState' data to DB for vault ${item.vault}`,
           );
 
-          const roleMembersMap = await this.vaultViewerContractService.getRoleMembers(vault, ROLE_BYTES32, {
+          const roleMembersMap = await this.vaultViewerContractService.getRoleMembersWithRetry(vault, ROLE_BYTES32, {
             blockTag: blockNumber,
           });
 

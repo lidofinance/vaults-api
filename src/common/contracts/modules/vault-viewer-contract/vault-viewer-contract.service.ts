@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Contract } from 'ethers';
+import { Contract, constants } from 'ethers';
 
+import { LoggerService } from 'common/logger';
 import { ExecutionProvider } from 'common/execution-provider';
 import { VaultViewerAbi } from 'common/contracts/abi/VaultViewer';
+import { callWithRetry } from 'common/utils/rpc-call-with-retry';
 import { STAKING_VAULT_OWNER_ROLE, STAKING_VAULT_NODE_OPERATOR_ROLE, ROLE_KEYS } from 'vault/vault.constants';
 
 export type Overrides = { blockTag?: number | string };
@@ -39,7 +41,7 @@ export type RawVaultRoleMembers = [
 export class VaultViewerContractService {
   public readonly contract: Contract;
 
-  constructor(provider: ExecutionProvider, address: string) {
+  constructor(provider: ExecutionProvider, address: string, private readonly logger: LoggerService) {
     if (!address) throw new Error('VaultViewer contract address is not defined');
     this.contract = new Contract(address, VaultViewerAbi, provider);
   }
@@ -77,6 +79,29 @@ export class VaultViewerContractService {
       roles,
       overrides,
     );
+
+    return VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, membersRaw);
+  }
+
+  async getRoleMembersWithRetry(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
+    const result = await callWithRetry(
+      async () => {
+        const [, owner, nodeOperator, membersRaw]: RawVaultRoleMembers = await this.contract.getRoleMembers(
+          vaultAddress,
+          roles,
+          overrides,
+        );
+        return { owner, nodeOperator, membersRaw };
+      },
+      {
+        callName: 'getRoleMembers',
+        logger: this.logger,
+        acceptResult: ({ owner, nodeOperator }) =>
+          owner !== constants.AddressZero && nodeOperator !== constants.AddressZero,
+      },
+    );
+
+    const { owner, nodeOperator, membersRaw } = result;
 
     return VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, membersRaw);
   }
