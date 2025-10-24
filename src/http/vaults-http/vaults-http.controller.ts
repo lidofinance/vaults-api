@@ -24,7 +24,14 @@ import { ErrorResponseType } from 'http/common/dto/error-response-type';
 import { ToChecksumEthAddressPipe } from 'http/common/pipes';
 
 import { GetVaultStatsRangeQueryDto } from './dto/get-vault-stats-range-query.dto';
-import { vaultsExample, vaultLatestMetricsExample, vaultLatestMetricsRangeExample } from './example';
+import {
+  vaultsExample,
+  vaultLatestMetricsExample,
+  vaultLatestMetricsRangeExample,
+  vaultAprSmaForDaysExample,
+  zeroVaultAprSmaForDaysExample,
+} from './example';
+import { VAULT_APR_SMA_DAYS } from './vaults-http.constants';
 
 const limitQueryDefault = 10;
 const offsetQueryDefault = 0;
@@ -152,13 +159,13 @@ export class VaultsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Vault not found or has no stats.',
+    description: 'Vault not found',
     type: ErrorResponseType,
   })
   async getLatestVaultStatsByAddress(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
     const latestStats = await this.vaultDbService.getLatestVaultReportStats(vaultAddress);
     if (!latestStats) {
-      throw new BadRequestException('Vault not found or has no stats.');
+      throw new BadRequestException('Vault not found');
     }
 
     return latestStats;
@@ -216,5 +223,35 @@ export class VaultsHttpController {
     const options = { currentDate: new Date(), tz: this.configService.jobs['vaultsCronTZ'] };
     const interval = CronExpressionParser.parse(this.configService.jobs['vaultsCron'], options);
     return interval.next().toDate();
+  }
+
+  @Version('1')
+  @Get(':vaultAddress/apr/sma')
+  @CacheTTL(10 * 1000)
+  @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Simple Moving Average APR for last 7 days for vault',
+    schema: {
+      oneOf: [{ example: vaultAprSmaForDaysExample }, { example: zeroVaultAprSmaForDaysExample }],
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Vault not found',
+    type: ErrorResponseType,
+  })
+  async getVaultAprSmaForDays(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
+    const data = await this.vaultDbService.getVaultAprSmaForDays(vaultAddress, VAULT_APR_SMA_DAYS);
+    if (!data) {
+      throw new BadRequestException('Vault not found');
+    }
+
+    return data;
   }
 }

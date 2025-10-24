@@ -66,7 +66,7 @@ export class ReportDbService {
 
     for (const batch of leafChunks) {
       const leaves = batch.map((entry: any) => {
-        const [vaultAddress, totalValueWei, fee, liabilityShares, slashingReserve] = entry.value;
+        const [vaultAddress, totalValueWei, fee, liabilityShares, maxLiabilityShares, slashingReserve] = entry.value;
 
         const treeIndex = entry.treeIndex;
         const inOutDelta = extraValues?.[vaultAddress]?.inOutDelta ?? '0';
@@ -86,6 +86,7 @@ export class ReportDbService {
           reservationFee,
           fee,
           liabilityShares,
+          maxLiabilityShares,
           slashingReserve,
           treeIndex,
         });

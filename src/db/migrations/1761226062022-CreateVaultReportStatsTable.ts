@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateVaultReportStatsTable1751187341993 implements MigrationInterface {
-    name = 'CreateVaultReportStatsTable1751187341993'
+export class CreateVaultReportStatsTable1761226062022 implements MigrationInterface {
+    name = 'CreateVaultReportStatsTable1761226062022'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "vault_report_stats" ("id" SERIAL NOT NULL, "rebase_reward" double precision NOT NULL, "gross_staking_rewards" numeric(78,0) NOT NULL, "node_operator_rewards" numeric(78,0) NOT NULL, "daily_lido_fees" numeric(78,0) NOT NULL, "net_staking_rewards" numeric(78,0) NOT NULL, "gross_staking_apr" numeric(78,0) NOT NULL, "gross_staking_apr_bps" double precision NOT NULL, "gross_staking_apr_percent" double precision NOT NULL, "net_staking_apr" numeric(78,0) NOT NULL, "net_staking_apr_bps" double precision NOT NULL, "net_staking_apr_percent" double precision NOT NULL, "bottom_line" numeric(78,0) NOT NULL, "carry_spread_apr" numeric(78,0) NOT NULL, "carry_spread_apr_bps" double precision NOT NULL, "carry_spread_apr_percent" double precision NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "vault_id" integer NOT NULL, "current_report_id" integer NOT NULL, "previous_report_id" integer NOT NULL, CONSTRAINT "PK_05eebd72aafd54fa6c1e6b3ae42" PRIMARY KEY ("id"))`);
