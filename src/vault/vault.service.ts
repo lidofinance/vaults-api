@@ -94,7 +94,7 @@ export class VaultService {
           const healthFactor = await this.lsvService.calculateHealth({
             totalValue: item.totalValue,
             liabilitySharesInStethWei: item.liabilityStETH,
-            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+            forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
           });
 
           await this.vaultDbService.addOrUpdateState({
@@ -235,7 +235,7 @@ export class VaultService {
           const healthFactor = await this.lsvService.calculateHealth({
             totalValue: item.totalValue,
             liabilitySharesInStethWei: item.liabilityStETH,
-            forceRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
+            forcedRebalanceThresholdBP: item.forcedRebalanceThresholdBP,
           });
 
           await this.vaultDbService.addOrUpdateState({
