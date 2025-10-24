@@ -4,7 +4,7 @@ import { Contract, constants } from 'ethers';
 import { LoggerService } from 'common/logger';
 import { ExecutionProvider } from 'common/execution-provider';
 import { VaultViewerAbi } from 'common/contracts/abi/VaultViewer';
-import { callWithRetry } from 'common/utils/rpc-call-with-retry';
+import { rpcCallWithRetry } from 'common/utils/rpc-call-with-retry';
 import { STAKING_VAULT_OWNER_ROLE, STAKING_VAULT_NODE_OPERATOR_ROLE, ROLE_KEYS } from 'vault/vault.constants';
 
 export type Overrides = { blockTag?: number | string };
@@ -84,7 +84,7 @@ export class VaultViewerContractService {
   }
 
   async getRoleMembersWithRetry(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
-    const result = await callWithRetry(
+    const result = await rpcCallWithRetry(
       async () => {
         const [, owner, nodeOperator, membersRaw]: RawVaultRoleMembers = await this.contract.getRoleMembers(
           vaultAddress,

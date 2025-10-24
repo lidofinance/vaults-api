@@ -1,6 +1,6 @@
 import { LoggerService } from 'common/logger';
 
-export const callWithRetry = async <T>(
+export const rpcCallWithRetry = async <T>(
   fn: () => Promise<T>,
   options: {
     callName: string;
@@ -14,7 +14,7 @@ export const callWithRetry = async <T>(
 
   for (let i = 1; i <= attempts; i++) {
     if (i > 1) {
-      logger && logger.log(`[callWithRetry:${callName}] attempt=${i}`);
+      logger && logger.log(`[rpcCallWithRetry:${callName}] attempt=${i}`);
     }
 
     try {
@@ -23,7 +23,7 @@ export const callWithRetry = async <T>(
         return result;
       }
     } catch (err) {
-      logger && logger.error(`[callWithRetry:${callName}] catch err=${err}`);
+      logger && logger.error(`[rpcCallWithRetry:${callName}] catch err=${err}`);
     }
 
     if (i < attempts) {
@@ -31,6 +31,6 @@ export const callWithRetry = async <T>(
     }
   }
 
-  logger && logger.error(`[callWithRetry:${callName}] attempts exhausted`);
-  throw new Error(`[callWithRetry:${callName}]: attempts exhausted`);
+  logger && logger.error(`[rpcCallWithRetry:${callName}] attempts exhausted`);
+  throw new Error(`[rpcCallWithRetry:${callName}]: attempts exhausted`);
 };
