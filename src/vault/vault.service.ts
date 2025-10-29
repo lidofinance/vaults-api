@@ -34,20 +34,20 @@ export class VaultService {
     const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
     const batchSize = this.configService.jobs['vaultsBatchSize'];
 
-    // 1. Get vaultsCount, vaultsConnectedBound (0, 0) - works and return:
-    // - vaults empty array
-    // - vaults count
+    // 1. Get vaultsCount with getVaultsDataBound(1, 1) - works and return:
+    // - vaults array with 1 vault data
+    // - leftover vaults (vaultsCount = leftover + 1)
     let initialBatch = [];
     let leftoverVaults = 0;
     try {
-      const result = await this.vaultViewerContractService.getVaultsConnectedBound(0, 0, {
+      const result = await this.vaultViewerContractService.getVaultsDataBound(1, 1, {
         blockTag: blockNumber,
       });
-      initialBatch = result.addresses;
-      leftoverVaults = result.leftoverVaults;
+      initialBatch = result.vaultsDataBatch;
+      leftoverVaults = result.leftover;
     } catch (err: any) {
       this.logger.error(
-        `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsConnectedBound (0, 0) at block ${blockNumber}: ${err}`,
+        `[fetchAllVaultsAndCalculateStates] Failed to fetch getVaultsDataBound(1, 1) at block ${blockNumber}: ${err}`,
       );
       return;
     }
@@ -63,8 +63,8 @@ export class VaultService {
         `[fetchAllVaultsAndCalculateStates] Running in minimal vaults fetching mode, vaultsLimit=${vaultsLimit}`,
       );
     }
-    for (let from = 0; from < vaultsLimit; from += batchSize) {
-      const to = Math.min(from + batchSize, vaultsLimit);
+    for (let from = 1; from <= vaultsLimit; from += batchSize) {
+      const to = Math.min(from + batchSize - 1, vaultsLimit);
       this.logger.log(`[fetchAllVaultsAndCalculateStates] Fetching vaults batch: ${from} to ${to}`);
 
       let vaultsDataBatch;

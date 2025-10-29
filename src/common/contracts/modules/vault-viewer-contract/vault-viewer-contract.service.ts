@@ -46,18 +46,8 @@ export class VaultViewerContractService {
     this.contract = new Contract(address, VaultViewerAbi, provider);
   }
 
-  async getVaultsConnectedBound(
-    from: number,
-    to: number,
-    overrides?: Overrides,
-  ): Promise<{ addresses: string[]; leftoverVaults: number }> {
-    const [addresses, leftoverVaults] = await this.contract.vaultsConnectedBound(from, to, overrides);
-    // leftoverVaults.toNumber() is safe here!
-    return { addresses, leftoverVaults: leftoverVaults.toNumber() };
-  }
-
   async getVaultData(vault: string, overrides?: Overrides): Promise<VaultData> {
-    const raw = await this.contract.getVaultData(vault, overrides);
+    const raw = await this.contract.vaultData(vault, overrides);
     return VaultViewerContractService.transformVaultData(raw);
   }
 
@@ -66,15 +56,15 @@ export class VaultViewerContractService {
     to: number,
     overrides?: Overrides,
   ): Promise<{ vaultsDataBatch: VaultData[]; leftover: number }> {
-    const [rawVaultsData, leftover] = await this.contract.getVaultsDataBound(from, to, overrides);
+    const [rawVaultsData, leftover] = await this.contract.vaultsDataBound(from, to, overrides);
     return {
       vaultsDataBatch: rawVaultsData.map(VaultViewerContractService.transformVaultData),
-      leftover,
+      leftover: leftover.toNumber(), // is safe here!
     };
   }
 
   async getRoleMembers(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
-    const [, owner, nodeOperator, membersRaw]: RawVaultRoleMembers = await this.contract.getRoleMembers(
+    const [, owner, nodeOperator, membersRaw]: RawVaultRoleMembers = await this.contract.roleMembers(
       vaultAddress,
       roles,
       overrides,
@@ -86,7 +76,7 @@ export class VaultViewerContractService {
   async getRoleMembersWithRetry(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
     const result = await rpcCallWithRetry(
       async () => {
-        const [, owner, nodeOperator, membersRaw]: RawVaultRoleMembers = await this.contract.getRoleMembers(
+        const [, owner, nodeOperator, membersRaw]: RawVaultRoleMembers = await this.contract.roleMembers(
           vaultAddress,
           roles,
           overrides,
@@ -111,7 +101,7 @@ export class VaultViewerContractService {
     roles: string[],
     overrides?: Overrides,
   ): Promise<Array<{ vault: string; roleMembersMap: RoleMembers }>> {
-    const raw: RawVaultRoleMembers[] = await this.contract.getRoleMembersBatch(vaultAddresses, roles, overrides);
+    const raw: RawVaultRoleMembers[] = await this.contract.roleMembersBatch(vaultAddresses, roles, overrides);
 
     return raw.map(([vault, owner, nodeOperator, membersRaw]) => ({
       vault,

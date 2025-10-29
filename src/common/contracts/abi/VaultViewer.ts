@@ -14,6 +14,22 @@ export const VaultViewerAbi = [
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "_cursor",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "vaultsCount",
+        "type": "uint256"
+      }
+    ],
+    "name": "WrongCursorPagination",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "_from",
         "type": "uint256"
       },
@@ -92,6 +108,59 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
+        "internalType": "contract IStakingVault",
+        "name": "vault",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_member",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "hasRole",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IStakingVault",
+        "name": "vault",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      }
+    ],
+    "name": "isVaultOwner",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "vaultAddress",
         "type": "address"
@@ -102,7 +171,7 @@ export const VaultViewerAbi = [
         "type": "bytes32[]"
       }
     ],
-    "name": "getRoleMembers",
+    "name": "roleMembers",
     "outputs": [
       {
         "components": [
@@ -148,7 +217,7 @@ export const VaultViewerAbi = [
         "type": "bytes32[]"
       }
     ],
-    "name": "getRoleMembersBatch",
+    "name": "roleMembersBatch",
     "outputs": [
       {
         "components": [
@@ -189,7 +258,7 @@ export const VaultViewerAbi = [
         "type": "address"
       }
     ],
-    "name": "getVaultData",
+    "name": "vaultData",
     "outputs": [
       {
         "components": [
@@ -395,6 +464,79 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_cursor",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_limit",
+        "type": "uint256"
+      }
+    ],
+    "name": "vaultsByOwner",
+    "outputs": [
+      {
+        "internalType": "contract IStakingVault[]",
+        "name": "vaults",
+        "type": "address[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "nextCursor",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_role",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "_member",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_cursor",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_limit",
+        "type": "uint256"
+      }
+    ],
+    "name": "vaultsByRole",
+    "outputs": [
+      {
+        "internalType": "contract IStakingVault[]",
+        "name": "vaults",
+        "type": "address[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "nextCursor",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "_from",
         "type": "uint256"
@@ -405,7 +547,7 @@ export const VaultViewerAbi = [
         "type": "uint256"
       }
     ],
-    "name": "getVaultsDataBound",
+    "name": "vaultsDataBound",
     "outputs": [
       {
         "components": [
@@ -607,236 +749,6 @@ export const VaultViewerAbi = [
       {
         "internalType": "uint256",
         "name": "leftover",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "contract IStakingVault",
-        "name": "vault",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_member",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_role",
-        "type": "bytes32"
-      }
-    ],
-    "name": "hasRole",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "account",
-        "type": "address"
-      }
-    ],
-    "name": "isContract",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "contract IStakingVault",
-        "name": "vault",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_owner",
-        "type": "address"
-      }
-    ],
-    "name": "isOwner",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_owner",
-        "type": "address"
-      }
-    ],
-    "name": "vaultsByOwner",
-    "outputs": [
-      {
-        "internalType": "contract IStakingVault[]",
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_owner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_from",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_to",
-        "type": "uint256"
-      }
-    ],
-    "name": "vaultsByOwnerBound",
-    "outputs": [
-      {
-        "internalType": "contract IStakingVault[]",
-        "name": "",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_role",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "_member",
-        "type": "address"
-      }
-    ],
-    "name": "vaultsByRole",
-    "outputs": [
-      {
-        "internalType": "contract IStakingVault[]",
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_role",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "_member",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_from",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_to",
-        "type": "uint256"
-      }
-    ],
-    "name": "vaultsByRoleBound",
-    "outputs": [
-      {
-        "internalType": "contract IStakingVault[]",
-        "name": "",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "vaultsConnected",
-    "outputs": [
-      {
-        "internalType": "contract IStakingVault[]",
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_from",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_to",
-        "type": "uint256"
-      }
-    ],
-    "name": "vaultsConnectedBound",
-    "outputs": [
-      {
-        "internalType": "contract IStakingVault[]",
-        "name": "",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
         "type": "uint256"
       }
     ],
