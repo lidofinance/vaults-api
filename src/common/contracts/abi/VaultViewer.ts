@@ -253,6 +253,35 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "_from",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_to",
+        "type": "uint256"
+      }
+    ],
+    "name": "vaultAddressesBound",
+    "outputs": [
+      {
+        "internalType": "contract IStakingVault[]",
+        "name": "vaults",
+        "type": "address[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "leftover",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "vault",
         "type": "address"
