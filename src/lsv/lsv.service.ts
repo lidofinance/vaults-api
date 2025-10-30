@@ -82,10 +82,10 @@ export class LsvService {
       const report = await iterateUrls(this.configService.ipfsGateways, (url) => this._fetchIPFS(cid, url));
       endOverallTimer({ result: 'success' });
       return report;
-    } catch (e) {
+    } catch (error) {
       endOverallTimer({ result: 'error', cid });
-      this.logger.error(`[LsvService.fetchIPFS] All IPFS gateways failed for cid=${cid}: ${e?.message ?? e}`);
-      throw e;
+      this.logger.error(`[LsvService.fetchIPFS] All IPFS gateways failed for cid=${cid}: ${error.message}`);
+      throw error;
     }
   }
 
