@@ -77,7 +77,16 @@ export class LsvService {
   }
 
   public async fetchIPFS(cid: string): Promise<Report> {
-    return await iterateUrls(this.configService.ipfsGateways, (url) => this._fetchIPFS(cid, url));
+    const endOverallTimer = this.prometheusService.ipfsOverallRequestDuration.startTimer();
+    try {
+      const report = await iterateUrls(this.configService.ipfsGateways, (url) => this._fetchIPFS(cid, url));
+      endOverallTimer({ result: 'success' });
+      return report;
+    } catch (error) {
+      endOverallTimer({ result: 'error', cid });
+      this.logger.error(`[LsvService.fetchIPFS] All IPFS gateways failed for cid=${cid}: ${error.message}`);
+      throw error;
+    }
   }
 
   private async _getVaultReport(vault: Address, cid: string, gateway: string): Promise<VaultReportCliType> {

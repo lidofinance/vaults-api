@@ -50,9 +50,16 @@ export class PrometheusService {
 
   public ipfsRequestDuration = this.getOrCreateMetric('Histogram', {
     name: METRICS_PREFIX + 'ipfs_requests_duration_seconds',
-    help: 'CL API request duration',
+    help: 'IPFS gateway request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
     labelNames: ['result', 'gateway'],
+  });
+
+  public ipfsOverallRequestDuration = this.getOrCreateMetric('Histogram', {
+    name: METRICS_PREFIX + 'ipfs_overall_requests_duration_seconds',
+    help: 'IPFS overall request duration',
+    buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
+    labelNames: ['result', 'cid'],
   });
 
   public dbQueryDuration = this.getOrCreateMetric('Histogram', {
