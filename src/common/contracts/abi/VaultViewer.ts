@@ -29,22 +29,6 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "_from",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_to",
-        "type": "uint256"
-      }
-    ],
-    "name": "WrongPaginationRange",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "string",
         "name": "argName",
         "type": "string"
@@ -273,26 +257,21 @@ export const VaultViewerAbi = [
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "_from",
+        "name": "_offset",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_to",
+        "name": "_limit",
         "type": "uint256"
       }
     ],
-    "name": "vaultAddressesBound",
+    "name": "vaultAddressesBatch",
     "outputs": [
       {
         "internalType": "contract IStakingVault[]",
         "name": "vaults",
         "type": "address[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "leftover",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -523,7 +502,7 @@ export const VaultViewerAbi = [
       },
       {
         "internalType": "uint256",
-        "name": "_cursor",
+        "name": "_offset",
         "type": "uint256"
       },
       {
@@ -532,17 +511,12 @@ export const VaultViewerAbi = [
         "type": "uint256"
       }
     ],
-    "name": "vaultsByOwner",
+    "name": "vaultsByOwnerBatch",
     "outputs": [
       {
         "internalType": "contract IStakingVault[]",
         "name": "vaults",
         "type": "address[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "nextCursor",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -562,7 +536,7 @@ export const VaultViewerAbi = [
       },
       {
         "internalType": "uint256",
-        "name": "_cursor",
+        "name": "_offset",
         "type": "uint256"
       },
       {
@@ -571,16 +545,24 @@ export const VaultViewerAbi = [
         "type": "uint256"
       }
     ],
-    "name": "vaultsByRole",
+    "name": "vaultsByRoleBatch",
     "outputs": [
       {
         "internalType": "contract IStakingVault[]",
         "name": "vaults",
         "type": "address[]"
-      },
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "vaultsCount",
+    "outputs": [
       {
         "internalType": "uint256",
-        "name": "nextCursor",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -591,16 +573,16 @@ export const VaultViewerAbi = [
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "_from",
+        "name": "_offset",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_to",
+        "name": "_limit",
         "type": "uint256"
       }
     ],
-    "name": "vaultsDataBound",
+    "name": "vaultsDataBatch",
     "outputs": [
       {
         "components": [
@@ -803,11 +785,6 @@ export const VaultViewerAbi = [
         "internalType": "struct VaultViewer.VaultData[]",
         "name": "vaultsData",
         "type": "tuple[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "leftover",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",

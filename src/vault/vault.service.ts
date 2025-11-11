@@ -34,25 +34,18 @@ export class VaultService {
     const minimalVaultsFetchingCount = this.configService.get('MINIMAL_VAULTS_FETCHING_MODE_COUNT');
     const batchSize = this.configService.jobs['vaultsBatchSize'];
 
-    // 1. Get vaultsCount with getVaultsDataBound(1, 1) - works and return:
-    // - vaults array with 1 vault data
-    // - leftover vaults (vaultsCount = leftover + 1)
-    let initialBatch = [];
-    let leftoverVaults = 0;
+    // 1. Get vaultsCount
+    let vaultsCount = 0;
     try {
-      const result = await this.vaultViewerContractService.getVaultsDataBound(1, 1, {
+      vaultsCount = await this.vaultViewerContractService.vaultsCount({
         blockTag: blockNumber,
       });
-      initialBatch = result.vaultsDataBatch;
-      leftoverVaults = result.leftover;
     } catch (err: any) {
       this.logger.error(
-        `[fetchAllVaultsAndCalculateStates] Failed to fetch getVaultsDataBound(1, 1) at block ${blockNumber}: ${err}`,
+        `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsCount() at block ${blockNumber}: ${err}`,
       );
       return;
     }
-
-    const vaultsCount = initialBatch.length + leftoverVaults;
     this.logger.log(`[fetchAllVaultsAndCalculateStates] Total vaults: ${vaultsCount}`);
 
     // 2. Starting to fetch vaults data
@@ -63,18 +56,18 @@ export class VaultService {
         `[fetchAllVaultsAndCalculateStates] Running in minimal vaults fetching mode, vaultsLimit=${vaultsLimit}`,
       );
     }
-    for (let from = 1; from <= vaultsLimit; from += batchSize) {
-      const to = Math.min(from + batchSize - 1, vaultsLimit);
-      this.logger.log(`[fetchAllVaultsAndCalculateStates] Fetching vaults batch: ${from} to ${to}`);
+    for (let offset = 0; offset < vaultsLimit; offset += batchSize) {
+      const limit = Math.min(batchSize, vaultsLimit - offset);
+      this.logger.log(`[fetchAllVaultsAndCalculateStates] Fetching vaults batch: offset=${offset}, limit=${limit}`);
 
       let vaultsDataBatch;
       try {
-        vaultsDataBatch = (
-          await this.vaultViewerContractService.getVaultsDataBound(from, to, { blockTag: blockNumber })
-        ).vaultsDataBatch;
+        vaultsDataBatch = await this.vaultViewerContractService.getVaultsDataBatch(offset, limit, {
+          blockTag: blockNumber,
+        });
       } catch (err) {
         this.logger.error(
-          `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsDataBatch (${from} - ${to}) at block ${blockNumber}: ${err}`,
+          `[fetchAllVaultsAndCalculateStates] Failed to fetch vaultsDataBatch (${offset}, ${limit}) at block ${blockNumber}: ${err}`,
         );
         continue;
       }

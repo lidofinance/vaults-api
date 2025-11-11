@@ -46,21 +46,19 @@ export class VaultViewerContractService {
     this.contract = new Contract(address, VaultViewerAbi, provider);
   }
 
+  async vaultsCount(overrides?: Overrides): Promise<number> {
+    const vaultsCount = await this.contract.vaultsCount(overrides);
+    return Number(vaultsCount);
+  }
+
   async getVaultData(vault: string, overrides?: Overrides): Promise<VaultData> {
     const raw = await this.contract.vaultData(vault, overrides);
     return VaultViewerContractService.transformVaultData(raw);
   }
 
-  async getVaultsDataBound(
-    from: number,
-    to: number,
-    overrides?: Overrides,
-  ): Promise<{ vaultsDataBatch: VaultData[]; leftover: number }> {
-    const [rawVaultsData, leftover] = await this.contract.vaultsDataBound(from, to, overrides);
-    return {
-      vaultsDataBatch: rawVaultsData.map(VaultViewerContractService.transformVaultData),
-      leftover: leftover.toNumber(), // is safe here!
-    };
+  async getVaultsDataBatch(from: number, to: number, overrides?: Overrides): Promise<VaultData[]> {
+    const rawVaultsData = await this.contract.vaultsDataBatch(from, to, overrides);
+    return rawVaultsData.map(VaultViewerContractService.transformVaultData);
   }
 
   async getRoleMembers(vaultAddress: string, roles: string[], overrides?: Overrides): Promise<RoleMembers> {
