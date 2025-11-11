@@ -13,22 +13,6 @@ export const VaultViewerAbi = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "_cursor",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "vaultsCount",
-        "type": "uint256"
-      }
-    ],
-    "name": "WrongCursorPagination",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "string",
         "name": "argName",
         "type": "string"
