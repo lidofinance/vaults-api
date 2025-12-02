@@ -14,6 +14,9 @@ export class VaultEntity {
   @Column({ name: 'custom_name', type: 'varchar', length: 255, nullable: true })
   customName: string | null;
 
+  @Column({ name: 'is_disconnected', type: 'boolean', default: false })
+  isDisconnected: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }
