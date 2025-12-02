@@ -199,7 +199,7 @@ export class VaultService {
   }
 
   public subscribeToEvents() {
-    this.logger.log('[subscribeToEvents, event:VaultConnected] Subscribing to VaultConnected event');
+    this.logger.log('[subscribeToEvents] Subscribing to {VaultConnected, VaultDisconnectCompleted} event');
 
     this.vaultHubContractService.contract.on(
       'VaultConnected',
@@ -292,5 +292,28 @@ export class VaultService {
         }
       },
     );
+
+    this.vaultHubContractService.contract.on('VaultDisconnectCompleted', async (vault: string, event) => {
+      this.logger.log(
+        `[subscribeToEvents, event:VaultDisconnectCompleted] Event received for vault ${vault} at block ${event.blockNumber}`,
+      );
+
+      try {
+        await this.vaultDbService.disconnectVault(vault);
+
+        this.logger.log(`[subscribeToEvents, event:VaultDisconnectCompleted] Set vault ${vault} as disconnected in DB`);
+
+        this.prometheusService.contractEventHandledCounter
+          .labels({ eventName: 'VaultDisconnectCompleted', result: 'success' })
+          .inc();
+      } catch (err) {
+        this.logger.error(
+          `[subscribeToEvents, event:VaultDisconnectCompleted] Failed to process VaultDisconnectCompleted for ${vault}: ${err}`,
+        );
+        this.prometheusService.contractEventHandledCounter
+          .labels({ eventName: 'VaultDisconnectCompleted', result: 'error' })
+          .inc();
+      }
+    });
   }
 }
