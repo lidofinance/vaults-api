@@ -53,6 +53,14 @@ export class VaultDbService {
     return await this.vaultRepo.count();
   }
 
+  async getAllConnectedVaultAddresses(): Promise<string[]> {
+    const rows = await this.vaultRepo.find({
+      where: { isDisconnected: false },
+      select: ['address'],
+    });
+    return rows.map((vault) => vault.address);
+  }
+
   async getOrCreateVaultByAddress(address: string): Promise<VaultEntity> {
     let vault = await this.vaultRepo.findOne({ where: { address } });
     if (!vault) {
