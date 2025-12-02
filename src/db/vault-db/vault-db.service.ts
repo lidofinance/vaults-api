@@ -74,6 +74,14 @@ export class VaultDbService {
     );
   }
 
+  async connectVault(vaultAddress: string): Promise<void> {
+    await this.vaultRepo.update({ address: vaultAddress }, { isDisconnected: false });
+  }
+
+  async disconnectVault(vaultAddress: string): Promise<void> {
+    await this.vaultRepo.update({ address: vaultAddress }, { isDisconnected: true });
+  }
+
   async addOrUpdateState(entry: Partial<VaultStateEntity>): Promise<void> {
     await this.vaultStateRepo.upsert(entry, {
       conflictPaths: ['vault'],
