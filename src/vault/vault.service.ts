@@ -56,6 +56,9 @@ export class VaultService {
         `[fetchAllVaultsAndCalculateStates] Running in minimal vaults fetching mode, vaultsLimit=${vaultsLimit}`,
       );
     }
+
+    const onChainVaultAddresses = new Set<string>();
+
     for (let offset = 0; offset < vaultsLimit; offset += batchSize) {
       const limit = Math.min(batchSize, vaultsLimit - offset);
       this.logger.log(`[fetchAllVaultsAndCalculateStates] Fetching vaults batch: offset=${offset}, limit=${limit}`);
@@ -73,12 +76,15 @@ export class VaultService {
       }
 
       for (const item of vaultsDataBatch) {
+        const vaultAddress = item.vault;
+        onChainVaultAddresses.add(vaultAddress.toLowerCase());
+
         let vault;
         try {
-          vault = await this.vaultDbService.getOrCreateVaultByAddress(item.vault);
+          vault = await this.vaultDbService.getOrCreateVaultByAddress(vaultAddress);
         } catch (err) {
           this.logger.error(
-            `[fetchAllVaultsAndCalculateStates] Failed to get or create vault: ${item.vault} — ${err} at block ${blockNumber}`,
+            `[fetchAllVaultsAndCalculateStates] Failed to get or create vault: ${vaultAddress} — ${err} at block ${blockNumber}`,
           );
           continue;
         }
@@ -111,14 +117,42 @@ export class VaultService {
             updatedAt: new Date(),
             blockNumber,
           });
-          this.logger.log(`[fetchAllVaultsAndCalculateStates] Saved 'vaultsState' data to DB ${item.vault}`);
+          this.logger.log(`[fetchAllVaultsAndCalculateStates] Saved 'vaultsState' data to DB ${vaultAddress}`);
+
+          // If a vault is on-chain, it should be considered connected
+          await this.vaultDbService.connectVault(vaultAddress);
+          this.logger.log(`[fetchAllVaultsAndCalculateStates] Set vault ${vaultAddress} as connected`);
         } catch (err) {
           this.logger.error(
-            `[fetchAllVaultsAndCalculateStates] Failed to save 'vaultsState' data to DB OR calculateHealth of vault ${item.vault}: ${err}`,
+            `[fetchAllVaultsAndCalculateStates] Failed to save 'vaultsState' data to DB OR calculateHealth of vault ${vaultAddress} — ${err} at block ${blockNumber}`,
           );
           // continue
         }
       }
+    }
+
+    // 3. Find disconnected vaults and mark it
+    // We do this only if we fetched a full list, and not a `minimalVaultsFetchingCount`
+    if (vaultsLimit === vaultsCount) {
+      try {
+        const dbVaultAddresses = await this.vaultDbService.getAllConnectedVaultAddresses();
+        for (const dbAddress of dbVaultAddresses) {
+          if (!onChainVaultAddresses.has(dbAddress.toLowerCase())) {
+            await this.vaultDbService.disconnectVault(dbAddress);
+            this.logger.log(
+              `[fetchAllVaultsAndCalculateStates] Set vault ${dbAddress} as disconnected (not returned by contract at block ${blockNumber})`,
+            );
+          }
+        }
+      } catch (err) {
+        this.logger.error(
+          `[fetchAllVaultsAndCalculateStates] Failed to detect and set disconnected vaults at block ${blockNumber} — ${err} at block ${blockNumber}`,
+        );
+      }
+    } else {
+      this.logger.log(
+        `[fetchAllVaultsAndCalculateStates] Skipping disconnected vaults detection because running in minimalVaultsFetchingCount — at block ${blockNumber}`,
+      );
     }
 
     this.logger.log('[fetchAllVaultsAndCalculateStates] finished');
@@ -199,7 +233,7 @@ export class VaultService {
   }
 
   public subscribeToEvents() {
-    this.logger.log('[subscribeToEvents, event:VaultConnected] Subscribing to VaultConnected event');
+    this.logger.log('[subscribeToEvents] Subscribing to {VaultConnected, VaultDisconnectCompleted} event');
 
     this.vaultHubContractService.contract.on(
       'VaultConnected',
@@ -292,5 +326,28 @@ export class VaultService {
         }
       },
     );
+
+    this.vaultHubContractService.contract.on('VaultDisconnectCompleted', async (vault: string, event) => {
+      this.logger.log(
+        `[subscribeToEvents, event:VaultDisconnectCompleted] Event received for vault ${vault} at block ${event.blockNumber}`,
+      );
+
+      try {
+        await this.vaultDbService.disconnectVault(vault);
+
+        this.logger.log(`[subscribeToEvents, event:VaultDisconnectCompleted] Set vault ${vault} as disconnected in DB`);
+
+        this.prometheusService.contractEventHandledCounter
+          .labels({ eventName: 'VaultDisconnectCompleted', result: 'success' })
+          .inc();
+      } catch (err) {
+        this.logger.error(
+          `[subscribeToEvents, event:VaultDisconnectCompleted] Failed to process VaultDisconnectCompleted for ${vault}: ${err}`,
+        );
+        this.prometheusService.contractEventHandledCounter
+          .labels({ eventName: 'VaultDisconnectCompleted', result: 'error' })
+          .inc();
+      }
+    });
   }
 }

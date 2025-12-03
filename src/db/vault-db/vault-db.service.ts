@@ -53,6 +53,14 @@ export class VaultDbService {
     return await this.vaultRepo.count();
   }
 
+  async getAllConnectedVaultAddresses(): Promise<string[]> {
+    const rows = await this.vaultRepo.find({
+      where: { isDisconnected: false },
+      select: ['address'],
+    });
+    return rows.map((vault) => vault.address);
+  }
+
   async getOrCreateVaultByAddress(address: string): Promise<VaultEntity> {
     let vault = await this.vaultRepo.findOne({ where: { address } });
     if (!vault) {
@@ -72,6 +80,14 @@ export class VaultDbService {
         .comment(QUERY_METRICS_COMMENTS.GET_STATE_BY_VAULT_ADDRESS)
         .getOne()
     );
+  }
+
+  async connectVault(vaultAddress: string): Promise<void> {
+    await this.vaultRepo.update({ address: vaultAddress }, { isDisconnected: false });
+  }
+
+  async disconnectVault(vaultAddress: string): Promise<void> {
+    await this.vaultRepo.update({ address: vaultAddress }, { isDisconnected: true });
   }
 
   async addOrUpdateState(entry: Partial<VaultStateEntity>): Promise<void> {
@@ -156,6 +172,7 @@ export class VaultDbService {
         .getRepository(VaultStateEntity)
         .createQueryBuilder('state')
         .innerJoin('state.vault', 'vault')
+        .where('vault.is_disconnected = false')
         // join ReportEntity and ReportLeafEntity
         .leftJoin(
           (subQuery) =>
