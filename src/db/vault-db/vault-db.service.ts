@@ -172,6 +172,7 @@ export class VaultDbService {
         .getRepository(VaultStateEntity)
         .createQueryBuilder('state')
         .innerJoin('state.vault', 'vault')
+        .where('vault.is_disconnected = false')
         // join ReportEntity and ReportLeafEntity
         .leftJoin(
           (subQuery) =>
