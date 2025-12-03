@@ -830,6 +830,28 @@ export const LidoAbi = [
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_oldBurner",
+        "type": "address"
+      },
+      {
+        "name": "_contractsWithBurnerAllowances",
+        "type": "address[]"
+      },
+      {
+        "name": "_initialMaxExternalRatioBP",
+        "type": "uint256"
+      }
+    ],
+    "name": "finalizeUpgrade_v3",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [],
     "name": "getMaxMintableExternalShares",
@@ -962,24 +984,6 @@ export const LidoAbi = [
     ],
     "payable": false,
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_oldBurner",
-        "type": "address"
-      },
-      {
-        "name": "_contractsWithBurnerAllowances",
-        "type": "address[]"
-      }
-    ],
-    "name": "finalizeUpgrade_v3",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
