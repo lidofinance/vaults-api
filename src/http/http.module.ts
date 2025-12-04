@@ -9,12 +9,12 @@ import { SWAGGER_URL } from './common/swagger';
 import { ThrottlerModule, ThrottlerBehindProxyGuard } from './common/throttler';
 import { LoggerMiddleware, MetricsMiddleware } from './common/middleware';
 import { CacheModule, CacheControlHeadersInterceptor } from './common/cache';
-import { StatisticModule } from './statistic';
-import { ProofModule } from './proof';
-import { ReportsModule } from './reports';
+import { ProofHttpModule } from './proof-http';
+import { ReportsHttpModule } from './reports-http';
+import { VaultsHttpModule } from './vaults-http';
 
 @Module({
-  imports: [StatisticModule, ProofModule, ReportsModule, CacheModule, ThrottlerModule],
+  imports: [ProofHttpModule, ReportsHttpModule, VaultsHttpModule, CacheModule, ThrottlerModule],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_INTERCEPTOR, useClass: CacheControlHeadersInterceptor },

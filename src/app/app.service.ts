@@ -1,3 +1,4 @@
+import { DataSource } from 'typeorm';
 import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { commonPatterns, satanizer } from '@lidofinance/satanizer';
@@ -15,12 +16,26 @@ export class AppService implements OnModuleInit {
     protected readonly configService: ConfigService,
     protected readonly prometheusService: PrometheusService,
     protected readonly executionProviderService: ExecutionProviderService,
+    protected readonly dataSource: DataSource,
   ) {}
 
   public async onModuleInit(): Promise<void> {
     await this.validateNetwork();
+    await this.checkDbConnection();
     await this.prometheusBuildInfoMetrics();
     this.prometheusEnvsInfoMetrics();
+  }
+
+  protected async checkDbConnection(): Promise<void> {
+    try {
+      if (this.dataSource.isInitialized) {
+        this.logger.log('Database is connected!');
+      } else {
+        throw new Error('Database connection failed!');
+      }
+    } catch (error) {
+      throw new Error(`Database connection failed: ${error}`);
+    }
   }
 
   /**

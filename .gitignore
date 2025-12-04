@@ -2,6 +2,9 @@
 /dist
 /node_modules
 
+# cli
+/ipfs-cache
+
 # Env
 .env
 

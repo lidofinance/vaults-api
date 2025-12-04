@@ -9,6 +9,8 @@ import { LOGGER_PROVIDER } from '../logger';
 
 @Injectable()
 export class ExecutionProviderService {
+  private confirmationBlocks = 8;
+
   constructor(
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     // protected readonly prometheusService: PrometheusService,
@@ -16,20 +18,23 @@ export class ExecutionProviderService {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
   ) {}
 
-  /**
-   * Returns network name
-   */
   public async getNetworkName(): Promise<string> {
     const network = await this.provider.getNetwork();
     const name = CHAINS[network.chainId]?.toLocaleLowerCase();
     return name || network.name;
   }
 
-  /**
-   * Returns current chain id
-   */
   public async getChainId(): Promise<number> {
     const { chainId } = await this.provider.getNetwork();
     return chainId;
+  }
+
+  public async getBlockNumber(): Promise<number> {
+    return await this.provider.getBlockNumber();
+  }
+
+  public async getSafeBlockNumber(): Promise<number> {
+    const latest = await this.provider.getBlockNumber();
+    return Math.max(0, latest - this.confirmationBlocks);
   }
 }

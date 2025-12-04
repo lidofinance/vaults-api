@@ -1,12 +1,13 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { ValidationPipe, VersioningType, ClassSerializerInterceptor } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { SWAGGER_URL } from 'http/common/swagger';
-import { ConfigService } from 'common/config';
+
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
+import { ConfigService } from 'common/config';
+import { SWAGGER_URL } from 'http/common/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }), {
@@ -29,6 +30,9 @@ async function bootstrap() {
   // sentry
   const release = `${APP_NAME}@${APP_VERSION}`;
   Sentry.init({ dsn: sentryDsn, release, environment });
+
+  // interceptors
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // cors
   if (corsWhitelist !== '') {
