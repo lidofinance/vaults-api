@@ -1,69 +1,92 @@
 ## Lido Vaults API
 
-> 🚧 CI and deploy
-> 
-> After creating repo from the template make sure that you have correctly filled TARGET_WORKFLOW field in:
-> - .github/workflows/ci-dev.yml
-> - .github/workflows/ci-staging.yml
-> - .github/workflows/ci-prod.yml
+The service is responsible for fetching and aggregating Lido Staking Vaults data:
+- Fetches vaults and reports from on-chain contracts and IPFS
+- Calculates vault metrics based on on-chain and IPFS data
+- Stores all processed data in PostgreSQL
 
-## Installation
+It operates in two modes:
+- API — exposes data to external consumers and frontend applications
+- Worker — runs scheduled tasks for fetching reports, updating vault data, and recalculating metrics
 
-TODO: use only PostgreSQL as DB!
+### Prerequisites
+
+- Node.js v20+
+- PostgreSQL v15+
+- Yarn package manager v1
+
+This project requires an .env file which is distributed via private communication channels. A sample can be found in .env.example
+
+### Development
+
+Step 1. Copy the contents of `.env.example` to `.env`
 
 ```bash
-$ yarn install
+cp sample.env .env
 ```
 
-Copy and fill it:
-```bash
-$ cp sample.env .env
-```
+Step 2. Fill out the `.env`.
 
-## Running the app
+Step 3. Install dependencies
 
 ```bash
-# development
-$ yarn start
-
-# watch mode
-$ yarn start:dev
-
-# production mode
-$ yarn start:prod
+yarn install
 ```
 
-Docker DEV
+Step 4. Build the APP and apply DB migrations
+
+```bash
+yarn build
+yarn typeorm:migration:run
+```
+
+Step 5.1. Start the API
+```bash
+yarn start:dev
+```
+
+Step 5.2. Start the Worker
+```bash
+yarn start:worker:dev
+```
+
+
+Or just run on the Docker
 ```bash
 docker-compose down -v && docker-compose build --no-cache && docker-compose up --force-recreate
 ```
 
+### Production
 
-## Test
-
+Start the API
 ```bash
-# unit tests
-$ yarn test
-
-# e2e tests
-$ yarn test:e2e
-
-# test coverage
-$ yarn test:cov
+yarn build && yarn start:prod
 ```
 
-## Release flow
+Start the Worker
+```bash
+yarn build && yarn start:worker
+```
 
-To create new release:
+### Automatic versioning
 
-1. Merge all changes to the `main` branch
-1. Navigate to Repo => Actions
-1. Run action "Prepare release" action against `main` branch
-1. When action execution is finished, navigate to Repo => Pull requests
-1. Find pull request named "chore(release): X.X.X" review and merge it with "Rebase and merge" (or "Squash and merge")
-1. After merge release action will be triggered automatically
-1. Navigate to Repo => Actions and see last actions logs for further details
+Note! This repo uses automatic versioning, please follow the [commit message conventions](https://www.conventionalcommits.org/en/v1.0.0/).
 
-## License
+e.g.
 
-API Template is [MIT licensed](LICENSE).
+```
+git commit -m "fix: a bug in calculation"
+git commit -m "feat: dark theme"
+```
+
+### Release flow
+
+To create a new release:
+
+1. Merge all changes to the `main` branch.
+2. After the merge, the `Prepare release draft` action will run automatically. When the action is complete, a release draft is created.
+3. When you need to release, go to Repo → Releases.
+4. Publish the desired release draft manually by clicking the edit button - this release is now the `Latest Published`.
+5. After publication, the action to create a release bump will be triggered automatically.
+
+Learn more about [App Release Flow](https://www.notion.so/App-Release-Flow-f8a3484deecb40cb9d8da4d82c1afe96).
