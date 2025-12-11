@@ -276,7 +276,7 @@ export class ReportService {
           current: currentVaultReport,
           previous: previousVaultReport,
         },
-        accruedFee,
+        nodeOperatorAccruedFee: accruedFee,
         stEthLiabilityRebaseRewards: rebaseReward,
       });
 
