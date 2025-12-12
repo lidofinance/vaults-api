@@ -15,7 +15,7 @@ import { LsvService } from 'lsv';
 
 @Injectable()
 export class ReportService {
-  private nodeOperatorFeeRateByVault = new Map<string, bigint>();
+  private accruedFeeByVault = new Map<string, bigint>();
   private readonly shareRateCache: LRUCache<number, bigint>;
 
   constructor(
@@ -254,14 +254,14 @@ export class ReportService {
       const currentVaultReport = LsvService.transformToVaultReportCli(currentReport, currLeaf);
       const previousVaultReport = LsvService.transformToVaultReportCli(previousReport, prevLeaf);
 
-      // nodeOperatorFeeRate cache
-      let nodeOperatorFeeRate: bigint;
-      if (this.nodeOperatorFeeRateByVault.has(vaultAddress)) {
-        nodeOperatorFeeRate = this.nodeOperatorFeeRateByVault.get(vaultAddress);
+      // accruedFee cache
+      let accruedFee: bigint;
+      if (this.accruedFeeByVault.has(vaultAddress)) {
+        accruedFee = this.accruedFeeByVault.get(vaultAddress);
       } else {
         const vaultState = await this.vaultDbService.getStateByVaultAddress(vaultAddress);
-        nodeOperatorFeeRate = BigInt(vaultState?.nodeOperatorFeeRate ?? 0);
-        this.nodeOperatorFeeRateByVault.set(vaultAddress, nodeOperatorFeeRate);
+        accruedFee = BigInt(vaultState?.accruedFee ?? 0);
+        this.accruedFeeByVault.set(vaultAddress, accruedFee);
       }
 
       const rebaseReward = await this.lsvService.calculateRebaseReward({
@@ -276,7 +276,7 @@ export class ReportService {
           current: currentVaultReport,
           previous: previousVaultReport,
         },
-        nodeOperatorFeeRate,
+        nodeOperatorAccruedFee: accruedFee,
         stEthLiabilityRebaseRewards: rebaseReward,
       });
 

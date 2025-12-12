@@ -14,8 +14,6 @@ import { LsvService } from 'lsv';
 
 @Injectable()
 export class VaultService {
-  private fetchAllVaultsAndCalculateStatesInFlight?: Promise<void>;
-
   constructor(
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
@@ -109,6 +107,7 @@ export class VaultService {
             liquidityFeeBP: item.liquidityFeeBP,
             reservationFeeBP: item.reservationFeeBP,
             nodeOperatorFeeRate: item.nodeOperatorFeeRate.toString(),
+            accruedFee: item.accruedFee.toString(),
             isReportFresh: item.isReportFresh,
             isQuarantineActive: item.isQuarantineActive,
             quarantinePendingTotalValueIncrease: item.quarantinePendingTotalValueIncrease.toString(),

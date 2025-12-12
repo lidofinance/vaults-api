@@ -21,6 +21,7 @@ export type VaultData = {
   liquidityFeeBP: number;
   reservationFeeBP: number;
   nodeOperatorFeeRate: bigint;
+  accruedFee: bigint;
   isReportFresh: boolean;
   isQuarantineActive: boolean;
   quarantinePendingTotalValueIncrease: bigint;
@@ -120,6 +121,7 @@ export class VaultViewerContractService {
       liquidityFeeBP: vaultData.connection.liquidityFeeBP,
       reservationFeeBP: vaultData.connection.reservationFeeBP,
       nodeOperatorFeeRate: vaultData.nodeOperatorFeeRate.toBigInt(),
+      accruedFee: vaultData.accruedFee.toBigInt(),
       isReportFresh: vaultData.isReportFresh,
       isQuarantineActive: vaultData.quarantineInfo.isActive,
       quarantinePendingTotalValueIncrease: vaultData.quarantineInfo.pendingTotalValueIncrease.toBigInt(),
