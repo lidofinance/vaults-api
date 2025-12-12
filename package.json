@@ -1,6 +1,6 @@
 {
   "name": "lido-vaults-api",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Lido Vaults API",
   "author": "Lido team",
   "private": true,
