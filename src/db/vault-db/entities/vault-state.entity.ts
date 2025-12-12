@@ -44,6 +44,9 @@ export class VaultStateEntity {
   @Column({ name: 'node_operator_fee_rate', type: 'numeric', precision: 78, scale: 0 })
   nodeOperatorFeeRate: string;
 
+  @Column({ name: 'accrued_fee', type: 'numeric', precision: 78, scale: 0, default: 0 })
+  accruedFee: string;
+
   @Column({ name: 'is_report_fresh', type: 'boolean', default: false })
   isReportFresh: boolean;
 
