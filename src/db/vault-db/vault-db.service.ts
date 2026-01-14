@@ -10,7 +10,7 @@ import { LABEL_TO_ROLE } from 'vault/vault.constants';
 import { Direction, DirectionEnum, SortFields } from './enums';
 import { SeriesReportPoint, VaultAprSma } from './vault-db.types';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
-import { QUERY_METRICS_COMMENTS, VAULT_APR_SMA_DAYS } from './vault-db.constants';
+import { QUERY_METRICS_COMMENTS, VAULT_APR_SMA_DAYS, SECONDS_PER_DAY } from './vault-db.constants';
 
 const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.rebaseReward AS "rebaseReward"',
@@ -158,8 +158,6 @@ export class VaultDbService {
     // Use a transaction to ensure both queries see the same database snapshot,
     // avoiding possible inconsistencies between two separate queries.
     return this.dataSource.transaction(async (manager) => {
-      const SECONDS_PER_DAY = 86400;
-
       const lastReportMeta = await manager
         .getRepository(ReportEntity)
         .createQueryBuilder('report')
@@ -485,8 +483,6 @@ export class VaultDbService {
       netStakingApr: { sma: 0, aprs: [] },
       carrySpreadApr: { sma: 0, aprs: [] },
     });
-
-    const SECONDS_PER_DAY = 24 * 60 * 60;
 
     const toTimestamp = await this.getLatestReportTimestampForVault(vaultAddress);
     if (!toTimestamp) return zeroData();

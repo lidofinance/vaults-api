@@ -10,3 +10,4 @@ export const QUERY_METRICS_COMMENTS = {
 };
 
 export const VAULT_APR_SMA_DAYS = 7;
+export const SECONDS_PER_DAY = 24 * 60 * 60; // 86400
