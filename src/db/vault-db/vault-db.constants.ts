@@ -8,3 +8,6 @@ export const QUERY_METRICS_COMMENTS = {
   GET_LATEST_VAULT_REPORT_STATS: 'VaultDbService.getLatestVaultReportStats',
   GET_VAULT_REPORT_STATS_IN_RANGE: 'VaultDbService.getVaultReportStatsInRange',
 };
+
+export const VAULT_APR_SMA_DAYS = 7;
+export const SECONDS_PER_DAY = 24 * 60 * 60; // 86400
