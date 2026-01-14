@@ -10,7 +10,7 @@ import { LABEL_TO_ROLE } from 'vault/vault.constants';
 import { Direction, DirectionEnum, SortFields } from './enums';
 import { SeriesReportPoint, VaultAprSma } from './vault-db.types';
 import { VaultEntity, VaultMemberEntity, VaultStateEntity, VaultReportStatEntity } from './entities';
-import { QUERY_METRICS_COMMENTS } from './vault-db.constants';
+import { QUERY_METRICS_COMMENTS, VAULT_APR_SMA_DAYS } from './vault-db.constants';
 
 const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.rebaseReward AS "rebaseReward"',
@@ -143,6 +143,9 @@ export class VaultDbService {
       netStakingAprPercent: number | null;
       bottomLine: string | null;
       carrySpreadAprPercent: number | null;
+      grossStakingAprSma: number | null;
+      netStakingAprSma: number | null;
+      carrySpreadAprSma: number | null;
       lastReport: {
         totalValueWei: string | null;
         inOutDelta: string | null;
@@ -155,6 +158,8 @@ export class VaultDbService {
     // Use a transaction to ensure both queries see the same database snapshot,
     // avoiding possible inconsistencies between two separate queries.
     return this.dataSource.transaction(async (manager) => {
+      const SECONDS_PER_DAY = 86400;
+
       const lastReportMeta = await manager
         .getRepository(ReportEntity)
         .createQueryBuilder('report')
@@ -219,6 +224,48 @@ export class VaultDbService {
           'report_metrics',
           'report_metrics.vault_id = vault.id',
         )
+        // join SMA subquery
+        .leftJoin(
+          (subQuery) => {
+            // 1) latest timestamp per vault
+            const latest = subQuery
+              .subQuery()
+              .select('vs.vault_id', 'vault_id')
+              .addSelect('MAX(r.timestamp)', 'latest_ts')
+              .from(VaultReportStatEntity, 'vs')
+              .innerJoin(ReportEntity, 'r', 'r.id = vs.current_report_id')
+              .groupBy('vs.vault_id');
+
+            // 2) avg over [from_ts; latest_ts] where from_ts is rounded down to 00:00 UTC
+            return subQuery
+              .select('vs2.vault_id', 'vault_id')
+              .addSelect(`AVG(vs2.gross_staking_apr_percent)`, 'gross_staking_apr_sma')
+              .addSelect(`AVG(vs2.net_staking_apr_percent)`, 'net_staking_apr_sma')
+              .addSelect(`AVG(vs2.carry_spread_apr_percent)`, 'carry_spread_apr_sma')
+              .from(VaultReportStatEntity, 'vs2')
+              .innerJoin(ReportEntity, 'r2', 'r2.id = vs2.current_report_id')
+              .innerJoin(latest.getQuery(), 'latest', `"latest"."vault_id" = vs2.vault_id`)
+              .where(
+                `
+          r2.timestamp BETWEEN
+            (
+              (
+                ("latest"."latest_ts" - :windowSeconds)
+                - (("latest"."latest_ts" - :windowSeconds) % :secondsPerDay)
+              )
+            )
+            AND "latest"."latest_ts"
+          `,
+              )
+              .setParameters({
+                windowSeconds: (VAULT_APR_SMA_DAYS - 1) * SECONDS_PER_DAY,
+                secondsPerDay: SECONDS_PER_DAY,
+              })
+              .groupBy('vs2.vault_id');
+          },
+          'apr_sma',
+          'apr_sma.vault_id = vault.id',
+        )
         .select([
           `DISTINCT ON (vault.id) vault.address AS "address"`,
           `vault.ens AS "ens"`,
@@ -254,6 +301,11 @@ export class VaultDbService {
           `report_metrics.net_staking_apr_percent AS "netStakingAprPercent"`,
           `report_metrics.bottom_line AS "bottomLine"`,
           `report_metrics.carry_spread_apr_percent AS "carrySpreadAprPercent"`,
+
+          // sma
+          `apr_sma.gross_staking_apr_sma AS "grossStakingAprSma"`,
+          `apr_sma.net_staking_apr_sma AS "netStakingAprSma"`,
+          `apr_sma.carry_spread_apr_sma AS "carrySpreadAprSma"`,
 
           // last report
           // `jsonb_build_object` is PostgreSQL-specific!!!

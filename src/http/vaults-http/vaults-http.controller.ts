@@ -18,7 +18,7 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { CacheTTL } from '@nestjs/cache-manager';
 
 import { ConfigService } from 'common/config';
-import { VaultDbService, SortFieldsEnum, DirectionEnum } from 'db/vault-db';
+import { VaultDbService, SortFieldsEnum, DirectionEnum, VAULT_APR_SMA_DAYS } from 'db/vault-db';
 import { ALL_ROLE_VALUES } from 'vault/vault.constants';
 import { ErrorResponseType } from 'http/common/dto/error-response-type';
 import { ToChecksumEthAddressPipe } from 'http/common/pipes';
@@ -31,7 +31,6 @@ import {
   vaultAprSmaForDaysExample,
   zeroVaultAprSmaForDaysExample,
 } from './example';
-import { VAULT_APR_SMA_DAYS } from './vaults-http.constants';
 
 const limitQueryDefault = 10;
 const offsetQueryDefault = 0;
@@ -219,12 +218,6 @@ export class VaultsHttpController {
     return this.vaultDbService.getVaultReportStatsInRange(vaultAddress, fromTimestamp, toTimestamp);
   }
 
-  private getNextVaultsHourlyUpdate(): Date {
-    const options = { currentDate: new Date(), tz: this.configService.jobs['vaultsCronTZ'] };
-    const interval = CronExpressionParser.parse(this.configService.jobs['vaultsCron'], options);
-    return interval.next().toDate();
-  }
-
   @Version('1')
   @Get(':vaultAddress/apr/sma')
   @CacheTTL(10 * 1000)
@@ -253,5 +246,11 @@ export class VaultsHttpController {
     }
 
     return data;
+  }
+
+  private getNextVaultsHourlyUpdate(): Date {
+    const options = { currentDate: new Date(), tz: this.configService.jobs['vaultsCronTZ'] };
+    const interval = CronExpressionParser.parse(this.configService.jobs['vaultsCron'], options);
+    return interval.next().toDate();
   }
 }
