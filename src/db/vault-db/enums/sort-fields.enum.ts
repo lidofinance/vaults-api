@@ -11,6 +11,11 @@ export enum SortFieldsEnum {
   grossStakingAprPercent = 'grossStakingAprPercent',
   carrySpreadAprPercent = 'carrySpreadAprPercent',
   netStakingAprPercent = 'netStakingAprPercent',
+
+  // vault APR SMA
+  grossStakingAprSma = 'grossStakingAprSma',
+  netStakingAprSma = 'netStakingAprSma',
+  carrySpreadAprSma = 'carrySpreadAprSma',
 }
 
 export type SortFields = SortFieldsEnum;
