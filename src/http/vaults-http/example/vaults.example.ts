@@ -39,6 +39,9 @@ export const vaultsExample = {
       "netStakingAprPercent": 1.93889418541,
       "bottomLine": "351401042073751",
       "carrySpreadAprPercent": 1.84886250981,
+      "grossStakingAprSma": 1.3199419416942109,
+      "netStakingAprSma": 0.7468657897526315,
+      "carrySpreadAprSma": 0.7468657897526315,
       "lastReport": {
         "fee": "795605196857045",
         "inOutDelta": "65019709677226272543",
@@ -78,6 +81,9 @@ export const vaultsExample = {
       "netStakingAprPercent": 1.93889418541,
       "bottomLine": "351401042073751",
       "carrySpreadAprPercent": 1.84886250981,
+      "grossStakingAprSma": 1.3199419416942109,
+      "netStakingAprSma": 0.7468657897526315,
+      "carrySpreadAprSma": 0.7468657897526315,
       "lastReport": {
         "fee": "795605196857045",
         "inOutDelta": "65019709677226272543",
