@@ -1497,10 +1497,10 @@
   resolved "https://registry.yarnpkg.com/@lido-nestjs/middleware/-/middleware-1.2.0.tgz#0e64b69149ef1f7e4594896fd08d6e0bd9ef5382"
   integrity sha512-0rkXWKXEKJPRbq1W6cN+yelhc+CruqhUqmdkNKwl4vTk631fpG9yfSfxxQFDAs3LhsTORqqgKUBpdK+epRYjIQ==
 
-"@lidofinance/lsv-cli@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@lidofinance/lsv-cli/-/lsv-cli-1.2.0.tgz#702d92b57f9769511d7ac92b4d0c7ea9cbf6e838"
-  integrity sha512-IyxHVoY1tqwugIaYXOXussfvDV+Nqk+eZslyO1npiGD+/dwA1htaUyWT1QZJsy6d8Bw2TWwOmCJRB6E1WI+HZg==
+"@lidofinance/lsv-cli@1.4.0":
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/@lidofinance/lsv-cli/-/lsv-cli-1.4.0.tgz#2c2df13b13876de483e240fff43be3366bdfc047"
+  integrity sha512-ApDnT6MquLN7pPpFc3X2wm7fqOyncTmbhmDCikPqyPea8RwfkCFWJqchh+ZcsKi1ygdEKtvmlnWr31YKz7E2Cg==
   dependencies:
     "@chainsafe/blst" "^2.2.0"
     "@chainsafe/persistent-merkle-tree" "^1.0.1"
