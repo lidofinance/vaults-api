@@ -30,7 +30,7 @@
   "dependencies": {
     "@ethersproject/address": "^5.8.0",
     "@ethersproject/providers": "^5.8.0",
-    "@fastify/static": "^6.6.0",
+    "@fastify/static": "6.12.0",
     "@lido-nestjs/contracts": "^9.8.0",
     "@lido-nestjs/execution": "^1.9.3",
     "@lido-nestjs/logger": "^1.0.1",
