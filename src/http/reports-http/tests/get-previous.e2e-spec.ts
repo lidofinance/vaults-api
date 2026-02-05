@@ -94,6 +94,27 @@ describe('ReportsHttpController (e2e) - getPrevious', () => {
     expect(lsvServiceMock.getReportProofByVault).not.toHaveBeenCalled();
   });
 
+  it(`${HttpStatus.OK}: getVaultReport throws -> controller returns { report: null }`, async () => {
+    lsvServiceMock.getVaultReport.mockRejectedValueOnce(new Error('boom'));
+    const resp = await request(app.getHttpServer()).get(`/v1/report/previous/${vaultAddress}`);
+
+    expect(resp.status).toBe(HttpStatus.OK);
+    expect(resp.body).toEqual({ report: null });
+
+    expect(loggerMock.error).toHaveBeenCalledTimes(1);
+    expect(String(loggerMock.error.mock.calls[0][0])).toContain(`Failed to getVaultReport ${vaultAddress}`);
+
+    expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledTimes(1);
+    expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledWith(vaultAddress);
+
+    expect(lazyOracleMock.getLatestReportData).toHaveBeenCalledTimes(1);
+
+    expect(lsvServiceMock.getVaultReport).toHaveBeenCalledTimes(1);
+    expect(lsvServiceMock.getVaultReport).toHaveBeenCalledWith(vaultAddress, cid);
+
+    expect(lsvServiceMock.getReportProofByVault).not.toHaveBeenCalled();
+  });
+
   it(`${HttpStatus.OK}: previous report found, vault is not present in report -> controller returns { report: null }`, async () => {
     lsvServiceMock.getReportProofByVault.mockRejectedValueOnce(new Error('Vault not found in report'));
     const resp = await request(app.getHttpServer()).get(`/v1/report/previous/${vaultAddress}`);
