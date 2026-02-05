@@ -27,7 +27,11 @@ import { ReportsHttpController } from '../reports-http.controller';
 import { reportByVaultExample } from '../example';
 
 export const vaultAddress = '0x' + '1'.repeat(40);
+// 1 character is missing
+export const badVaultAddress = '0x' + '1'.repeat(39);
 export const cid = 'Qm' + 'a'.repeat(44);
+// too short
+export const badCid = 'Qm' + 'a'.repeat(10);
 
 export async function bootstrapTestApp() {
   const loggerMock = {

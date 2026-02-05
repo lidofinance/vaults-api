@@ -2,7 +2,14 @@ import request from 'supertest';
 import { INestApplication, HttpStatus } from '@nestjs/common';
 
 import { reportByVaultExample } from '../example';
-import { bootstrapTestApp, closeTestApp, vaultAddress, cid } from './reports-http.controller.e2e-setup';
+import {
+  bootstrapTestApp,
+  closeTestApp,
+  vaultAddress,
+  badVaultAddress,
+  cid,
+  badCid,
+} from './reports-http.controller.e2e-setup';
 
 describe('ReportsHttpController (e2e) - getReportByCidAndVault', () => {
   let app: INestApplication;
@@ -28,17 +35,13 @@ describe('ReportsHttpController (e2e) - getReportByCidAndVault', () => {
   });
 
   it(`${HttpStatus.BAD_REQUEST}: invalid vaultAddress`, async () => {
-    // 1 character is missing
-    const badAddress = '0x' + '1'.repeat(39);
-    const resp = await request(app.getHttpServer()).get(`/v1/report/${cid}/${badAddress}`);
+    const resp = await request(app.getHttpServer()).get(`/v1/report/${cid}/${badVaultAddress}`);
     expect(resp.status).toBe(HttpStatus.BAD_REQUEST);
     expect(vaultDbServiceMock.existsVaultByAddress).not.toHaveBeenCalled();
     expect(reportsMerkleServiceMock.getReportProofByVault).not.toHaveBeenCalled();
   });
 
   it(`${HttpStatus.BAD_REQUEST}: invalid cid`, async () => {
-    // too short
-    const badCid = 'Qm' + 'a'.repeat(10);
     const resp = await request(app.getHttpServer()).get(`/v1/report/${badCid}/${vaultAddress}`);
     expect(resp.status).toBe(HttpStatus.BAD_REQUEST);
     expect(vaultDbServiceMock.existsVaultByAddress).not.toHaveBeenCalled();

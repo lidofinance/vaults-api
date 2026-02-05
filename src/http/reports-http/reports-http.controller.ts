@@ -165,6 +165,11 @@ export class ReportsHttpController {
     },
   })
   @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'vaultAddress must be an Ethereum address',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
     status: HttpStatus.NOT_FOUND,
     description: 'Vault not exist',
     type: ErrorResponseType,
