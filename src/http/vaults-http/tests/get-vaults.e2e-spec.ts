@@ -91,7 +91,7 @@ describe('VaultsHttpController (e2e) - getVaultsByRoleAndAddress', () => {
     );
   });
 
-  it(`${HttpStatus.OK}: passes address nd role`, async () => {
+  it(`${HttpStatus.OK}: passes address and role`, async () => {
     const role = 'vaults.Permissions.burn';
     const resp = await request(app.getHttpServer()).get('/v1/vaults').query({ address: accountAddress, role });
 
