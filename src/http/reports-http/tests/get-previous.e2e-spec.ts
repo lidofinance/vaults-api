@@ -33,14 +33,10 @@ describe('ReportsHttpController (e2e) - getPrevious', () => {
     ({ vaultDbServiceMock, lazyOracleMock, lsvServiceMock, loggerMock } = bootstrap.mocks);
   });
 
-  // TODO
   beforeEach(() => {
     jest.clearAllMocks();
     vaultDbServiceMock.existsVaultByAddress.mockResolvedValue(true);
     lazyOracleMock.getLatestReportData.mockResolvedValue(latestReportDataMock);
-    // latest report has prevTreeCID by default
-    lsvServiceMock.getVaultReport.mockResolvedValue({ prevTreeCID: previousCid });
-    // previous report proof returns data by default
     lsvServiceMock.getReportProofByVault.mockResolvedValue(reportByVaultExample);
   });
 

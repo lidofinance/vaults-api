@@ -30,6 +30,7 @@ export const vaultAddress = '0x' + '1'.repeat(40);
 // 1 character is missing
 export const badVaultAddress = '0x' + '1'.repeat(39);
 export const cid = 'Qm' + 'a'.repeat(44);
+export const previousCid = 'Qm' + 'b'.repeat(44);
 // too short
 export const badCid = 'Qm' + 'a'.repeat(10);
 
@@ -50,7 +51,7 @@ export async function bootstrapTestApp() {
   };
   const lsvServiceMock = {
     getReportProofByVault: jest.fn(async () => reportByVaultExample),
-    getVaultReport: jest.fn(async () => ({ prevTreeCID: cid })),
+    getVaultReport: jest.fn(async () => ({ prevTreeCID: previousCid })),
   };
   const reportsMerkleServiceMock = {
     getReportProofByVault: jest.fn(async () => reportByVaultExample),

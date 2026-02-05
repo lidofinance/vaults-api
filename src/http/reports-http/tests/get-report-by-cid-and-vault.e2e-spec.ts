@@ -37,6 +37,7 @@ describe('ReportsHttpController (e2e) - getReportByCidAndVault', () => {
   it(`${HttpStatus.BAD_REQUEST}: invalid vaultAddress`, async () => {
     const resp = await request(app.getHttpServer()).get(`/v1/report/${cid}/${badVaultAddress}`);
     expect(resp.status).toBe(HttpStatus.BAD_REQUEST);
+
     expect(vaultDbServiceMock.existsVaultByAddress).not.toHaveBeenCalled();
     expect(reportsMerkleServiceMock.getReportProofByVault).not.toHaveBeenCalled();
   });
@@ -44,6 +45,7 @@ describe('ReportsHttpController (e2e) - getReportByCidAndVault', () => {
   it(`${HttpStatus.BAD_REQUEST}: invalid cid`, async () => {
     const resp = await request(app.getHttpServer()).get(`/v1/report/${badCid}/${vaultAddress}`);
     expect(resp.status).toBe(HttpStatus.BAD_REQUEST);
+
     expect(vaultDbServiceMock.existsVaultByAddress).not.toHaveBeenCalled();
     expect(reportsMerkleServiceMock.getReportProofByVault).not.toHaveBeenCalled();
   });
@@ -52,8 +54,10 @@ describe('ReportsHttpController (e2e) - getReportByCidAndVault', () => {
     vaultDbServiceMock.existsVaultByAddress.mockResolvedValue(false);
     const resp = await request(app.getHttpServer()).get(`/v1/report/${cid}/${vaultAddress}`);
     expect(resp.status).toBe(HttpStatus.NOT_FOUND);
+
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledTimes(1);
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledWith(vaultAddress);
+
     expect(reportsMerkleServiceMock.getReportProofByVault).not.toHaveBeenCalled();
   });
 
@@ -61,33 +65,41 @@ describe('ReportsHttpController (e2e) - getReportByCidAndVault', () => {
     const resp = await request(app.getHttpServer()).get(`/v1/report/${cid}/${vaultAddress}`);
     expect(resp.status).toBe(HttpStatus.OK);
     expect(resp.body).toEqual({ report: reportByVaultExample });
+
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledTimes(1);
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledWith(vaultAddress);
+
     expect(reportsMerkleServiceMock.getReportProofByVault).toHaveBeenCalledTimes(1);
     expect(reportsMerkleServiceMock.getReportProofByVault).toHaveBeenCalledWith(vaultAddress, cid);
   });
 
-  it(`${HttpStatus.OK}: report found, vault is not present in report, but controller returns { report: null }`, async () => {
+  it(`${HttpStatus.OK}: report found, vault is not present in report -> controller returns { report: null }`, async () => {
     reportsMerkleServiceMock.getReportProofByVault.mockRejectedValueOnce(new Error('Vault not found in report'));
     const resp = await request(app.getHttpServer()).get(`/v1/report/${cid}/${vaultAddress}`);
     expect(resp.status).toBe(HttpStatus.OK);
     expect(resp.body).toEqual({ report: null });
+
     expect(loggerMock.error).toHaveBeenCalledTimes(1);
     expect(String(loggerMock.error.mock.calls[0][0])).toContain(`Failed to getReportProofByVault ${vaultAddress}`);
+
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledTimes(1);
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledWith(vaultAddress);
+
     expect(reportsMerkleServiceMock.getReportProofByVault).toHaveBeenCalledTimes(1);
     expect(reportsMerkleServiceMock.getReportProofByVault).toHaveBeenCalledWith(vaultAddress, cid);
   });
 
-  it(`${HttpStatus.OK}: report not found, but controller returns { report: null }`, async () => {
+  it(`${HttpStatus.OK}: report not found -> controller returns { report: null }`, async () => {
     reportsMerkleServiceMock.getReportProofByVault.mockRejectedValueOnce(new Error('Report not found'));
     const resp = await request(app.getHttpServer()).get(`/v1/report/${cid}/${vaultAddress}`);
     expect(resp.status).toBe(HttpStatus.OK);
     expect(resp.body).toEqual({ report: null });
+
     expect(loggerMock.error).toHaveBeenCalledTimes(1);
+
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledTimes(1);
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledWith(vaultAddress);
+
     expect(reportsMerkleServiceMock.getReportProofByVault).toHaveBeenCalledTimes(1);
     expect(reportsMerkleServiceMock.getReportProofByVault).toHaveBeenCalledWith(vaultAddress, cid);
   });
