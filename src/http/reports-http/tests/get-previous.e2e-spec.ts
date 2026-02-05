@@ -10,13 +10,6 @@ import {
   cid,
 } from './reports-http.controller.e2e-setup';
 
-const latestReportDataMock = {
-  timestamp: BigInt(1),
-  refSlot: BigInt(1),
-  treeRoot: '__someTreeRoot__',
-  reportCid: cid,
-};
-
 const previousCid = 'Qm' + 'b'.repeat(44);
 
 describe('ReportsHttpController (e2e) - getPrevious', () => {
@@ -36,7 +29,6 @@ describe('ReportsHttpController (e2e) - getPrevious', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     vaultDbServiceMock.existsVaultByAddress.mockResolvedValue(true);
-    lazyOracleMock.getLatestReportData.mockResolvedValue(latestReportDataMock);
     lsvServiceMock.getReportProofByVault.mockResolvedValue(reportByVaultExample);
   });
 
@@ -47,6 +39,7 @@ describe('ReportsHttpController (e2e) - getPrevious', () => {
   it(`${HttpStatus.BAD_REQUEST}: invalid vaultAddress`, async () => {
     const resp = await request(app.getHttpServer()).get(`/v1/report/previous/${badVaultAddress}`);
     expect(resp.status).toBe(HttpStatus.BAD_REQUEST);
+
     expect(vaultDbServiceMock.existsVaultByAddress).not.toHaveBeenCalled();
     expect(lazyOracleMock.getLatestReportData).not.toHaveBeenCalled();
     expect(lsvServiceMock.getVaultReport).not.toHaveBeenCalled();

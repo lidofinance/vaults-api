@@ -34,6 +34,13 @@ export const previousCid = 'Qm' + 'b'.repeat(44);
 // too short
 export const badCid = 'Qm' + 'a'.repeat(10);
 
+const latestReportDataMock = {
+  timestamp: BigInt(1),
+  refSlot: BigInt(1),
+  treeRoot: '__someTreeRoot__',
+  reportCid: cid,
+};
+
 export async function bootstrapTestApp() {
   const loggerMock = {
     error: jest.fn(),
@@ -47,7 +54,7 @@ export async function bootstrapTestApp() {
     existsVaultByAddress: jest.fn(async () => true),
   };
   const lazyOracleMock = {
-    getLatestReportData: jest.fn(async () => ({ reportCid: cid })),
+    getLatestReportData: jest.fn(async () => latestReportDataMock),
   };
   const lsvServiceMock = {
     getReportProofByVault: jest.fn(async () => reportByVaultExample),
