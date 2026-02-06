@@ -18,7 +18,9 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { CacheTTL } from '@nestjs/cache-manager';
 
 import { ConfigService } from 'common/config';
-import { VaultDbService, SortFieldsEnum, DirectionEnum, VAULT_APR_SMA_DAYS } from 'db/vault-db';
+import { VaultDbService } from 'db/vault-db/vault-db.service';
+import { VAULT_APR_SMA_DAYS } from 'db/vault-db/vault-db.constants';
+import { SortFieldsEnum, DirectionEnum } from 'db/vault-db/enums';
 import { ALL_ROLE_VALUES } from 'vault/vault.constants';
 import { ErrorResponseType } from 'http/common/dto/error-response-type';
 import { ToChecksumEthAddressPipe } from 'http/common/pipes';

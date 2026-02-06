@@ -20,7 +20,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "jest -i --config jest-e2e.json",
+    "test:e2e:coverage": "jest -i --config jest-e2e.json --coverage",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "typeorm:migration:create": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create",
     "typeorm:migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/db/config.ts",
@@ -69,7 +70,7 @@
   "devDependencies": {
     "@nestjs/cli": "9.5.0",
     "@nestjs/schematics": "^9.0.4",
-    "@nestjs/testing": "^9.2.1",
+    "@nestjs/testing": "^10.4.16",
     "@types/cache-manager": "^4.0.2",
     "@types/jest": "^29.2.5",
     "@types/lodash.chunk": "^4.2.9",

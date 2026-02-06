@@ -1,0 +1,18 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "modulePaths": ["<rootDir>/src"],
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "collectCoverageFrom": [
+    "src/http/**/*.controller.ts",
+    "src/http/**/*.service.ts",
+    "!src/http/proof-http/**",
+    "!src/**/index.ts",
+    "!src/**/dto/**",
+    "!src/**/example.ts"
+  ]
+}
