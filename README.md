@@ -11,7 +11,7 @@ It operates in two modes:
 
 ### Prerequisites
 
-- Node.js v20+
+- Node.js v24+
 - PostgreSQL v15+
 - Yarn package manager v1
 
