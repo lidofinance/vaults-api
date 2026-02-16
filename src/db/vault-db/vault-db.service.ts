@@ -187,6 +187,24 @@ export class VaultDbService {
     });
   }
 
+  async getTvl(): Promise<{ tvlWei: string; updatedAt: Date | null }> {
+    const row = await this.vaultStateRepo
+      .createQueryBuilder('state')
+      .innerJoin('state.vault', 'vault')
+      .where('vault.is_disconnected = false')
+      .select([
+        // numeric(78,0) -> string
+        `COALESCE(SUM(state.total_value), 0)::text AS "tvlWei"`,
+        `MAX(state.updated_at) AS "updatedAt"`,
+      ])
+      .getRawOne<{ tvlWei: string; updatedAt: Date | null }>();
+
+    return {
+      tvlWei: row?.tvlWei ?? '0',
+      updatedAt: row?.updatedAt ?? null,
+    };
+  }
+
   async getLatestVaultReportStats(vaultAddress: string) {
     const exists = await this.existsVaultByAddress(vaultAddress);
     if (!exists) return null;

@@ -280,6 +280,30 @@ export class VaultsHttpController {
     return data;
   }
 
+  @Version('1')
+  @Get('overview')
+  @CacheTTL(10 * 1000)
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Total TVL across all connected vaults (sum of vault_states.total_value)',
+    schema: {
+      example: {
+        tvlWei: '123456789012345678901234',
+        totalVaults: 10,
+        updatedAt: '2026-01-01T12:34:56.000Z',
+      },
+    },
+  })
+  async getVaultsOverview() {
+    const [totalVaults, tvl] = await Promise.all([this.vaultDbService.getVaultsCount(), this.vaultDbService.getTvl()]);
+
+    return {
+      totalVaults,
+      tvlWei: tvl.tvlWei,
+      updatedAt: tvl.updatedAt,
+    };
+  }
+
   private getNextVaultsHourlyUpdate(): Date {
     const options = { currentDate: new Date(), tz: this.configService.jobs['vaultsCronTZ'] };
     const interval = CronExpressionParser.parse(this.configService.jobs['vaultsCron'], options);
