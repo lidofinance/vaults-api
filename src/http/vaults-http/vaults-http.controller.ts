@@ -31,7 +31,7 @@ import {
   vaultLatestMetricsExample,
   vaultLatestMetricsRangeExample,
   vaultAprSmaForDaysExample,
-  zeroVaultAprSmaForDaysExample,
+  zeroVaultAprSmaForDaysExample, vaultExample,
 } from './example';
 
 const limitQueryDefault = 10;
@@ -140,6 +140,36 @@ export class VaultsHttpController {
       total: totalVaults,
       data: vaults,
     };
+  }
+
+  @Version('1')
+  @Get(':vaultAddress')
+  @CacheTTL(10 * 1000)
+  @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Vault data with last report data',
+    schema: {
+      example: vaultExample,
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Vault not found',
+    type: ErrorResponseType,
+  })
+  async getVaultByAddress(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
+    const vault = await this.vaultDbService.getVaultData(vaultAddress);
+    if (!vault) {
+      // Return 400 (not 404) to keep the API behavior consistent with other endpoints
+      throw new BadRequestException('Vault not found');
+    }
+    return vault;
   }
 
   @Version('1')
