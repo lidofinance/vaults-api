@@ -31,7 +31,9 @@ import {
   vaultLatestMetricsExample,
   vaultLatestMetricsRangeExample,
   vaultAprSmaForDaysExample,
-  zeroVaultAprSmaForDaysExample, vaultExample,
+  zeroVaultAprSmaForDaysExample,
+  vaultExample,
+  vaultsOverviewExample,
 } from './example';
 
 const limitQueryDefault = 10;
@@ -285,13 +287,9 @@ export class VaultsHttpController {
   @CacheTTL(10 * 1000)
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Total TVL across all connected vaults (sum of vault_states.total_value)',
+    description: 'Vaults overview (TVL, vaults count)',
     schema: {
-      example: {
-        tvlWei: '123456789012345678901234',
-        totalVaults: 10,
-        updatedAt: '2026-01-01T12:34:56.000Z',
-      },
+      example: vaultsOverviewExample,
     },
   })
   async getVaultsOverview() {

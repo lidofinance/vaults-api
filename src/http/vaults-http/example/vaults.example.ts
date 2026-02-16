@@ -1,3 +1,9 @@
+export const vaultsOverviewExample = {
+  tvlWei: '123456789012345678901234',
+  totalVaults: 10,
+  updatedAt: '2026-01-01T12:34:56.000Z',
+};
+
 export const vaultExample = {
   "address": "0x7228FC874C1D08cAE68a558d7B650fc4862B1DB7",
   "ens": null,
