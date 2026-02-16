@@ -33,6 +33,7 @@ export async function bootstrapTestApp() {
   };
 
   const vaultDbServiceMock = {
+    getVaultData: jest.fn(async () => null),
     getVaultsWithRoleAndSortingAndReportData: jest.fn(async () => ({
       lastReportMeta: null,
       totalVaults: 0,
