@@ -36,7 +36,7 @@ describe('VaultsHttpController (e2e) - getVaultsOverview', () => {
 
     expect(vaultDbServiceMock.getVaultsCount).toHaveBeenCalledTimes(1);
     expect(vaultDbServiceMock.getTvl).toHaveBeenCalledTimes(1);
-    expect(vaultDbServiceMock.getVaultsCount).toHaveBeenCalledWith();
+    expect(vaultDbServiceMock.getVaultsCount).toHaveBeenCalledWith({ isDisconnected: false });
     expect(vaultDbServiceMock.getTvl).toHaveBeenCalledWith();
   });
 });
