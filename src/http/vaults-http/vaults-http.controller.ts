@@ -293,7 +293,10 @@ export class VaultsHttpController {
     },
   })
   async getVaultsOverview() {
-    const [totalVaults, tvl] = await Promise.all([this.vaultDbService.getVaultsCount(), this.vaultDbService.getTvl()]);
+    const [totalVaults, tvl] = await Promise.all([
+      this.vaultDbService.getVaultsCount({ isDisconnected: false }),
+      this.vaultDbService.getTvl(),
+    ]);
 
     return {
       totalVaults,

@@ -49,8 +49,14 @@ export class VaultDbService {
     });
   }
 
-  async getVaultsCount(): Promise<number> {
-    return await this.vaultRepo.count();
+  async getVaultsCount(filter?: { isDisconnected?: boolean }): Promise<number> {
+    if (filter?.isDisconnected !== undefined) {
+      return this.vaultRepo.count({
+        where: { isDisconnected: filter.isDisconnected },
+      });
+    }
+
+    return this.vaultRepo.count();
   }
 
   async getAllConnectedVaultAddresses(): Promise<string[]> {
