@@ -11,7 +11,7 @@ It operates in two modes:
 
 ### Prerequisites
 
-- Node.js v20+
+- Node.js v24+
 - PostgreSQL v15+
 - Yarn package manager v1
 
@@ -66,6 +66,22 @@ yarn build && yarn start:prod
 Start the Worker
 ```bash
 yarn build && yarn start:worker
+```
+
+### E2E tests
+
+Test characteristics:
+
+- Controllers are tested in isolation.
+- All external dependencies (database, contracts, IPFS, cron logic) are mocked.
+- No real network, blockchain, or database access is required.
+- Tests do not depend on environment variables.
+
+E2E tests are fully self-contained and can be executed without an .env file:
+
+```bash
+yarn test:e2e
+yarn test:e2e:coverage
 ```
 
 ### Automatic versioning
