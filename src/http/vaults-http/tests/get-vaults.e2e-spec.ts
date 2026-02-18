@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { INestApplication, HttpStatus } from '@nestjs/common';
 import { SortFieldsEnum, DirectionEnum } from 'db/vault-db/enums';
+import { DASHBOARD_OWNER_ROLE, ROLE_LABELS } from 'vault/vault.constants';
 import { vaultsExample } from '../example';
 import { bootstrapTestApp, closeTestApp, accountAddress } from './vaults-http.controller.e2e-setup';
 
@@ -88,6 +89,7 @@ describe('VaultsHttpController (e2e) - getVaultsByRoleAndAddress', () => {
       SortFieldsEnum.totalValue,
       DirectionEnum.DESC,
       accountAddress,
+      ROLE_LABELS[DASHBOARD_OWNER_ROLE],
     );
   });
 
