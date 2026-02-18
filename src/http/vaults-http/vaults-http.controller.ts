@@ -21,7 +21,7 @@ import { ConfigService } from 'common/config';
 import { VaultDbService } from 'db/vault-db/vault-db.service';
 import { VAULT_APR_SMA_DAYS } from 'db/vault-db/vault-db.constants';
 import { SortFieldsEnum, DirectionEnum } from 'db/vault-db/enums';
-import { ALL_ROLE_VALUES } from 'vault/vault.constants';
+import { ALL_ROLE_VALUES, DASHBOARD_OWNER_ROLE, ROLE_LABELS } from 'vault/vault.constants';
 import { ErrorResponseType } from 'http/common/dto/error-response-type';
 import { ToChecksumEthAddressPipe } from 'http/common/pipes';
 
@@ -86,13 +86,17 @@ export class VaultsHttpController {
     required: false,
     enum: ALL_ROLE_VALUES,
     enumName: 'RoleOptions',
-    description: 'Role constant string. Must be one of the allowed values.',
+    description:
+      'Human-readable role label. If provided together with address, vaults will be filtered by this specific role. ' +
+      'If address is provided without role, filtering defaults to "dashboardOwner".',
   })
   @ApiQuery({
     name: 'address',
     required: false,
     type: String,
-    description: 'Account address to filter vaults by',
+    description:
+      'Account address to filter vaults by. ' +
+      'If address is provided without role, filtering defaults to "dashboardOwner".',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -126,7 +130,12 @@ export class VaultsHttpController {
       throw new BadRequestException('"address" must be provided when "role" is specified.');
     }
 
-    const additionalParams = hasAddress && hasRole ? [address, role] : hasAddress ? [address] : [];
+    const additionalParams =
+      hasAddress && hasRole
+        ? [address, role]
+        : hasAddress
+        ? [address, ROLE_LABELS[DASHBOARD_OWNER_ROLE]] // If address is provided without role, filtering defaults to "dashboardOwner"
+        : [];
 
     const { lastReportMeta, totalVaults, vaults } = await this.vaultDbService.getVaultsWithRoleAndSortingAndReportData(
       limit,
