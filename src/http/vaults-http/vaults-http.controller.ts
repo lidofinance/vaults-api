@@ -21,7 +21,7 @@ import { ConfigService } from 'common/config';
 import { VaultDbService } from 'db/vault-db/vault-db.service';
 import { VAULT_APR_SMA_DAYS } from 'db/vault-db/vault-db.constants';
 import { SortFieldsEnum, DirectionEnum } from 'db/vault-db/enums';
-import { ALL_ROLE_VALUES } from 'vault/vault.constants';
+import { ALL_ROLE_VALUES, DASHBOARD_OWNER_ROLE, ROLE_LABELS } from 'vault/vault.constants';
 import { ErrorResponseType } from 'http/common/dto/error-response-type';
 import { ToChecksumEthAddressPipe } from 'http/common/pipes';
 
@@ -32,6 +32,8 @@ import {
   vaultLatestMetricsRangeExample,
   vaultAprSmaForDaysExample,
   zeroVaultAprSmaForDaysExample,
+  vaultExample,
+  vaultsOverviewExample,
 } from './example';
 
 const limitQueryDefault = 10;
@@ -84,13 +86,17 @@ export class VaultsHttpController {
     required: false,
     enum: ALL_ROLE_VALUES,
     enumName: 'RoleOptions',
-    description: 'Role constant string. Must be one of the allowed values.',
+    description:
+      'Human-readable role label. If provided together with address, vaults will be filtered by this specific role. ' +
+      'If address is provided without role, filtering defaults to "dashboardOwner".',
   })
   @ApiQuery({
     name: 'address',
     required: false,
     type: String,
-    description: 'Account address to filter vaults by',
+    description:
+      'Account address to filter vaults by. ' +
+      'If address is provided without role, filtering defaults to "dashboardOwner".',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -124,7 +130,12 @@ export class VaultsHttpController {
       throw new BadRequestException('"address" must be provided when "role" is specified.');
     }
 
-    const additionalParams = hasAddress && hasRole ? [address, role] : hasAddress ? [address] : [];
+    const additionalParams =
+      hasAddress && hasRole
+        ? [address, role]
+        : hasAddress
+        ? [address, ROLE_LABELS[DASHBOARD_OWNER_ROLE]] // If address is provided without role, filtering defaults to "dashboardOwner"
+        : [];
 
     const { lastReportMeta, totalVaults, vaults } = await this.vaultDbService.getVaultsWithRoleAndSortingAndReportData(
       limit,
@@ -140,6 +151,36 @@ export class VaultsHttpController {
       total: totalVaults,
       data: vaults,
     };
+  }
+
+  @Version('1')
+  @Get(':vaultAddress')
+  @CacheTTL(10 * 1000)
+  @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Vault data with last report data',
+    schema: {
+      example: vaultExample,
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Address must be an Ethereum address',
+    type: ErrorResponseType,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Vault not found',
+    type: ErrorResponseType,
+  })
+  async getVaultByAddress(@Param('vaultAddress', new ToChecksumEthAddressPipe()) vaultAddress: string) {
+    const vault = await this.vaultDbService.getVaultData(vaultAddress);
+    if (!vault) {
+      // Return 400 (not 404) to keep the API behavior consistent with other endpoints
+      throw new BadRequestException('Vault not found');
+    }
+    return vault;
   }
 
   @Version('1')
@@ -248,6 +289,29 @@ export class VaultsHttpController {
     }
 
     return data;
+  }
+
+  @Version('1')
+  @Get('overview')
+  @CacheTTL(10 * 1000)
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Vaults overview (TVL, vaults count)',
+    schema: {
+      example: vaultsOverviewExample,
+    },
+  })
+  async getVaultsOverview() {
+    const [totalVaults, tvl] = await Promise.all([
+      this.vaultDbService.getVaultsCount({ isDisconnected: false }),
+      this.vaultDbService.getTvl(),
+    ]);
+
+    return {
+      totalVaults,
+      tvlWei: tvl.tvlWei,
+      updatedAt: tvl.updatedAt,
+    };
   }
 
   private getNextVaultsHourlyUpdate(): Date {

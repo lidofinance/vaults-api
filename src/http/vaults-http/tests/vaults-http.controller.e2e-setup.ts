@@ -33,6 +33,7 @@ export async function bootstrapTestApp() {
   };
 
   const vaultDbServiceMock = {
+    getVaultData: jest.fn(async () => null),
     getVaultsWithRoleAndSortingAndReportData: jest.fn(async () => ({
       lastReportMeta: null,
       totalVaults: 0,
@@ -41,6 +42,8 @@ export async function bootstrapTestApp() {
     getLatestVaultReportStats: jest.fn(async () => null),
     getVaultReportStatsInRange: jest.fn(async () => []),
     getVaultAprSmaForDays: jest.fn(async () => null),
+    getVaultsCount: jest.fn(async () => null),
+    getTvl: jest.fn(async () => null),
   };
 
   const moduleRef = await Test.createTestingModule({

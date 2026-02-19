@@ -79,7 +79,7 @@ export class VaultService {
 
         let vault;
         try {
-          vault = await this.vaultDbService.getOrCreateVaultByAddress(vaultAddress);
+          vault = await this.vaultDbService.getOrCreateVaultByAddress(vaultAddress, { isDisconnected: false });
         } catch (err) {
           this.logger.error(
             `[fetchAllVaultsAndCalculateStates] Failed to get or create vault: ${vaultAddress} — ${err} at block ${blockNumber}`,
@@ -256,7 +256,9 @@ export class VaultService {
             blockTag: blockNumber,
           });
 
-          const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(item.vault);
+          const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(item.vault, {
+            isDisconnected: false,
+          });
 
           const healthFactor = await this.lsvService.calculateHealth({
             totalValue: item.totalValue,
