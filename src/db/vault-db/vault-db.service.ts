@@ -67,12 +67,12 @@ export class VaultDbService {
     return rows.map((vault) => vault.address);
   }
 
-  async getOrCreateVaultByAddress(address: string, opts?: { isDisconnected?: boolean }): Promise<VaultEntity> {
+  async getOrCreateVaultByAddress(address: string, createOpts?: { isDisconnected?: boolean }): Promise<VaultEntity> {
     let vault = await this.vaultRepo.findOne({ where: { address } });
     if (!vault) {
       vault = this.vaultRepo.create({
         address,
-        isDisconnected: opts?.isDisconnected ?? true,
+        isDisconnected: createOpts?.isDisconnected ?? true,
       });
       vault = await this.vaultRepo.save(vault);
     }
