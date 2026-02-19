@@ -280,7 +280,11 @@ export class ReportService {
         stEthLiabilityRebaseRewards: rebaseReward,
       });
 
-      const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(vaultAddress);
+      // Explicitly create vault as isDisconnected: true.
+      // Connected vaults were preloaded before metrics calculation.
+      // During cold start we process all historical reports,
+      // which can reference disconnected vaults.
+      const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(vaultAddress, { isDisconnected: true });
 
       await this.vaultDbService.addOrUpdateReportStats({
         vault: vaultDbEntity,
