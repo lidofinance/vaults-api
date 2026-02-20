@@ -36,6 +36,7 @@ import {
   vaultsOverviewExample,
 } from './example';
 
+const maxLimitQuery = 100;
 const limitQueryDefault = 10;
 const offsetQueryDefault = 0;
 const defaultSortBy: SortFieldsEnum = SortFieldsEnum.totalValue;
@@ -58,7 +59,7 @@ export class VaultsHttpController {
     required: false,
     type: Number,
     example: limitQueryDefault,
-    description: 'Number of vaults to return',
+    description: `Number of vaults to return. Maximum allowed value is ${maxLimitQuery}.`,
   })
   @ApiQuery({
     name: 'offset',
@@ -124,6 +125,8 @@ export class VaultsHttpController {
     @Query('address', new ToChecksumEthAddressPipe(false)) address: string,
     @Query('role') role: string,
   ) {
+    const safeLimit = Math.min(Math.max(limit, 0), maxLimitQuery);
+
     const hasRole = !!role;
     const hasAddress = !!address;
     if (hasRole && !hasAddress) {
@@ -138,7 +141,7 @@ export class VaultsHttpController {
         : [];
 
     const { lastReportMeta, totalVaults, vaults } = await this.vaultDbService.getVaultsWithRoleAndSortingAndReportData(
-      limit,
+      safeLimit,
       offset,
       sortBy,
       direction,
