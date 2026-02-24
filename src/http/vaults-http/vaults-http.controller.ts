@@ -4,9 +4,6 @@ import {
   Param,
   Get,
   Query,
-  DefaultValuePipe,
-  ParseEnumPipe,
-  ParseIntPipe,
   Version,
   Inject,
   LoggerService,
@@ -27,6 +24,14 @@ import { ToChecksumEthAddressPipe } from 'http/common/pipes';
 
 import { GetVaultStatsRangeQueryDto } from './dto/get-vault-stats-range-query.dto';
 import {
+  GetVaultsByRoleAndAddressQueryDto,
+  maxLimitQuery,
+  limitQueryDefault,
+  offsetQueryDefault,
+  defaultSortBy,
+  defaultDirection,
+} from './dto/get-vaults-by-role-and-address.dto';
+import {
   vaultsExample,
   vaultLatestMetricsExample,
   vaultLatestMetricsRangeExample,
@@ -35,11 +40,6 @@ import {
   vaultExample,
   vaultsOverviewExample,
 } from './example';
-
-const limitQueryDefault = 10;
-const offsetQueryDefault = 0;
-const defaultSortBy: SortFieldsEnum = SortFieldsEnum.totalValue;
-const defaultDirection: DirectionEnum = DirectionEnum.DESC;
 
 @Controller('vaults')
 @ApiTags('Vaults')
@@ -58,7 +58,7 @@ export class VaultsHttpController {
     required: false,
     type: Number,
     example: limitQueryDefault,
-    description: 'Number of vaults to return',
+    description: `Number of vaults to return. Maximum allowed value is ${maxLimitQuery}.`,
   })
   @ApiQuery({
     name: 'offset',
@@ -115,15 +115,14 @@ export class VaultsHttpController {
     description: 'Address must be an Ethereum address',
     type: ErrorResponseType,
   })
-  async getVaultsByRoleAndAddress(
-    @Query('limit', new DefaultValuePipe(limitQueryDefault), ParseIntPipe) limit: number,
-    @Query('offset', new DefaultValuePipe(offsetQueryDefault), ParseIntPipe) offset: number,
-    @Query('sortBy', new DefaultValuePipe(defaultSortBy), new ParseEnumPipe(SortFieldsEnum)) sortBy: SortFieldsEnum,
-    @Query('direction', new DefaultValuePipe(defaultDirection), new ParseEnumPipe(DirectionEnum))
-    direction: DirectionEnum,
-    @Query('address', new ToChecksumEthAddressPipe(false)) address: string,
-    @Query('role') role: string,
-  ) {
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'limit must not be greater than 100',
+    type: ErrorResponseType,
+  })
+  async getVaultsByRoleAndAddress(@Query() query: GetVaultsByRoleAndAddressQueryDto) {
+    const { limit, offset, sortBy, direction, address, role } = query;
+
     const hasRole = !!role;
     const hasAddress = !!address;
     if (hasRole && !hasAddress) {

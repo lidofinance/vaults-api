@@ -79,7 +79,13 @@ export async function bootstrapTestApp() {
 
   const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
   app.enableVersioning({ type: VersioningType.URI });
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
