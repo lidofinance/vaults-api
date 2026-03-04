@@ -58,9 +58,8 @@ export class AppService implements OnModuleInit {
     const branch = APP_BRANCH;
     const commit = APP_COMMIT;
 
-
-    this.prometheusService.buildInfo.labels({ env, network, name, version }).inc();
-    this.logger.log('Init app', { env, network, name, version, branch, commit });
+    this.prometheusService.buildInfo.labels({ name, version, env, network, branch, commit }).inc();
+    this.logger.log('Init app', { name, version, env, network, branch, commit });
   }
 
   protected prometheusEnvsInfoMetrics() {
