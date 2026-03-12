@@ -15,7 +15,6 @@ import { LsvService } from 'lsv';
 
 @Injectable()
 export class ReportService {
-  private accruedFeeByVault = new Map<string, bigint>();
   private readonly shareRateCache: LRUCache<number, bigint>;
 
   constructor(
@@ -254,15 +253,8 @@ export class ReportService {
       const currentVaultReport = LsvService.transformToVaultReportCli(currentReport, currLeaf);
       const previousVaultReport = LsvService.transformToVaultReportCli(previousReport, prevLeaf);
 
-      // accruedFee cache
-      let accruedFee: bigint;
-      if (this.accruedFeeByVault.has(vaultAddress)) {
-        accruedFee = this.accruedFeeByVault.get(vaultAddress);
-      } else {
-        const vaultState = await this.vaultDbService.getStateByVaultAddress(vaultAddress);
-        accruedFee = BigInt(vaultState?.accruedFee ?? 0);
-        this.accruedFeeByVault.set(vaultAddress, accruedFee);
-      }
+      const vaultState = await this.vaultDbService.getStateByVaultAddress(vaultAddress);
+      const accruedFee = BigInt(vaultState?.accruedFee ?? 0);
 
       const rebaseReward = await this.lsvService.calculateRebaseReward({
         shareRatePrev,
