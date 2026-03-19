@@ -2,7 +2,7 @@ import chunk from 'lodash.chunk';
 import { Repository } from 'typeorm';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { type Report } from '@lidofinance/lsv-cli/dist/utils';
+import { type Report } from '@lidofinance/lsv-cli/dist/utils/report/types';
 
 import { ReportEntity, ReportLeafEntity } from './entities';
 

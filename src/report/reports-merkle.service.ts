@@ -4,7 +4,8 @@ import { StandardMerkleTree } from '@openzeppelin/merkle-tree';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 // TODO: get from wrapper lsv
-import { getVaultData, type Report } from '@lidofinance/lsv-cli/dist/utils/report';
+import { getVaultData } from '@lidofinance/lsv-cli/dist/utils/report/report';
+import { type Report } from '@lidofinance/lsv-cli/dist/utils/report/types';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { LsvService } from 'lsv';
 

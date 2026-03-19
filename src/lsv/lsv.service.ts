@@ -1,17 +1,17 @@
 import { Hex, Address } from 'viem';
 import { Inject, Injectable } from '@nestjs/common';
 import { iterateUrls } from '@lidofinance/rpc';
-import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof';
-import {
-  getVaultReport,
-  getReportProofByVault,
-  type VaultReport as VaultReportCliType,
-} from '@lidofinance/lsv-cli/dist/utils/report';
-import { fetchIPFS, type Report } from '@lidofinance/lsv-cli/dist/utils';
+
+import { getVaultReport } from '@lidofinance/lsv-cli/dist/utils/report/report';
+import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof/create-proof';
+import { getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report/report-proof';
+import { type VaultReport as VaultReportCliType } from '@lidofinance/lsv-cli/dist/utils/report/types';
+import { type Report } from '@lidofinance/lsv-cli/dist/utils/report';
+import { fetchIPFS } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 import { calculateRebaseReward, type CalculateRebaseRewardArgs } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
 import { calculateHealth, type CalculateHealthArgs } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
-import { calcAccruedFeeOffChain } from '@lidofinance/lsv-cli/dist/utils/statistic';
+import { calcAccruedFeeOffChain } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
 
 import { PrometheusService } from 'common/prometheus';
 import { ConfigService } from 'common/config';
