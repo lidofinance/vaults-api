@@ -29,6 +29,13 @@ export type VaultData = {
   quarantineEndTimestamp: number;
 };
 
+export type VaultDashboardData = {
+  vault: string;
+  nodeOperatorFeeRate: bigint;
+  accruedFee: bigint;
+  settledGrowth: bigint;
+};
+
 export type RoleMembers = Record<string, string[]>;
 
 export type RawVaultRoleMembers = [
@@ -50,6 +57,11 @@ export class VaultViewerContractService {
   async vaultsCount(overrides?: Overrides): Promise<number> {
     const vaultsCount = await this.contract.vaultsCount(overrides);
     return Number(vaultsCount);
+  }
+
+  async getVaultDashboardData(vault: string, overrides?: Overrides): Promise<VaultDashboardData> {
+    const raw = await this.contract.vaultData(vault, overrides);
+    return VaultViewerContractService.transformVaultDashboardData(raw);
   }
 
   async getVaultData(vault: string, overrides?: Overrides): Promise<VaultData> {
@@ -129,6 +141,15 @@ export class VaultViewerContractService {
       quarantineStartTimestamp: vaultData.quarantineInfo.startTimestamp.toNumber(),
       // toNumber() safe here!
       quarantineEndTimestamp: vaultData.quarantineInfo.endTimestamp.toNumber(),
+    };
+  }
+
+  private static transformVaultDashboardData(vaultData: any): VaultDashboardData {
+    return {
+      vault: vaultData.vaultAddress,
+      nodeOperatorFeeRate: vaultData.nodeOperatorFeeRate.toBigInt(),
+      accruedFee: vaultData.accruedFee.toBigInt(),
+      settledGrowth: vaultData.settledGrowth.toBigInt(),
     };
   }
 

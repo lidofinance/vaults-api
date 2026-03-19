@@ -11,11 +11,14 @@ import { fetchIPFS, type Report } from '@lidofinance/lsv-cli/dist/utils';
 import { calculateRebaseReward, type CalculateRebaseRewardArgs } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
 import { calculateHealth, type CalculateHealthArgs } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
+import { calcAccruedFeeOffChain } from '@lidofinance/lsv-cli/dist/utils/statistic';
 
 import { PrometheusService } from 'common/prometheus';
 import { ConfigService } from 'common/config';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db';
+
+import { CalcAccruedFeeOffChainParams } from './lsv.types';
 
 export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR';
 
@@ -158,6 +161,10 @@ export class LsvService {
 
   public async calcReportMetrics(args: ReportMetricsArgs): Promise<ReturnType<typeof reportMetrics>> {
     return reportMetrics({ ...args });
+  }
+
+  public async calcAccruedFeeOffChain(params: CalcAccruedFeeOffChainParams): Promise<bigint> {
+    return calcAccruedFeeOffChain(params);
   }
 
   public static transformToVaultReportCli(report: ReportEntity, leaf: ReportLeafEntity): VaultReportCliType {

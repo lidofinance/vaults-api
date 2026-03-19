@@ -7,11 +7,12 @@ import { ConfigService } from 'common/config';
 import { PrometheusService } from 'common/prometheus';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { LidoContractService } from 'common/contracts/modules/lido-contract';
+import { VaultViewerContractService } from 'common/contracts/modules/vault-viewer-contract';
 import { ReportEntity, ReportLeafEntity, ReportDbService } from 'db/report-db';
 import { VaultDbService } from 'db/vault-db';
 import { SingleFlight } from 'common/job/single-flight.decorator';
 import { TrackJob } from 'common/job/track-job.decorator';
-import { LsvService } from 'lsv';
+import { LsvService, NOFeeSnapshot } from 'lsv';
 
 @Injectable()
 export class ReportService {
@@ -24,6 +25,7 @@ export class ReportService {
     private readonly lidoContractService: LidoContractService,
     private readonly lazyOracleContractService: LazyOracleContractService,
     private readonly reportDbService: ReportDbService,
+    private readonly vaultViewerContractService: VaultViewerContractService,
     private readonly vaultDbService: VaultDbService,
     private readonly lsvService: LsvService,
     private readonly prometheusService: PrometheusService,
@@ -253,22 +255,39 @@ export class ReportService {
       const currentVaultReport = LsvService.transformToVaultReportCli(currentReport, currLeaf);
       const previousVaultReport = LsvService.transformToVaultReportCli(previousReport, prevLeaf);
 
-      const vaultState = await this.vaultDbService.getStateByVaultAddress(vaultAddress);
-      const accruedFee = BigInt(vaultState?.accruedFee ?? 0);
-
       const rebaseReward = await this.lsvService.calculateRebaseReward({
         shareRatePrev,
         shareRateCurr,
         sharesPrev: BigInt(prevLeaf.liabilityShares),
-        sharesCurr: BigInt(currLeaf.liabilityShares),
       });
+
+      console.log('report.service vaultAddress:', vaultAddress);
+
+      const noFeePrev = await this.wrapToNOFeeSnapshot(
+        BigInt(previousVaultReport.data.totalValueWei),
+        BigInt(previousVaultReport.extraData.inOutDelta),
+        await this.getSettledGrowth(vaultAddress, previousVaultReport.blockNumber),
+        await this.getFeeRate(vaultAddress, previousVaultReport.blockNumber),
+      );
+
+      console.log('report.service noFeePrev:', noFeePrev);
+
+      const noFeeCurr = await this.wrapToNOFeeSnapshot(
+        BigInt(currentVaultReport.data.totalValueWei),
+        BigInt(currentVaultReport.extraData.inOutDelta),
+        await this.getSettledGrowth(vaultAddress, currentVaultReport.blockNumber),
+        await this.getFeeRate(vaultAddress, currentVaultReport.blockNumber),
+      );
+
+      console.log('report.service noFeeCurr:', noFeeCurr);
 
       const metrics = await this.lsvService.calcReportMetrics({
         reports: {
           current: currentVaultReport,
           previous: previousVaultReport,
         },
-        nodeOperatorAccruedFee: accruedFee,
+        noFeeCurr,
+        noFeePrev,
         stEthLiabilityRebaseRewards: rebaseReward,
       });
 
@@ -314,5 +333,38 @@ export class ReportService {
 
   private calculateShareRate = async (blockNumber: number): Promise<bigint> => {
     return this.shareRateCache.fetch(blockNumber);
+  };
+
+  private getSettledGrowth = async (vaultAddress: string, blockNumber: number): Promise<bigint> => {
+    const item = await this.vaultViewerContractService.getVaultDashboardData(vaultAddress, {
+      blockTag: blockNumber,
+    });
+
+    // todo
+    return item.settledGrowth;
+  };
+
+  private getFeeRate = async (vaultAddress: string, blockNumber: number): Promise<bigint> => {
+    const item = await this.vaultViewerContractService.getVaultDashboardData(vaultAddress, {
+      blockTag: blockNumber,
+    });
+
+    // todo
+    return item.nodeOperatorFeeRate;
+  };
+
+  private wrapToNOFeeSnapshot = async (
+    totalValueWei: bigint,
+    inOutDelta: bigint,
+    settledGrowth: bigint,
+    feeRate: bigint,
+  ): Promise<NOFeeSnapshot> => {
+    const accruedFee = await this.lsvService.calcAccruedFeeOffChain({
+      totalValueWei,
+      inOutDelta,
+      settledGrowth,
+      feeRate,
+    });
+    return { accruedFee, settledGrowth, feeRate };
   };
 }
