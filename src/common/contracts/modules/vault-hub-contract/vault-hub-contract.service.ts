@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Contract } from 'ethers';
+import { constants, Contract } from 'ethers';
 
 import { ExecutionProvider } from 'common/execution-provider';
 import { VaultHubAbi } from '../../abi/VaultHub';
@@ -22,6 +22,12 @@ export class VaultHubContractService {
   }
 
   async getVaultConnection(vault: string, overrides?: Overrides): Promise<any> {
-    return this.contract.callStatic.vaultConnection(...(overrides ? [[vault], overrides] : [[vault]]));
+    return this.contract.callStatic.vaultConnection(...(overrides ? [vault, overrides] : [vault]));
+  }
+
+  async isVaultDisconnected(vault: string, overrides?: Overrides): Promise<boolean> {
+    const connection = await this.getVaultConnection(vault, overrides);
+
+    return connection.owner === constants.AddressZero || connection.vaultIndex === 0n;
   }
 }

@@ -267,8 +267,6 @@ export class ReportService {
         sharesPrev: BigInt(prevLeaf.liabilityShares),
       });
 
-      console.log('report.service vaultAddress:', vaultAddress);
-
       const dashboardAddress = await this.getDashboardAddress(vaultAddress, previousVaultReport.blockNumber);
 
       const [prevSettledGrowth, prevFeeRate] = await Promise.all([
@@ -276,18 +274,31 @@ export class ReportService {
         this.getFeeRate(dashboardAddress, previousVaultReport.blockNumber),
       ]);
 
+      if (prevSettledGrowth == null || prevFeeRate == null) {
+        this.logger.log(
+          `[calculateForVaultsBasedPrevReport] Skip calculation: prevSettledGrowth or prevFeeRate is null for vault=${vaultAddress} at block=${previousVaultReport.blockNumber}`,
+        );
+        continue;
+      }
+
       const noFeePrev = await this.wrapToNOFeeSnapshot(
         BigInt(previousVaultReport.data.totalValueWei),
         BigInt(previousVaultReport.extraData.inOutDelta),
         prevSettledGrowth,
         prevFeeRate,
       );
-      console.log('report.service noFeePrev:', noFeePrev);
 
       const [curSettledGrowth, curFeeRate] = await Promise.all([
         this.getSettledGrowth(dashboardAddress, currentVaultReport.blockNumber),
         this.getFeeRate(dashboardAddress, currentVaultReport.blockNumber),
       ]);
+
+      if (curSettledGrowth == null || curFeeRate == null) {
+        this.logger.log(
+          `[calculateForVaultsBasedPrevReport] Skip calculation: curSettledGrowth or curFeeRate is null for vault=${vaultAddress} at block=${currentVaultReport.blockNumber}`,
+        );
+        continue;
+      }
 
       const noFeeCurr = await this.wrapToNOFeeSnapshot(
         BigInt(currentVaultReport.data.totalValueWei),
@@ -295,7 +306,6 @@ export class ReportService {
         curSettledGrowth,
         curFeeRate,
       );
-      console.log('report.service noFeeCurr:', noFeeCurr);
 
       const metrics = await this.lsvService.calcReportMetrics({
         reports: {
@@ -352,31 +362,39 @@ export class ReportService {
   };
 
   private getDashboardAddress = async (vaultAddress: string, blockNumber: number): Promise<string> => {
-    // TODO: skip for disconnected?
-    const stakingVaultOwner = await this.vaultHubContractService.getVaultOwner(vaultAddress, {
+    const isVaultDisconnected = await this.vaultHubContractService.isVaultDisconnected(vaultAddress, {
       blockTag: blockNumber,
     });
 
-    return stakingVaultOwner;
-  };
-
-  private getSettledGrowth = async (dashboardAddress: string, blockNumber: number): Promise<bigint> => {
-    try {
-      const dashboard = this.dashboardContractFactory.get(dashboardAddress);
-      return await dashboard.getSettledGrowth({ blockTag: blockNumber });
-    } catch (e) {
-      // TODO
-      return 0n;
+    // For side effects: when the vault was disconnected during the period,
+    // resolve owner from the staking vault instead of VaultHub
+    if (isVaultDisconnected) {
+      const stakingVault = this.stakingVaultContractFactory.get(vaultAddress);
+      return await stakingVault.getOwner({
+        blockTag: blockNumber,
+      });
+    } else {
+      return await this.vaultHubContractService.getVaultOwner(vaultAddress, {
+        blockTag: blockNumber,
+      });
     }
   };
 
-  private getFeeRate = async (dashboardAddress: string, blockNumber: number): Promise<bigint> => {
+  private getSettledGrowth = async (dashboardAddress: string, blockNumber: number): Promise<bigint | null> => {
+    try {
+      const dashboard = this.dashboardContractFactory.get(dashboardAddress);
+      return await dashboard.getSettledGrowth({ blockTag: blockNumber });
+    } catch {
+      return null;
+    }
+  };
+
+  private getFeeRate = async (dashboardAddress: string, blockNumber: number): Promise<bigint | null> => {
     try {
       const dashboard = this.dashboardContractFactory.get(dashboardAddress);
       return await dashboard.getFeeRate({ blockTag: blockNumber });
-    } catch (e) {
-      // TODO
-      return 0n;
+    } catch {
+      return null;
     }
   };
 
