@@ -269,22 +269,32 @@ export class ReportService {
 
       console.log('report.service vaultAddress:', vaultAddress);
 
+      const dashboardAddress = await this.getDashboardAddress(vaultAddress, previousVaultReport.blockNumber);
+
+      const [prevSettledGrowth, prevFeeRate] = await Promise.all([
+        this.getSettledGrowth(dashboardAddress, previousVaultReport.blockNumber),
+        this.getFeeRate(dashboardAddress, previousVaultReport.blockNumber),
+      ]);
+
       const noFeePrev = await this.wrapToNOFeeSnapshot(
         BigInt(previousVaultReport.data.totalValueWei),
         BigInt(previousVaultReport.extraData.inOutDelta),
-        await this.getSettledGrowth(vaultAddress, previousVaultReport.blockNumber),
-        await this.getFeeRate(vaultAddress, previousVaultReport.blockNumber),
+        prevSettledGrowth,
+        prevFeeRate,
       );
-
       console.log('report.service noFeePrev:', noFeePrev);
+
+      const [curSettledGrowth, curFeeRate] = await Promise.all([
+        this.getSettledGrowth(dashboardAddress, currentVaultReport.blockNumber),
+        this.getFeeRate(dashboardAddress, currentVaultReport.blockNumber),
+      ]);
 
       const noFeeCurr = await this.wrapToNOFeeSnapshot(
         BigInt(currentVaultReport.data.totalValueWei),
         BigInt(currentVaultReport.extraData.inOutDelta),
-        await this.getSettledGrowth(vaultAddress, currentVaultReport.blockNumber),
-        await this.getFeeRate(vaultAddress, currentVaultReport.blockNumber),
+        curSettledGrowth,
+        curFeeRate,
       );
-
       console.log('report.service noFeeCurr:', noFeeCurr);
 
       const metrics = await this.lsvService.calcReportMetrics({
@@ -341,13 +351,18 @@ export class ReportService {
     return this.shareRateCache.fetch(blockNumber);
   };
 
-  private getSettledGrowth = async (vaultAddress: string, blockNumber: number): Promise<bigint> => {
+  private getDashboardAddress = async (vaultAddress: string, blockNumber: number): Promise<string> => {
+    // TODO: skip for disconnected?
+    const stakingVaultOwner = await this.vaultHubContractService.getVaultOwner(vaultAddress, {
+      blockTag: blockNumber,
+    });
+
+    return stakingVaultOwner;
+  };
+
+  private getSettledGrowth = async (dashboardAddress: string, blockNumber: number): Promise<bigint> => {
     try {
-      // TODO: skip for disconnected?
-      const stakingVaultOwner = await this.vaultHubContractService.getVaultOwner(vaultAddress, {
-        blockTag: blockNumber,
-      });
-      const dashboard = this.dashboardContractFactory.get(stakingVaultOwner);
+      const dashboard = this.dashboardContractFactory.get(dashboardAddress);
       return await dashboard.getSettledGrowth({ blockTag: blockNumber });
     } catch (e) {
       // TODO
@@ -355,13 +370,9 @@ export class ReportService {
     }
   };
 
-  private getFeeRate = async (vaultAddress: string, blockNumber: number): Promise<bigint> => {
+  private getFeeRate = async (dashboardAddress: string, blockNumber: number): Promise<bigint> => {
     try {
-      // TODO: skip for disconnected?
-      const stakingVaultOwner = await this.vaultHubContractService.getVaultOwner(vaultAddress, {
-        blockTag: blockNumber,
-      });
-      const dashboard = this.dashboardContractFactory.get(stakingVaultOwner);
+      const dashboard = this.dashboardContractFactory.get(dashboardAddress);
       return await dashboard.getFeeRate({ blockTag: blockNumber });
     } catch (e) {
       // TODO
