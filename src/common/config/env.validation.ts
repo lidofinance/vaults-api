@@ -121,6 +121,11 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   REPORT_CRON = '4 * * * *';
+
+  @IsOptional()
+  @IsNumber()
+  @Transform(toNumber())
+  REPORT_REPORT_METRICS_PROCESSING_CONCURRENCY = 20;
 }
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
