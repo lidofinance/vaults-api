@@ -248,109 +248,6 @@ export const VaultViewerAbi = [
         "internalType": "address",
         "name": "vault",
         "type": "address"
-      },
-      {
-        "internalType": "enum VaultViewer.VaultDataField[]",
-        "name": "fields",
-        "type": "uint8[]"
-      }
-    ],
-    "name": "vaultDashboardData",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "vaultAddress",
-            "type": "address"
-          },
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "owner",
-                "type": "address"
-              },
-              {
-                "internalType": "uint96",
-                "name": "shareLimit",
-                "type": "uint96"
-              },
-              {
-                "internalType": "uint96",
-                "name": "vaultIndex",
-                "type": "uint96"
-              },
-              {
-                "internalType": "uint48",
-                "name": "disconnectInitiatedTs",
-                "type": "uint48"
-              },
-              {
-                "internalType": "uint16",
-                "name": "reserveRatioBP",
-                "type": "uint16"
-              },
-              {
-                "internalType": "uint16",
-                "name": "forcedRebalanceThresholdBP",
-                "type": "uint16"
-              },
-              {
-                "internalType": "uint16",
-                "name": "infraFeeBP",
-                "type": "uint16"
-              },
-              {
-                "internalType": "uint16",
-                "name": "liquidityFeeBP",
-                "type": "uint16"
-              },
-              {
-                "internalType": "uint16",
-                "name": "reservationFeeBP",
-                "type": "uint16"
-              },
-              {
-                "internalType": "bool",
-                "name": "beaconChainDepositsPauseIntent",
-                "type": "bool"
-              }
-            ],
-            "internalType": "struct VaultHub.VaultConnection",
-            "name": "connection",
-            "type": "tuple"
-          },
-          {
-            "internalType": "uint256",
-            "name": "nodeOperatorFeeRate",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "accruedFee",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "settledGrowth",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct VaultViewer.VaultDashboardData",
-        "name": "data",
-        "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "vault",
-        "type": "address"
       }
     ],
     "name": "vaultData",
@@ -518,11 +415,6 @@ export const VaultViewerAbi = [
           {
             "internalType": "uint256",
             "name": "accruedFee",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "settledGrowth",
             "type": "uint256"
           },
           {
@@ -825,11 +717,6 @@ export const VaultViewerAbi = [
           {
             "internalType": "uint256",
             "name": "accruedFee",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "settledGrowth",
             "type": "uint256"
           },
           {

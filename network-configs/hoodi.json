@@ -2,7 +2,7 @@
   "contracts": {
     "lido": "0x3508A952176b3c15387C97BE809eaffB1982176a",
     "lidoLocator": "0xe2EF9536DAAAEBFf5b1c130957AB3E80056b06D8",
-    "vaultViewer": "0x6232f8d990Ff60965A9675562eef3A62CeCD08bA"
+    "vaultViewer": "0xEAfD3F8DC0ABA14B81344ea0B869DdF9F7e18221"
   },
   "apis": {}
 }

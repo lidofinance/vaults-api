@@ -5,10 +5,13 @@ import { Inject, Injectable } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
 import { PrometheusService } from 'common/prometheus';
+import { DashboardContractFactory } from 'common/contracts/modules/dashboard-contract';
+import { StakingVaultContractFactory } from 'common/contracts/modules/staking-vault-contract';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { LidoContractService } from 'common/contracts/modules/lido-contract';
 import { VaultViewerContractService } from 'common/contracts/modules/vault-viewer-contract';
-import { ReportEntity, ReportLeafEntity, ReportDbService } from 'db/report-db';
+import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
+import { ReportDbService, ReportEntity, ReportLeafEntity } from 'db/report-db';
 import { VaultDbService } from 'db/vault-db';
 import { SingleFlight } from 'common/job/single-flight.decorator';
 import { TrackJob } from 'common/job/track-job.decorator';
@@ -22,10 +25,13 @@ export class ReportService {
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
+    private readonly dashboardContractFactory: DashboardContractFactory,
+    private readonly stakingVaultContractFactory: StakingVaultContractFactory,
     private readonly lidoContractService: LidoContractService,
     private readonly lazyOracleContractService: LazyOracleContractService,
     private readonly reportDbService: ReportDbService,
     private readonly vaultViewerContractService: VaultViewerContractService,
+    private readonly vaultHubContractService: VaultHubContractService,
     private readonly vaultDbService: VaultDbService,
     private readonly lsvService: LsvService,
     private readonly prometheusService: PrometheusService,
@@ -336,21 +342,31 @@ export class ReportService {
   };
 
   private getSettledGrowth = async (vaultAddress: string, blockNumber: number): Promise<bigint> => {
-    const item = await this.vaultViewerContractService.getVaultDashboardData(vaultAddress, {
-      blockTag: blockNumber,
-    });
-
-    // todo
-    return item.settledGrowth;
+    try {
+      // TODO: skip for disconnected?
+      const stakingVaultOwner = await this.vaultHubContractService.getVaultOwner(vaultAddress, {
+        blockTag: blockNumber,
+      });
+      const dashboard = this.dashboardContractFactory.get(stakingVaultOwner);
+      return await dashboard.getSettledGrowth({ blockTag: blockNumber });
+    } catch (e) {
+      // TODO
+      return 0n;
+    }
   };
 
   private getFeeRate = async (vaultAddress: string, blockNumber: number): Promise<bigint> => {
-    const item = await this.vaultViewerContractService.getVaultDashboardData(vaultAddress, {
-      blockTag: blockNumber,
-    });
-
-    // todo
-    return item.nodeOperatorFeeRate;
+    try {
+      // TODO: skip for disconnected?
+      const stakingVaultOwner = await this.vaultHubContractService.getVaultOwner(vaultAddress, {
+        blockTag: blockNumber,
+      });
+      const dashboard = this.dashboardContractFactory.get(stakingVaultOwner);
+      return await dashboard.getFeeRate({ blockTag: blockNumber });
+    } catch (e) {
+      // TODO
+      return 0n;
+    }
   };
 
   private wrapToNOFeeSnapshot = async (
