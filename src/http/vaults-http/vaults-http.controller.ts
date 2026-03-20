@@ -234,7 +234,9 @@ export class VaultsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'You must provide either both "fromBlock" & "toBlock" or both "fromTimestamp" & "toTimestamp".',
+    description:
+      '"{field}" must not be greater than 2147483647. Provide either both "fromBlock" and "toBlock" ' +
+      'or both "fromTimestamp" and "toTimestamp", do not mix them, and ensure "from" <= "to".',
     type: ErrorResponseType,
   })
   async getVaultStatsRangeByAddress(
@@ -243,16 +245,7 @@ export class VaultsHttpController {
   ) {
     const { fromBlock, toBlock, fromTimestamp, toTimestamp } = query;
 
-    const hasBlockRange = fromBlock !== undefined && toBlock !== undefined;
-    const hasTimestampRange = fromTimestamp !== undefined && toTimestamp !== undefined;
-
-    if (!hasBlockRange && !hasTimestampRange) {
-      throw new BadRequestException(
-        'You must provide either both "fromBlock" & "toBlock" or both "fromTimestamp" & "toTimestamp".',
-      );
-    }
-
-    if (hasBlockRange) {
+    if (fromBlock !== undefined) {
       return this.vaultDbService.getVaultReportStatsInRange(vaultAddress, undefined, undefined, fromBlock, toBlock);
     }
 

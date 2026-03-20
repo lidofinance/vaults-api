@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { NestFactory, Reflector } from '@nestjs/core';
-import { ValidationPipe, VersioningType, ClassSerializerInterceptor } from '@nestjs/common';
+import { ValidationPipe, VersioningType, ClassSerializerInterceptor, BadRequestException } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
@@ -49,11 +49,22 @@ async function bootstrap() {
     });
   }
 
+  // errors
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
       whitelist: true,
       forbidNonWhitelisted: true,
+      exceptionFactory: (errors) => {
+        // By default class-validator returns an array of error messages.
+        // Flatten them into a single string for cleaner API responses.
+        const messages = errors
+          .map((err) => Object.values(err.constraints || {}))
+          .flat()
+          .join('. ');
+
+        return new BadRequestException(messages);
+      },
     }),
   );
 
