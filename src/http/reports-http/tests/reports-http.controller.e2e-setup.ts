@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { INestApplication, ValidationPipe, VersioningType } from '@nestjs/common';
+import {BadRequestException, INestApplication, ValidationPipe, VersioningType} from '@nestjs/common';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
@@ -79,11 +79,23 @@ export async function bootstrapTestApp() {
 
   const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
   app.enableVersioning({ type: VersioningType.URI });
+
+  // errors
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
       whitelist: true,
       forbidNonWhitelisted: true,
+      exceptionFactory: (errors) => {
+        // By default class-validator returns an array of error messages.
+        // Flatten them into a single string for cleaner API responses.
+        const messages = errors
+          .map((err) => Object.values(err.constraints || {}))
+          .flat()
+          .join('. ');
+
+        return new BadRequestException(messages);
+      },
     }),
   );
 
