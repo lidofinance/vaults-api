@@ -163,7 +163,7 @@ export class LsvService {
     return reportMetrics({ ...args });
   }
 
-  public async calcAccruedFeeOffChain(params: CalcAccruedFeeOffChainParams): Promise<bigint> {
+  public calcAccruedFeeOffChain(params: CalcAccruedFeeOffChainParams): bigint {
     return calcAccruedFeeOffChain(params);
   }
 

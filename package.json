@@ -60,6 +60,7 @@
     "fastify-swagger": "^5.2.0",
     "lodash.chunk": "^4.2.0",
     "lru-cache": "^11.1.0",
+    "p-limit": "^7.3.0",
     "pg": "^8.16.0",
     "prom-client": "^14.1.1",
     "reflect-metadata": "^0.1.13",
