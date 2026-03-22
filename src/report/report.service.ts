@@ -68,16 +68,12 @@ export class ReportService {
 
         const dashboardAddress = await this.getDashboardAddress(vaultAddress, blockNumber);
 
-        const [settledGrowth, feeRate] = await Promise.all([
-          this.getSettledGrowth(dashboardAddress, blockNumber),
-          this.getFeeRate(dashboardAddress, blockNumber),
-        ]);
-
-        if (settledGrowth == null || feeRate == null) {
+        const snapshot = await this.getDashboardMetricsSnapshot(dashboardAddress, blockNumber);
+        if (snapshot == null) {
           return null;
         }
 
-        return this.wrapToNOFeeSnapshot(totalValueWei, inOutDelta, settledGrowth, feeRate);
+        return this.wrapToNOFeeSnapshot(totalValueWei, inOutDelta, snapshot.settledGrowth, snapshot.feeRate);
       },
     });
 
@@ -415,19 +411,27 @@ export class ReportService {
     return this.dashboardAddressCache.fetch(`${vaultAddress.toLowerCase()}|${blockNumber}`);
   };
 
-  private getSettledGrowth = async (dashboardAddress: string, blockNumber: number): Promise<bigint | null> => {
+  private getDashboardMetricsSnapshot = async (
+    dashboardAddress: string,
+    blockNumber: number,
+  ): Promise<{ settledGrowth: bigint; feeRate: bigint } | null> => {
     try {
       const dashboard = this.dashboardContractFactory.get(dashboardAddress);
-      return await dashboard.getSettledGrowth({ blockTag: blockNumber });
-    } catch {
-      return null;
-    }
-  };
 
-  private getFeeRate = async (dashboardAddress: string, blockNumber: number): Promise<bigint | null> => {
-    try {
-      const dashboard = this.dashboardContractFactory.get(dashboardAddress);
-      return await dashboard.getFeeRate({ blockTag: blockNumber });
+      const [settledGrowthRaw, feeRateRaw] = await dashboard.contract.callStatic.multicall(
+        [
+          dashboard.contract.interface.encodeFunctionData('settledGrowth'),
+          dashboard.contract.interface.encodeFunctionData('feeRate'),
+        ],
+        { blockTag: blockNumber },
+      );
+
+      const settledGrowth = BigInt(
+        dashboard.contract.interface.decodeFunctionResult('settledGrowth', settledGrowthRaw)[0].toString(),
+      );
+      const feeRate = BigInt(dashboard.contract.interface.decodeFunctionResult('feeRate', feeRateRaw)[0].toString());
+
+      return { settledGrowth, feeRate };
     } catch {
       return null;
     }
