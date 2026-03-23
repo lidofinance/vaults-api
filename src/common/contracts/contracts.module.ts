@@ -16,7 +16,7 @@ import { StakingVaultContractModule } from './modules/staking-vault-contract';
     ...[LidoLocatorContractModule].map((module) =>
       module.forRootAsync({
         async useFactory(provider: ExecutionProvider, config: ConfigService) {
-          const addressMap = await config.getCustomConfigContractsAddressMap();
+          const addressMap = config.getCustomConfigContractsAddressMap();
           const address = addressMap ? addressMap.get(module.contractToken) : undefined;
           return { provider, address };
         },

@@ -10,8 +10,6 @@ const MULTICALL3_ABI = [
   'function aggregate3(tuple(address target, bool allowFailure, bytes callData)[] calls) view returns (tuple(bool success, bytes returnData)[] returnData)',
 ] as const;
 
-const MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11';
-
 export class DashboardContractService {
   public readonly contract: Contract;
   private readonly multicall3: Contract;
@@ -19,14 +17,19 @@ export class DashboardContractService {
   constructor(
     private readonly provider: ExecutionProvider,
     private readonly dashboardAddress: string,
+    private readonly multicall3Address: string,
     private readonly logger: LoggerService,
   ) {
     if (!dashboardAddress) {
       throw new Error('Dashboard contract address is not defined');
     }
 
+    if (!multicall3Address) {
+      throw new Error('Multicall3 contract address is not defined');
+    }
+
     this.contract = new Contract(dashboardAddress, DashboardAbi, provider);
-    this.multicall3 = new Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, provider);
+    this.multicall3 = new Contract(multicall3Address, MULTICALL3_ABI, provider);
   }
 
   get address(): string {

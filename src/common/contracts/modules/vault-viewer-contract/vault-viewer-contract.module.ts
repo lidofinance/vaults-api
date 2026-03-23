@@ -10,7 +10,7 @@ import { VAULT_VIEWER_CONTRACT } from '../../contracts.constants';
     {
       provide: VaultViewerContractService,
       useFactory: async (provider: ExecutionProvider, config: ConfigService, logger: LoggerService) => {
-        const addressMap = await config.getCustomConfigContractsAddressMap();
+        const addressMap = config.getCustomConfigContractsAddressMap();
         const vaultViewerAddress = addressMap ? addressMap.get(VAULT_VIEWER_CONTRACT) : undefined;
         return new VaultViewerContractService(provider, vaultViewerAddress, logger);
       },
