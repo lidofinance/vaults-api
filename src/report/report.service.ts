@@ -417,22 +417,12 @@ export class ReportService {
   ): Promise<{ settledGrowth: bigint; feeRate: bigint } | null> => {
     try {
       const dashboard = this.dashboardContractFactory.get(dashboardAddress);
-
-      const [settledGrowthRaw, feeRateRaw] = await dashboard.contract.callStatic.multicall(
-        [
-          dashboard.contract.interface.encodeFunctionData('settledGrowth'),
-          dashboard.contract.interface.encodeFunctionData('feeRate'),
-        ],
-        { blockTag: blockNumber },
+      return await dashboard.getMetricsSnapshot({ blockTag: blockNumber });
+    } catch (e) {
+      this.logger.error(
+        `[getDashboardMetricsSnapshot] Failed for dashboard=${dashboardAddress} at block=${blockNumber}`,
+        e,
       );
-
-      const settledGrowth = BigInt(
-        dashboard.contract.interface.decodeFunctionResult('settledGrowth', settledGrowthRaw)[0].toString(),
-      );
-      const feeRate = BigInt(dashboard.contract.interface.decodeFunctionResult('feeRate', feeRateRaw)[0].toString());
-
-      return { settledGrowth, feeRate };
-    } catch {
       return null;
     }
   };
