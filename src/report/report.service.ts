@@ -58,27 +58,6 @@ export class ReportService {
       },
     });
 
-    this.noFeeSnapshotCache = new LRUCache<string, NOFeeSnapshot | null>({
-      max: VAULTS_COUNT_CACHE,
-      ttl: 0,
-      fetchMethod: async (key: string) => {
-        const [vaultAddress, blockRaw, totalValueWeiRaw, inOutDeltaRaw] = key.split('|');
-
-        const blockNumber = Number(blockRaw);
-        const totalValueWei = BigInt(totalValueWeiRaw);
-        const inOutDelta = BigInt(inOutDeltaRaw);
-
-        const dashboardAddress = await this.getDashboardAddress(vaultAddress, blockNumber);
-
-        const snapshot = await this.getDashboardMetricsSnapshot(dashboardAddress, blockNumber);
-        if (snapshot == null) {
-          return null;
-        }
-
-        return this.wrapToNOFeeSnapshot(totalValueWei, inOutDelta, snapshot.settledGrowth, snapshot.feeRate);
-      },
-    });
-
     this.dashboardAddressCache = new LRUCache<string, string>({
       max: VAULTS_COUNT_CACHE,
       ttl: 0,
@@ -90,6 +69,45 @@ export class ReportService {
         return this.vaultHubContractService.getVaultOwner(vaultAddress, {
           blockTag: blockNumber,
         });
+      },
+    });
+
+    this.noFeeSnapshotCache = new LRUCache<string, NOFeeSnapshot | null>({
+      max: VAULTS_COUNT_CACHE,
+      ttl: 0,
+      fetchMethod: async (key: string) => {
+        const [vaultAddress, blockRaw, totalValueWeiRaw, inOutDeltaRaw] = key.split('|');
+
+        const blockNumber = Number(blockRaw);
+        const totalValueWei = BigInt(totalValueWeiRaw);
+        const inOutDelta = BigInt(inOutDeltaRaw);
+
+        try {
+          const dashboardAddress = await this.dashboardAddressCache.fetch(
+            `${vaultAddress.toLowerCase()}|${blockNumber}`,
+          );
+          const dashboard = this.dashboardContractFactory.get(dashboardAddress);
+
+          const snapshot = await dashboard.getNOFeeSnapshot({
+            blockTag: blockNumber,
+          });
+
+          const accruedFee = this.lsvService.calcAccruedFeeOffChain({
+            totalValueWei,
+            inOutDelta,
+            settledGrowth: snapshot.settledGrowth,
+            feeRate: snapshot.feeRate,
+          });
+
+          return {
+            accruedFee,
+            settledGrowth: snapshot.settledGrowth,
+            feeRate: snapshot.feeRate,
+          };
+        } catch (e) {
+          this.logger.error(`[noFeeSnapshotCache] Failed for vault=${vaultAddress} block=${blockNumber}`, e);
+          return null;
+        }
       },
     });
   }
@@ -409,26 +427,6 @@ export class ReportService {
     return this.shareRateCache.fetch(blockNumber);
   };
 
-  private getDashboardAddress = async (vaultAddress: string, blockNumber: number): Promise<string> => {
-    return this.dashboardAddressCache.fetch(`${vaultAddress.toLowerCase()}|${blockNumber}`);
-  };
-
-  private getDashboardMetricsSnapshot = async (
-    dashboardAddress: string,
-    blockNumber: number,
-  ): Promise<{ settledGrowth: bigint; feeRate: bigint } | null> => {
-    try {
-      const dashboard = this.dashboardContractFactory.get(dashboardAddress);
-      return await dashboard.getMetricsSnapshot({ blockTag: blockNumber });
-    } catch (e) {
-      this.logger.error(
-        `[getDashboardMetricsSnapshot] Failed for dashboard=${dashboardAddress} at block=${blockNumber}`,
-        e,
-      );
-      return null;
-    }
-  };
-
   private getNOFeeSnapshot = async (
     vaultAddress: string,
     blockNumber: number,
@@ -437,20 +435,5 @@ export class ReportService {
   ): Promise<NOFeeSnapshot | null> => {
     const key = `${vaultAddress.toLowerCase()}|${blockNumber}|${totalValueWei.toString()}|${inOutDelta.toString()}`;
     return this.noFeeSnapshotCache.fetch(key);
-  };
-
-  private wrapToNOFeeSnapshot = (
-    totalValueWei: bigint,
-    inOutDelta: bigint,
-    settledGrowth: bigint,
-    feeRate: bigint,
-  ): NOFeeSnapshot => {
-    const accruedFee = this.lsvService.calcAccruedFeeOffChain({
-      totalValueWei,
-      inOutDelta,
-      settledGrowth,
-      feeRate,
-    });
-    return { accruedFee, settledGrowth, feeRate };
   };
 }
