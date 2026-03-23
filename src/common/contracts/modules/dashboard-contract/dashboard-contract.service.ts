@@ -46,7 +46,7 @@ export class DashboardContractService {
     return BigInt(value);
   }
 
-  async getNOFeeSnapshot(overrides?: Overrides): Promise<{ settledGrowth: bigint; feeRate: bigint }> {
+  async getSettledGrowthAndFeeRate(overrides?: Overrides): Promise<{ settledGrowth: bigint; feeRate: bigint }> {
     const calls = [
       {
         target: this.address,

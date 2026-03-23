@@ -88,7 +88,7 @@ export class ReportService {
           );
           const dashboard = this.dashboardContractFactory.get(dashboardAddress);
 
-          const snapshot = await dashboard.getNOFeeSnapshot({
+          const snapshot = await dashboard.getSettledGrowthAndFeeRate({
             blockTag: blockNumber,
           });
 
