@@ -23,6 +23,7 @@ const VAULT_REPORT_STATS_SELECT_FIELDS = [
   'stats.bottomLine AS "bottomLine"',
   'stats.carrySpreadAprPercent AS "carrySpreadAprPercent"',
   'stats.updatedAt AS "updatedAt"',
+  'stats.anomaly AS "anomaly"',
 ];
 
 @Injectable()
@@ -272,6 +273,7 @@ export class VaultDbService {
       query
         .select([
           ...VAULT_REPORT_STATS_SELECT_FIELDS,
+          'stats.anomaly AS "anomaly"',
           'currentReport.blockNumber AS "blockNumber"',
           'currentReport.timestamp AS "timestamp"',
           'currentReport.cid AS "reportCid"',
@@ -300,7 +302,8 @@ export class VaultDbService {
     const exists = await this.existsVaultByAddress(vaultAddress);
     if (!exists) return null;
 
-    const zeroData = (fromTimestamp = 0, toTimestamp = 0): VaultAprSma => ({
+    const zeroData = (fromTimestamp = 0, toTimestamp = 0, outdated = false): VaultAprSma => ({
+      outdated,
       days,
       count: 0,
       range: { fromTimestamp, toTimestamp },
@@ -310,8 +313,24 @@ export class VaultDbService {
       carrySpreadApr: { sma: 0, aprs: [] },
     });
 
-    const toTimestamp = await this.getLatestReportTimestampForVault(vaultAddress);
-    if (!toTimestamp) return zeroData();
+    const latestTimestamp = await this.getLatestReportTimestampForVault(vaultAddress);
+    if (!latestTimestamp) return zeroData();
+
+    // Find the latest NON-anomalous metric.
+    // APR SMA window must end at the latest valid point, not necessarily at the latest report.
+    const latestValidRow = await this.vaultReportStatRepo
+      .createQueryBuilder('stats')
+      .innerJoin('stats.vault', 'vault')
+      .innerJoin('stats.currentReport', 'currentReport')
+      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
+      .andWhere('stats.anomaly = false')
+      .select('currentReport.timestamp', 'timestamp')
+      .orderBy('currentReport.timestamp', 'DESC')
+      .limit(1)
+      .getRawOne<{ timestamp: number }>();
+
+    const toTimestamp = latestValidRow?.timestamp ?? null;
+    if (!toTimestamp) return zeroData(0, latestTimestamp, true);
     // Round the fromTimestamp report down to 00:00 UTC.
     // This ensures a consistent N-day window ending at midnight.
     // Example:
@@ -329,7 +348,14 @@ export class VaultDbService {
     fromTimestamp = fromTimestamp - (fromTimestamp % SECONDS_PER_DAY);
 
     const rows = await this.getVaultReportStatsInRange(vaultAddress, fromTimestamp, toTimestamp, undefined, undefined);
-    if (rows.length === 0) return zeroData(fromTimestamp, toTimestamp);
+    if (rows.length === 0) return zeroData(fromTimestamp, toTimestamp, latestTimestamp !== toTimestamp);
+
+    // Exclude anomaly=true rows from SMA calculation.
+    const validRows = rows.filter((row) => row.anomaly === false);
+
+    if (validRows.length === 0) {
+      return zeroData(fromTimestamp, toTimestamp, latestTimestamp !== toTimestamp);
+    }
 
     const meta: SeriesReportPoint[] = [];
     const grossStakingAprPercentSeries: number[] = [];
@@ -340,8 +366,9 @@ export class VaultDbService {
     let netStakingAprPercentSum = 0;
     let carrySpreadAprPercentSum = 0;
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+    for (let i = 0; i < validRows.length; i++) {
+      const row = validRows[i];
+
       meta[i] = { reportCid: row.reportCid, timestamp: row.timestamp };
 
       grossStakingAprPercentSeries[i] = row.grossStakingAprPercent;
@@ -353,21 +380,24 @@ export class VaultDbService {
       carrySpreadAprPercentSum += row.carrySpreadAprPercent;
     }
 
+    const outdated = latestTimestamp !== toTimestamp;
+
     return {
+      outdated,
       days,
-      count: rows.length,
+      count: validRows.length,
       range: { fromTimestamp, toTimestamp },
       meta,
       grossStakingApr: {
-        sma: grossStakingAprPercentSum / rows.length,
+        sma: grossStakingAprPercentSum / validRows.length,
         aprs: grossStakingAprPercentSeries,
       },
       netStakingApr: {
-        sma: netStakingAprPercentSum / rows.length,
+        sma: netStakingAprPercentSum / validRows.length,
         aprs: netStakingAprPercentSeries,
       },
       carrySpreadApr: {
-        sma: carrySpreadAprPercentSum / rows.length,
+        sma: carrySpreadAprPercentSum / validRows.length,
         aprs: carrySpreadAprPercentSeries,
       },
     };

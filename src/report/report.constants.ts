@@ -1,0 +1,1 @@
+export const APR_ANOMALY_THRESHOLD_PERCENT = 1000;

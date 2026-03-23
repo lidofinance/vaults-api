@@ -1,4 +1,5 @@
 export const vaultAprSmaForDaysExample = {
+  "outdated": false,
   "days": 7,
   "count": 22,
   "range": {
@@ -110,6 +111,7 @@ export const vaultAprSmaForDaysExample = {
 };
 
 export const zeroVaultAprSmaForDaysExample = {
+  outdated: false,
   days: 7,
   count: 0,
   range: { fromTimestamp: 0, toTimestamp: 0 },

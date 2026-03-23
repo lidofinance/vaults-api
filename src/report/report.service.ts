@@ -1,29 +1,42 @@
 import { LRUCache } from 'lru-cache';
+import pLimit from 'p-limit';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ConfigService } from 'common/config';
 import { PrometheusService } from 'common/prometheus';
+import { DashboardContractFactory } from 'common/contracts/modules/dashboard-contract';
+import { StakingVaultContractFactory } from 'common/contracts/modules/staking-vault-contract';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { LidoContractService } from 'common/contracts/modules/lido-contract';
-import { ReportEntity, ReportLeafEntity, ReportDbService } from 'db/report-db';
+import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
+import { ReportDbService, ReportEntity, ReportLeafEntity } from 'db/report-db';
 import { VaultDbService } from 'db/vault-db';
 import { SingleFlight } from 'common/job/single-flight.decorator';
 import { TrackJob } from 'common/job/track-job.decorator';
-import { LsvService } from 'lsv';
+import { LsvService, NOFeeSnapshot } from 'lsv';
+
+import { APR_ANOMALY_THRESHOLD_PERCENT } from './report.constants';
+
+const VAULTS_COUNT_CACHE = 10_000;
 
 @Injectable()
 export class ReportService {
   private readonly shareRateCache: LRUCache<number, bigint>;
+  private readonly noFeeSnapshotCache: LRUCache<string, NOFeeSnapshot | null>;
+  private readonly dashboardAddressCache: LRUCache<string, string>;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
     @Inject(LOGGER_PROVIDER) private readonly logger: LoggerService,
+    private readonly dashboardContractFactory: DashboardContractFactory,
+    private readonly stakingVaultContractFactory: StakingVaultContractFactory,
     private readonly lidoContractService: LidoContractService,
     private readonly lazyOracleContractService: LazyOracleContractService,
     private readonly reportDbService: ReportDbService,
+    private readonly vaultHubContractService: VaultHubContractService,
     private readonly vaultDbService: VaultDbService,
     private readonly lsvService: LsvService,
     private readonly prometheusService: PrometheusService,
@@ -42,6 +55,59 @@ export class ReportService {
         ]);
         // https://github.com/lidofinance/lido-staking-vault-cli/blob/develop/utils/share-rate.ts
         return totalShares !== 0n ? (totalSupply * 10n ** 27n) / totalShares : 0n;
+      },
+    });
+
+    this.dashboardAddressCache = new LRUCache<string, string>({
+      max: VAULTS_COUNT_CACHE,
+      ttl: 0,
+      fetchMethod: async (key: string) => {
+        const [vaultAddress, blockRaw] = key.split('|');
+        const blockNumber = Number(blockRaw);
+
+        // support only connected vaults
+        return this.vaultHubContractService.getVaultOwner(vaultAddress, {
+          blockTag: blockNumber,
+        });
+      },
+    });
+
+    this.noFeeSnapshotCache = new LRUCache<string, NOFeeSnapshot | null>({
+      max: VAULTS_COUNT_CACHE,
+      ttl: 0,
+      fetchMethod: async (key: string) => {
+        const [vaultAddress, blockRaw, totalValueWeiRaw, inOutDeltaRaw] = key.split('|');
+
+        const blockNumber = Number(blockRaw);
+        const totalValueWei = BigInt(totalValueWeiRaw);
+        const inOutDelta = BigInt(inOutDeltaRaw);
+
+        try {
+          const dashboardAddress = await this.dashboardAddressCache.fetch(
+            `${vaultAddress.toLowerCase()}|${blockNumber}`,
+          );
+          const dashboard = this.dashboardContractFactory.get(dashboardAddress);
+
+          const snapshot = await dashboard.getSettledGrowthAndFeeRate({
+            blockTag: blockNumber,
+          });
+
+          const accruedFee = this.lsvService.calcAccruedFeeOffChain({
+            totalValueWei,
+            inOutDelta,
+            settledGrowth: snapshot.settledGrowth,
+            feeRate: snapshot.feeRate,
+          });
+
+          return {
+            accruedFee,
+            settledGrowth: snapshot.settledGrowth,
+            feeRate: snapshot.feeRate,
+          };
+        } catch (e) {
+          this.logger.error(`[noFeeSnapshotCache] Failed for vault=${vaultAddress} block=${blockNumber}`, e);
+          return null;
+        }
       },
     });
   }
@@ -243,65 +309,110 @@ export class ReportService {
     const previousLeavesByVaultAddress = new Map(previousLeaves.map((leaf) => [leaf.vaultAddress, leaf]));
     const currentLeavesByVaultAddress = new Map(currentLeaves.map((leaf) => [leaf.vaultAddress, leaf]));
 
-    const shareRatePrev = await this.calculateShareRate(previousReport.blockNumber);
-    const shareRateCurr = await this.calculateShareRate(currentReport.blockNumber);
+    const [shareRatePrev, shareRateCurr] = await Promise.all([
+      this.calculateShareRate(previousReport.blockNumber),
+      this.calculateShareRate(currentReport.blockNumber),
+    ]);
+
+    // Concurrency limit for vault metrics processing.
+    // Helps balance performance and resource usage (RPC, DB, CPU).
+    const concurrency = this.configService.jobs['reportMetricsProcessingConcurrency'] ?? 20;
+    // p-limit is used to control the number of concurrently executing async tasks
+    // to prevent rate limits and excessive load
+    const vaultsReportMetricsProcessingLimit = pLimit(concurrency);
+    const tasks: Array<Promise<void>> = [];
 
     for (const [vaultAddress, prevLeaf] of previousLeavesByVaultAddress.entries()) {
       const currLeaf = currentLeavesByVaultAddress.get(vaultAddress);
       if (!currLeaf) continue;
 
-      const currentVaultReport = LsvService.transformToVaultReportCli(currentReport, currLeaf);
-      const previousVaultReport = LsvService.transformToVaultReportCli(previousReport, prevLeaf);
+      tasks.push(
+        vaultsReportMetricsProcessingLimit(async () => {
+          const currentVaultReport = LsvService.transformToVaultReportCli(currentReport, currLeaf);
+          const previousVaultReport = LsvService.transformToVaultReportCli(previousReport, prevLeaf);
 
-      const vaultState = await this.vaultDbService.getStateByVaultAddress(vaultAddress);
-      const accruedFee = BigInt(vaultState?.accruedFee ?? 0);
+          const rebaseReward = await this.lsvService.calculateRebaseReward({
+            shareRatePrev,
+            shareRateCurr,
+            sharesPrev: BigInt(prevLeaf.liabilityShares),
+          });
 
-      const rebaseReward = await this.lsvService.calculateRebaseReward({
-        shareRatePrev,
-        shareRateCurr,
-        sharesPrev: BigInt(prevLeaf.liabilityShares),
-        sharesCurr: BigInt(currLeaf.liabilityShares),
-      });
+          const [noFeePrev, noFeeCurr] = await Promise.all([
+            this.getNOFeeSnapshot(
+              vaultAddress,
+              previousVaultReport.blockNumber,
+              BigInt(previousVaultReport.data.totalValueWei),
+              BigInt(previousVaultReport.extraData.inOutDelta),
+            ),
+            this.getNOFeeSnapshot(
+              vaultAddress,
+              currentVaultReport.blockNumber,
+              BigInt(currentVaultReport.data.totalValueWei),
+              BigInt(currentVaultReport.extraData.inOutDelta),
+            ),
+          ]);
 
-      const metrics = await this.lsvService.calcReportMetrics({
-        reports: {
-          current: currentVaultReport,
-          previous: previousVaultReport,
-        },
-        nodeOperatorAccruedFee: accruedFee,
-        stEthLiabilityRebaseRewards: rebaseReward,
-      });
+          if (noFeePrev == null) {
+            this.logger.log(
+              `[calculateForVaultsBasedPrevReport] Skip calculation: noFeePrev is null for vault=${vaultAddress} at block=${previousVaultReport.blockNumber}`,
+            );
+            return;
+          }
 
-      // Explicitly create vault as isDisconnected: true.
-      // Connected vaults were preloaded before metrics calculation.
-      // During cold start we process all historical reports,
-      // which can reference disconnected vaults.
-      const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(vaultAddress, { isDisconnected: true });
+          if (noFeeCurr == null) {
+            this.logger.log(
+              `[calculateForVaultsBasedPrevReport] Skip calculation: noFeeCurr is null for vault=${vaultAddress} at block=${currentVaultReport.blockNumber}`,
+            );
+            return;
+          }
 
-      await this.vaultDbService.addOrUpdateReportStats({
-        vault: vaultDbEntity,
-        currentReport,
-        previousReport,
-        rebaseReward: rebaseReward.toString(),
-        grossStakingRewards: metrics.grossStakingRewards.toString(),
-        nodeOperatorRewards: metrics.nodeOperatorRewards.toString(),
-        dailyLidoFees: metrics.dailyLidoFees.toString(),
-        netStakingRewards: metrics.netStakingRewards.toString(),
-        grossStakingAPR: metrics.grossStakingAPR.apr.toString(),
-        grossStakingAprBps: metrics.grossStakingAPR.apr_bps,
-        grossStakingAprPercent: metrics.grossStakingAPR.apr_percent,
-        netStakingAPR: metrics.netStakingAPR.apr.toString(),
-        netStakingAprBps: metrics.netStakingAPR.apr_bps,
-        netStakingAprPercent: metrics.netStakingAPR.apr_percent,
-        bottomLine: metrics.bottomLine.toString(),
-        carrySpreadAPR: metrics.carrySpread.apr.toString(),
-        carrySpreadAprBps: metrics.carrySpread.apr_bps,
-        carrySpreadAprPercent: metrics.carrySpread.apr_percent,
-        updatedAt: new Date(),
-      });
+          const metrics = await this.lsvService.calcReportMetrics({
+            reports: {
+              current: currentVaultReport,
+              previous: previousVaultReport,
+            },
+            noFeeCurr,
+            noFeePrev,
+            stEthLiabilityRebaseRewards: rebaseReward,
+          });
 
-      this.logger.log(`[calculateForVaultsBasedPrevReport] Saved report metrics for ${vaultAddress}`);
+          // Explicitly create vault as isDisconnected: true.
+          // Connected vaults were preloaded before metrics calculation.
+          // During cold start we process all historical reports,
+          // which can reference disconnected vaults.
+          const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(vaultAddress, {
+            isDisconnected: true,
+          });
+
+          await this.vaultDbService.addOrUpdateReportStats({
+            vault: vaultDbEntity,
+            currentReport,
+            previousReport,
+            rebaseReward: rebaseReward.toString(),
+            grossStakingRewards: metrics.grossStakingRewards.toString(),
+            nodeOperatorRewards: metrics.nodeOperatorRewards.toString(),
+            dailyLidoFees: metrics.dailyLidoFees.toString(),
+            netStakingRewards: metrics.netStakingRewards.toString(),
+            grossStakingAPR: metrics.grossStakingAPR.apr.toString(),
+            grossStakingAprBps: metrics.grossStakingAPR.apr_bps,
+            grossStakingAprPercent: metrics.grossStakingAPR.apr_percent,
+            netStakingAPR: metrics.netStakingAPR.apr.toString(),
+            netStakingAprBps: metrics.netStakingAPR.apr_bps,
+            netStakingAprPercent: metrics.netStakingAPR.apr_percent,
+            bottomLine: metrics.bottomLine.toString(),
+            carrySpreadAPR: metrics.carrySpread.apr.toString(),
+            carrySpreadAprBps: metrics.carrySpread.apr_bps,
+            carrySpreadAprPercent: metrics.carrySpread.apr_percent,
+            anomaly: metrics.grossStakingAPR.apr_percent >= APR_ANOMALY_THRESHOLD_PERCENT,
+            updatedAt: new Date(),
+          });
+
+          this.logger.log(`[calculateForVaultsBasedPrevReport] Saved report metrics for ${vaultAddress}`);
+        }),
+      );
     }
+
+    await Promise.allSettled(tasks);
   }
 
   private async totalSupply(blockNumber: number): Promise<bigint> {
@@ -314,5 +425,15 @@ export class ReportService {
 
   private calculateShareRate = async (blockNumber: number): Promise<bigint> => {
     return this.shareRateCache.fetch(blockNumber);
+  };
+
+  private getNOFeeSnapshot = async (
+    vaultAddress: string,
+    blockNumber: number,
+    totalValueWei: bigint,
+    inOutDelta: bigint,
+  ): Promise<NOFeeSnapshot | null> => {
+    const key = `${vaultAddress.toLowerCase()}|${blockNumber}|${totalValueWei.toString()}|${inOutDelta.toString()}`;
+    return this.noFeeSnapshotCache.fetch(key);
   };
 }

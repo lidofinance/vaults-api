@@ -67,4 +67,7 @@ export class VaultReportStatEntity {
 
   @Column({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
+
+  @Column({ name: 'anomaly', type: 'boolean', default: false })
+  anomaly: boolean;
 }
