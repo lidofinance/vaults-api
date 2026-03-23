@@ -346,6 +346,9 @@ export class ReportService {
             return;
           }
 
+          console.log('noFeeCurr', noFeeCurr);
+          console.log('noFeePrev', noFeePrev);
+
           const metrics = await this.lsvService.calcReportMetrics({
             reports: {
               current: currentVaultReport,

@@ -34,8 +34,8 @@ export class ReportJobsService {
           return;
         }
 
-        await this.vaultService.fetchAllVaultsAndCalculateStates(blockNumber);
-        await this.reportService.fetchAllReports();
+        // await this.vaultService.fetchAllVaultsAndCalculateStates(blockNumber);
+        // await this.reportService.fetchAllReports();
         await this.reportService.calculateVaultMetrics();
       },
       null,
@@ -44,6 +44,7 @@ export class ReportJobsService {
     );
 
     this.schedulerRegistry.addCronJob('reports-cron', job);
+    await job.fireOnTick();
     job.start();
 
     this.reportService.subscribeToEvents();
