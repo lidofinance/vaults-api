@@ -298,7 +298,7 @@ export class ReportService {
 
     // Concurrency limit for vault metrics processing.
     // Helps balance performance and resource usage (RPC, DB, CPU).
-    const concurrency = this.configService.jobs['reportReportMetricsProcessingConcurrency'] ?? 5;
+    const concurrency = this.configService.jobs['reportMetricsProcessingConcurrency'] ?? 20;
     // p-limit is used to control the number of concurrently executing async tasks
     // to prevent rate limits and excessive load
     const vaultsReportMetricsProcessingLimit = pLimit(concurrency);

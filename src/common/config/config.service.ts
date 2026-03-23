@@ -93,7 +93,7 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
       reportBatchSize: this.get('REPORT_BATCH_SIZE'),
       reportCron: this.get('REPORT_CRON'),
       reportCronTZ: 'UTC',
-      reportReportMetricsProcessingConcurrency: this.get('REPORT_REPORT_METRICS_PROCESSING_CONCURRENCY'),
+      reportMetricsProcessingConcurrency: this.get('REPORT_METRICS_PROCESSING_CONCURRENCY'),
     };
   }
 }

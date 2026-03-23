@@ -125,7 +125,7 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsNumber()
   @Transform(toNumber())
-  REPORT_REPORT_METRICS_PROCESSING_CONCURRENCY = 20;
+  REPORT_METRICS_PROCESSING_CONCURRENCY = 20;
 }
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
