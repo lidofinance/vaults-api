@@ -19,6 +19,8 @@ import { LsvService, NOFeeSnapshot } from 'lsv';
 
 import { APR_ANOMALY_THRESHOLD_PERCENT } from './report.constants';
 
+const VAULTS_COUNT_CACHE = 10_000;
+
 @Injectable()
 export class ReportService {
   private readonly shareRateCache: LRUCache<number, bigint>;
@@ -57,7 +59,7 @@ export class ReportService {
     });
 
     this.noFeeSnapshotCache = new LRUCache<string, NOFeeSnapshot | null>({
-      max: 10_000,
+      max: VAULTS_COUNT_CACHE,
       ttl: 0,
       fetchMethod: async (key: string) => {
         const [vaultAddress, blockRaw, totalValueWeiRaw, inOutDeltaRaw] = key.split('|');
@@ -78,7 +80,7 @@ export class ReportService {
     });
 
     this.dashboardAddressCache = new LRUCache<string, string>({
-      max: 10_000,
+      max: VAULTS_COUNT_CACHE,
       ttl: 0,
       fetchMethod: async (key: string) => {
         const [vaultAddress, blockRaw] = key.split('|');
