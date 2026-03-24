@@ -67,6 +67,7 @@ export function buildVaultsBaseQuery(manager: EntityManager, opts: VaultsBaseQue
         ])
         .from(VaultReportStatEntity, 'report_stat')
         .innerJoin(ReportEntity, 'r', 'r.id = report_stat.current_report_id')
+        .where('report_stat.anomaly = false')
         .orderBy('report_stat.vault_id', 'ASC') // required by 'DISTINCT ON (report_stat.vault_id) report_stat.vault_id'
         .addOrderBy('r.blockNumber', 'DESC') // get the latest data by 'report.blockNumber'
         .addOrderBy('report_stat.updated_at', 'DESC'), // get the latest data by 'report_stat.updated_at'
@@ -77,13 +78,14 @@ export function buildVaultsBaseQuery(manager: EntityManager, opts: VaultsBaseQue
   // join APR SMA
   qb.leftJoin(
     (subQuery) => {
-      // 1) latest timestamp per vault
+      // 1) latest non-anomalous timestamp per vault
       const latest = subQuery
         .subQuery()
         .select('vs.vault_id', 'vault_id')
         .addSelect('MAX(r.timestamp)', 'latest_ts')
         .from(VaultReportStatEntity, 'vs')
         .innerJoin(ReportEntity, 'r', 'r.id = vs.current_report_id')
+        .where('vs.anomaly = false')
         .groupBy('vs.vault_id');
 
       // 2) avg over [from_ts; latest_ts] where from_ts is rounded down to 00:00 UTC
@@ -95,7 +97,8 @@ export function buildVaultsBaseQuery(manager: EntityManager, opts: VaultsBaseQue
         .from(VaultReportStatEntity, 'vs2')
         .innerJoin(ReportEntity, 'r2', 'r2.id = vs2.current_report_id')
         .innerJoin(latest.getQuery(), 'latest', `"latest"."vault_id" = vs2.vault_id`)
-        .where(
+        .where('vs2.anomaly = false')
+        .andWhere(
           `
           r2.timestamp BETWEEN
             (
