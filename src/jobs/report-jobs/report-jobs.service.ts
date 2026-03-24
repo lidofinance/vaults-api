@@ -50,4 +50,21 @@ export class ReportJobsService {
 
     this.logger.log('ReportJobsService initialization finished');
   }
+
+  async onApplicationBootstrap() {
+    // COLD STARTUP report metrics calculation
+    const reportsFromCid = this.configService.jobs['coldStartupReportsFromCid'];
+    if (reportsFromCid) {
+      this.logger.log(
+        `[ReportJobsService.onApplicationBootstrap] Cold startup calculateVaultMetrics from CID: ${reportsFromCid}`,
+      );
+
+      void this.reportService.calculateVaultMetrics(reportsFromCid).catch((err) => {
+        this.logger.error(
+          `[ReportJobsService.onApplicationBootstrap] Failed cold startup calculateVaultMetrics from CID=${reportsFromCid}`,
+          err,
+        );
+      });
+    }
+  }
 }

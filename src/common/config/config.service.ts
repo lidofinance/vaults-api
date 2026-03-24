@@ -94,6 +94,7 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
       reportCron: this.get('REPORT_CRON'),
       reportCronTZ: 'UTC',
       reportMetricsProcessingConcurrency: this.get('REPORT_METRICS_PROCESSING_CONCURRENCY'),
+      coldStartupReportsFromCid: this.get('COLD_STARTUP_REPORTS_FROM_CID'),
     };
   }
 }

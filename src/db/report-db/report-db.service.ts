@@ -1,5 +1,5 @@
 import chunk from 'lodash.chunk';
-import { Repository } from 'typeorm';
+import { LessThanOrEqual, Repository } from 'typeorm';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { type Report } from '@lidofinance/lsv-cli/dist/utils/report/types';
@@ -7,6 +7,8 @@ import { type Report } from '@lidofinance/lsv-cli/dist/utils/report/types';
 import { ReportEntity, ReportLeafEntity } from './entities';
 
 const LEAF_BATCH_SIZE = 500;
+const SKIP = 0;
+const TAKE = 100;
 
 @Injectable()
 export class ReportDbService {
@@ -17,9 +19,24 @@ export class ReportDbService {
     private readonly reportLeafRepo: Repository<ReportLeafEntity>,
   ) {}
 
-  async getAllReportsSortedDesc(skip = 0, take = 100): Promise<ReportEntity[]> {
+  async getAllReportsSortedDesc(skip = SKIP, take = TAKE): Promise<ReportEntity[]> {
     return this.reportRepo.find({
       order: { timestamp: 'DESC' },
+      skip,
+      take,
+    });
+  }
+
+  async getReportsFromCidSortedDesc(cid: string, skip = SKIP, take = TAKE): Promise<ReportEntity[]> {
+    const report = await this.findByCid(cid);
+
+    return this.reportRepo.find({
+      where: {
+        timestamp: LessThanOrEqual(report.timestamp),
+      },
+      order: {
+        timestamp: 'DESC',
+      },
       skip,
       take,
     });

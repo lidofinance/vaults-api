@@ -168,7 +168,7 @@ export class ReportService {
 
   @TrackJob('calculateVaultMetrics')
   @SingleFlight({ key: 'calculateVaultMetrics', log: true })
-  public async calculateVaultMetrics(): Promise<void> {
+  public async calculateVaultMetrics(fromCid?: string): Promise<void> {
     const blockLimit = this.configService.get('START_REPORT_BLOCK_NUMBER');
     const batchSize = this.configService.jobs['reportBatchSize'];
     let skipPagination = 0;
@@ -180,7 +180,9 @@ export class ReportService {
 
     reportFetchLoop: while (true) {
       // [new report -> ... -> old report ]
-      const batch = await this.reportDbService.getAllReportsSortedDesc(skipPagination, batchSize);
+      const batch = fromCid
+        ? await this.reportDbService.getReportsFromCidSortedDesc(fromCid, skipPagination, batchSize)
+        : await this.reportDbService.getAllReportsSortedDesc(skipPagination, batchSize);
       if (batch.length === 0) break;
 
       for (const previousReport of batch) {
@@ -197,18 +199,20 @@ export class ReportService {
           `[calculateVaultMetrics] Calculating metrics: current=${currentReport.cid}, previous=${previousReport.cid},`,
         );
 
-        // Tail sync
-        const reportStatsExist = await this.vaultDbService.existsAnyStatsForReportPair(
-          previousReport.id,
-          currentReport.id,
-        );
-        if (reportStatsExist) {
-          this.logger.log(
-            `[calculateVaultMetrics] Tail sync: pair already calculated current=${currentReport.cid}), (previous=${previousReport.cid}, calc by last 2 reports and stop!`,
+        if (!fromCid) {
+          // Tail sync
+          const reportStatsExist = await this.vaultDbService.existsAnyStatsForReportPair(
+            previousReport.id,
+            currentReport.id,
           );
-          // Any way calc by last 2 reports
-          await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
-          break reportFetchLoop;
+          if (reportStatsExist) {
+            this.logger.log(
+              `[calculateVaultMetrics] Tail sync: pair already calculated current=${currentReport.cid}), (previous=${previousReport.cid}, calc by last 2 reports and stop!`,
+            );
+            // Any way calc by last 2 reports
+            await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
+            break reportFetchLoop;
+          }
         }
 
         await this.calculateForVaultsBasedPrevReport(currentReport, previousReport, currentLeaves, previousLeaves);
