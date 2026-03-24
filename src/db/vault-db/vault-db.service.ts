@@ -225,12 +225,26 @@ export class VaultDbService {
       .innerJoin('stats.currentReport', 'currentReport')
       .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
       .orderBy('currentReport.timestamp', 'DESC')
+      .select(['stats.anomaly AS "anomaly"'])
+      // for metrics
+      .comment(QUERY_METRICS_COMMENTS.GET_LATEST_VAULT_REPORT_STATS)
+      .getRawOne();
+
+    const latestNotAnomalyStats = await this.vaultReportStatRepo
+      .createQueryBuilder('stats')
+      .innerJoin('stats.vault', 'vault')
+      .innerJoin('stats.currentReport', 'currentReport')
+      .where('LOWER(vault.address) = LOWER(:vaultAddress)', { vaultAddress })
+      .andWhere('stats.anomaly = false')
+      .orderBy('currentReport.timestamp', 'DESC')
       .select(VAULT_REPORT_STATS_SELECT_FIELDS)
       // for metrics
       .comment(QUERY_METRICS_COMMENTS.GET_LATEST_VAULT_REPORT_STATS)
       .getRawOne();
 
-    if (!latestStats) {
+    const outdated = latestStats?.anomaly === true;
+
+    if (!latestNotAnomalyStats) {
       return {
         rebaseReward: 0,
         grossStakingRewards: '0',
@@ -242,10 +256,16 @@ export class VaultDbService {
         bottomLine: '0',
         carrySpreadAprPercent: 0,
         updatedAt: null,
+        outdated,
       };
     }
 
-    return latestStats;
+    delete latestNotAnomalyStats.anomaly;
+
+    return {
+      ...latestNotAnomalyStats,
+      outdated,
+    };
   }
 
   async getVaultReportStatsInRange(
