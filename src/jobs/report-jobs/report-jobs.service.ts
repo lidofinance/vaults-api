@@ -22,6 +22,23 @@ export class ReportJobsService {
   async onModuleInit() {
     this.logger.log('ReportJobsService initialization started');
 
+    // COLD STARTUP
+    const reportsFromCid = this.configService.jobs['coldStartupReportsFromCid'];
+    if (reportsFromCid) {
+      this.logger.log(
+        `[ReportJobsService.onModuleInit] Cold startup calculateVaultMetrics from CID: ${reportsFromCid}`,
+      );
+
+      try {
+        await this.reportService.calculateVaultMetrics(reportsFromCid);
+      } catch (err) {
+        this.logger.error(
+          `[ReportJobsService.onModuleInit] Failed cold startup calculateVaultMetrics from CID=${reportsFromCid}`,
+          err,
+        );
+      }
+    }
+
     const job = new CronJob(
       this.configService.jobs['reportCron'],
       async () => {

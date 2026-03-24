@@ -126,6 +126,10 @@ export class EnvironmentVariables {
   @IsNumber()
   @Transform(toNumber())
   REPORT_METRICS_PROCESSING_CONCURRENCY = 20;
+
+  @IsOptional()
+  @IsString()
+  COLD_STARTUP_REPORTS_FROM_CID: string | null = null;
 }
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
