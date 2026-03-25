@@ -1,21 +1,24 @@
 import { Hex, Address } from 'viem';
 import { Inject, Injectable } from '@nestjs/common';
 import { iterateUrls } from '@lidofinance/rpc';
-import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof';
-import {
-  getVaultReport,
-  getReportProofByVault,
-  type VaultReport as VaultReportCliType,
-} from '@lidofinance/lsv-cli/dist/utils/report';
-import { fetchIPFS, type Report } from '@lidofinance/lsv-cli/dist/utils';
+
+import { getVaultReport } from '@lidofinance/lsv-cli/dist/utils/report/report';
+import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dist/utils/proof/create-proof';
+import { getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report/report-proof';
+import { type VaultReport as VaultReportCliType } from '@lidofinance/lsv-cli/dist/utils/report/types';
+import { type Report } from '@lidofinance/lsv-cli/dist/utils/report';
+import { fetchIPFS } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 import { calculateRebaseReward, type CalculateRebaseRewardArgs } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
 import { calculateHealth, type CalculateHealthArgs } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
+import { calcAccruedFeeOffChain } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
 
 import { PrometheusService } from 'common/prometheus';
 import { ConfigService } from 'common/config';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db';
+
+import { CalcAccruedFeeOffChainParams } from './lsv.types';
 
 export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR';
 
@@ -158,6 +161,10 @@ export class LsvService {
 
   public async calcReportMetrics(args: ReportMetricsArgs): Promise<ReturnType<typeof reportMetrics>> {
     return reportMetrics({ ...args });
+  }
+
+  public calcAccruedFeeOffChain(params: CalcAccruedFeeOffChainParams): bigint {
+    return calcAccruedFeeOffChain(params);
   }
 
   public static transformToVaultReportCli(report: ReportEntity, leaf: ReportLeafEntity): VaultReportCliType {

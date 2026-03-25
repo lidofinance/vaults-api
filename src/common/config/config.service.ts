@@ -1,7 +1,7 @@
 import { ConfigService as ConfigServiceSource } from '@nestjs/config';
 import { LidoLocatorContractModule, LidoContractModule } from '@lido-nestjs/contracts';
 
-import { VAULT_VIEWER_CONTRACT } from 'common/contracts/contracts.constants';
+import { MULTICALL3_CONTRACT, VAULT_VIEWER_CONTRACT } from 'common/contracts/contracts.constants';
 
 import { EnvironmentVariables } from './env.validation';
 import { findNetworkConfig } from './networks/utils/find-network-config';
@@ -59,7 +59,7 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
     return this.get('CL_API_URLS') as [string, ...string[]];
   }
 
-  public async getCustomConfigContractsAddressMap() {
+  public getCustomConfigContractsAddressMap() {
     const name = this.get('CUSTOM_NETWORK_FILE_NAME');
 
     if (!name) {
@@ -76,6 +76,7 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
       [LidoContractModule.contractToken, contracts.lido],
       [LidoLocatorContractModule.contractToken, contracts.lidoLocator],
       [VAULT_VIEWER_CONTRACT, contracts.vaultViewer],
+      [MULTICALL3_CONTRACT, contracts.multicall3],
     ]);
   }
 
@@ -92,6 +93,8 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
       reportBatchSize: this.get('REPORT_BATCH_SIZE'),
       reportCron: this.get('REPORT_CRON'),
       reportCronTZ: 'UTC',
+      reportMetricsProcessingConcurrency: this.get('REPORT_METRICS_PROCESSING_CONCURRENCY'),
+      coldStartupReportsFromCid: this.get('COLD_STARTUP_REPORTS_FROM_CID'),
     };
   }
 }

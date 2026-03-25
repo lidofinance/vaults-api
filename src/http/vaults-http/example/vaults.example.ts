@@ -69,7 +69,8 @@ export const vaultLatestMetricsExample = {
   "netStakingAprPercent": 1.9248292225099999,
   "bottomLine": "174253498120759",
   "carrySpreadAprPercent": 1.83409916283,
-  "updatedAt": "2025-07-01T09:05:01.036Z"
+  "updatedAt": "2025-07-01T09:05:01.036Z",
+  "outdated": false,
 };
 
 export const vaultLatestMetricsRangeExample = [

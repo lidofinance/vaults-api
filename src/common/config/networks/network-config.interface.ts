@@ -3,6 +3,7 @@ export interface NetworkConfig {
     lido: string;
     lidoLocator: string;
     vaultViewer: string;
+    multicall3: string;
   };
   apis: {
     someApiBasePath: string;
