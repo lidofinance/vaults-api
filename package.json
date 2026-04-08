@@ -91,6 +91,9 @@
     "tsconfig-paths": "^4.1.2",
     "typescript": "^5.7.2"
   },
+  "resolutions": {
+    "h3": "^1.15.9"
+  },
   "jest": {
     "moduleFileExtensions": [
       "js",
