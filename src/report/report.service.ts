@@ -407,7 +407,7 @@ export class ReportService {
             carrySpreadAPR: metrics.carrySpread.apr.toString(),
             carrySpreadAprBps: metrics.carrySpread.apr_bps,
             carrySpreadAprPercent: metrics.carrySpread.apr_percent,
-            anomaly: metrics.grossStakingAPR.apr_percent >= APR_ANOMALY_THRESHOLD_PERCENT,
+            anomaly: Math.abs(metrics.grossStakingAPR.apr_percent) >= APR_ANOMALY_THRESHOLD_PERCENT,
             updatedAt: new Date(),
           });
 
