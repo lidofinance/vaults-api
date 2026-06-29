@@ -59,9 +59,41 @@ export class LsvService {
     return await iterateUrls(this.configService.clApiUrls, (url) => this._createProof(validatorIndex, url));
   }
 
+  private getIpfsGatewayUrl(cid: string, gateway: string): string {
+    return `${gateway.replace(/\/+$/, '')}/${cid}`;
+  }
+
+  private async assertIpfsReportSize(cid: string, gateway: string): Promise<void> {
+    const maxBytes = this.configService.get('REPORT_IPFS_MAX_CONTENT_LENGTH_BYTES');
+    if (!maxBytes) {
+      return;
+    }
+
+    const response = await fetch(this.getIpfsGatewayUrl(cid, gateway), { method: 'HEAD' });
+    if (!response.ok) {
+      throw new Error(`IPFS HEAD request failed with status=${response.status}`);
+    }
+
+    const contentLengthHeader = response.headers.get('content-length');
+    if (!contentLengthHeader) {
+      throw new Error('IPFS HEAD response is missing content-length');
+    }
+
+    const contentLength = Number(contentLengthHeader);
+    if (!Number.isFinite(contentLength)) {
+      throw new Error(`IPFS HEAD response has invalid content-length=${contentLengthHeader}`);
+    }
+
+    if (contentLength > maxBytes) {
+      throw new Error(`IPFS report is too large: contentLength=${contentLength}, maxBytes=${maxBytes}`);
+    }
+  }
+
   private async _fetchIPFS(cid: string, gateway: string): Promise<Report> {
     const endTimer = this.prometheusService.ipfsRequestDuration.startTimer();
     try {
+      await this.assertIpfsReportSize(cid, gateway);
+
       const report = await fetchIPFS<Report>(
         {
           cid,
