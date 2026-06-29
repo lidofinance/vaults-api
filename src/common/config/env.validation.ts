@@ -97,6 +97,12 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsNumber()
+  @Min(1)
+  @Transform(toNumber())
+  REPORT_IPFS_MAX_CONTENT_LENGTH_BYTES = 20 * 1024 * 1024;
+
+  @IsOptional()
+  @IsNumber()
   @Transform(toNumber())
   VAULTS_BATCH_SIZE = 50;
 
