@@ -38,6 +38,7 @@ jest.mock('@lidofinance/lsv-cli/dist/utils/statistic/report-statistic', () => ({
 describe('LsvService', () => {
   const cid = 'QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB';
   const gateway = 'https://ipfs.io/ipfs';
+  const fallbackGateway = 'https://dweb.link/ipfs';
   const maxBytes = 20 * 1024 * 1024;
 
   const configService = {
@@ -45,7 +46,7 @@ describe('LsvService', () => {
       if (key === 'REPORT_IPFS_MAX_CONTENT_LENGTH_BYTES') return maxBytes;
       return undefined;
     }),
-    ipfsGateways: [gateway],
+    ipfsGateways: [gateway, fallbackGateway],
   };
 
   const prometheusService = {
@@ -83,10 +84,11 @@ describe('LsvService', () => {
     });
 
     await expect(service.fetchIPFS(cid)).rejects.toThrow(
-      `IPFS report is too large: contentLength=2785017856, maxBytes=${maxBytes}`,
+      `IPFS report is too large (checked with content-length): contentLength=2785017856, maxBytes=${maxBytes}`,
     );
 
     expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
     expect(calculateIPFSAddCID).not.toHaveBeenCalled();
   });
 
@@ -168,10 +170,11 @@ describe('LsvService', () => {
     });
 
     await expect(service.fetchIPFS(cid)).rejects.toThrow(
-      `IPFS report is too large: receivedBytes=${maxBytes + 1}, maxBytes=${maxBytes}`,
+      `IPFS report is too large (checked with streaming): receivedBytes=${maxBytes + 1}, maxBytes=${maxBytes}`,
     );
 
     expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
     expect(calculateIPFSAddCID).not.toHaveBeenCalled();
   });
 });

@@ -22,6 +22,8 @@ import { CalcAccruedFeeOffChainParams } from './lsv.types';
 
 export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR';
 
+export class ReportTooLargeError extends Error {}
+
 @Injectable()
 export class LsvService {
   constructor(
@@ -84,7 +86,7 @@ export class LsvService {
           throw new Error(`IPFS GET response has invalid content-length=${contentLengthHeader}`);
         }
         if (maxBytes && contentLength > maxBytes) {
-          throw new Error(
+          throw new ReportTooLargeError(
             `IPFS report is too large (checked with content-length): contentLength=${contentLength}, maxBytes=${maxBytes}`,
           );
         }
@@ -107,7 +109,7 @@ export class LsvService {
           receivedBytes += value.byteLength;
           if (maxBytes && receivedBytes > maxBytes) {
             await reader.cancel();
-            throw new Error(
+            throw new ReportTooLargeError(
               `IPFS report is too large (checked with streaming): receivedBytes=${receivedBytes}, maxBytes=${maxBytes}`,
             );
           }
@@ -151,10 +153,21 @@ export class LsvService {
 
   public async fetchIPFS(cid: string): Promise<Report> {
     const endOverallTimer = this.prometheusService.ipfsOverallRequestDuration.startTimer();
+    let lastError: Error | null = null;
+
     try {
-      const report = await iterateUrls(this.configService.ipfsGateways, (url) => this._fetchIPFS(cid, url));
-      endOverallTimer({ result: 'success' });
-      return report;
+      for (const gateway of this.configService.ipfsGateways) {
+        try {
+          const report = await this._fetchIPFS(cid, gateway);
+          endOverallTimer({ result: 'success' });
+          return report;
+        } catch (error) {
+          lastError = error;
+          if (error instanceof ReportTooLargeError) break;
+        }
+      }
+
+      throw lastError ?? new Error('All IPFS gateways failed');
     } catch (error) {
       endOverallTimer({ result: 'error', cid });
       this.logger.error(`[LsvService.fetchIPFS] All IPFS gateways failed for cid=${cid}: ${error.message}`);
