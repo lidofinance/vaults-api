@@ -1,6 +1,6 @@
 import chunk from 'lodash.chunk';
 import { LessThanOrEqual, Repository } from 'typeorm';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { type Report } from '@lidofinance/lsv-cli/dist/utils/report/types';
 
@@ -29,6 +29,9 @@ export class ReportDbService {
 
   async getReportsFromCidSortedDesc(cid: string, skip = SKIP, take = TAKE): Promise<ReportEntity[]> {
     const report = await this.findByCid(cid);
+    if (!report) {
+      throw new NotFoundException(`Report with cid=${cid} not found`);
+    }
 
     return this.reportRepo.find({
       where: {

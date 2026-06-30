@@ -103,6 +103,12 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsNumber()
+  @Min(1)
+  @Transform(toNumber())
+  REPORT_IPFS_FETCH_TIMEOUT_MS = 20_000;
+
+  @IsOptional()
+  @IsNumber()
   @Transform(toNumber())
   VAULTS_BATCH_SIZE = 50;
 
