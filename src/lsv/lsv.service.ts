@@ -7,7 +7,7 @@ import { createPDGProof, ValidatorWitnessWithWC } from '@lidofinance/lsv-cli/dis
 import { getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report/report-proof';
 import { type VaultReport as VaultReportCliType } from '@lidofinance/lsv-cli/dist/utils/report/types';
 import { type Report } from '@lidofinance/lsv-cli/dist/utils/report';
-import { fetchIPFS } from '@lidofinance/lsv-cli/dist/utils/ipfs';
+import { calculateIPFSAddCID } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 import { calculateRebaseReward, type CalculateRebaseRewardArgs } from '@lidofinance/lsv-cli/dist/utils/rebase-rewards';
 import { calculateHealth, type CalculateHealthArgs } from '@lidofinance/lsv-cli/dist/utils/health/calculate-health';
 import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
@@ -21,6 +21,8 @@ import { ReportEntity, ReportLeafEntity } from 'db/report-db';
 import { CalcAccruedFeeOffChainParams } from './lsv.types';
 
 export const VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR = 'VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR';
+
+export class ReportTooLargeError extends Error {}
 
 @Injectable()
 export class LsvService {
@@ -63,45 +65,83 @@ export class LsvService {
     return `${gateway.replace(/\/+$/, '')}/${cid}`;
   }
 
-  private async assertIpfsReportSize(cid: string, gateway: string): Promise<void> {
+  private async fetchIPFSWithLimitAndVerify<T>(cid: string, gateway: string): Promise<T> {
     const maxBytes = this.configService.get('REPORT_IPFS_MAX_CONTENT_LENGTH_BYTES');
-    if (!maxBytes) {
-      return;
-    }
+    const timeoutMs = this.configService.get('REPORT_IPFS_FETCH_TIMEOUT_MS');
+    const abortController = new AbortController();
+    const timeout = timeoutMs
+      ? setTimeout(() => abortController.abort(new Error(`IPFS fetch timeout after ${timeoutMs}ms`)), timeoutMs)
+      : null;
 
-    const response = await fetch(this.getIpfsGatewayUrl(cid, gateway), { method: 'HEAD' });
-    if (!response.ok) {
-      throw new Error(`IPFS HEAD request failed with status=${response.status}`);
-    }
+    try {
+      const response = await fetch(this.getIpfsGatewayUrl(cid, gateway), { signal: abortController.signal });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch IPFS content: ${response.statusText}`);
+      }
 
-    const contentLengthHeader = response.headers.get('content-length');
-    if (!contentLengthHeader) {
-      throw new Error('IPFS HEAD response is missing content-length');
-    }
+      const contentLengthHeader = response.headers.get('content-length');
+      if (contentLengthHeader) {
+        const contentLength = Number(contentLengthHeader);
+        if (!Number.isFinite(contentLength)) {
+          throw new Error(`IPFS GET response has invalid content-length=${contentLengthHeader}`);
+        }
+        if (maxBytes && contentLength > maxBytes) {
+          throw new ReportTooLargeError(
+            `IPFS report is too large (checked with content-length): contentLength=${contentLength}, maxBytes=${maxBytes}`,
+          );
+        }
+      }
 
-    const contentLength = Number(contentLengthHeader);
-    if (!Number.isFinite(contentLength)) {
-      throw new Error(`IPFS HEAD response has invalid content-length=${contentLengthHeader}`);
-    }
+      if (!response.body) {
+        throw new Error('IPFS GET response is missing body');
+      }
 
-    if (contentLength > maxBytes) {
-      throw new Error(`IPFS report is too large: contentLength=${contentLength}, maxBytes=${maxBytes}`);
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let receivedBytes = 0;
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+
+          receivedBytes += value.byteLength;
+          if (maxBytes && receivedBytes > maxBytes) {
+            await reader.cancel();
+            throw new ReportTooLargeError(
+              `IPFS report is too large (checked with streaming): receivedBytes=${receivedBytes}, maxBytes=${maxBytes}`,
+            );
+          }
+
+          chunks.push(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      const fileContent = new Uint8Array(receivedBytes);
+      let offset = 0;
+      for (const chunk of chunks) {
+        fileContent.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+
+      const calculatedCID = await calculateIPFSAddCID(fileContent);
+      if (calculatedCID.toString() !== cid) {
+        throw new Error(`File hash mismatch! Expected ${cid}, but got ${calculatedCID}`);
+      }
+
+      return JSON.parse(new TextDecoder().decode(fileContent));
+    } finally {
+      if (timeout) clearTimeout(timeout);
     }
   }
 
   private async _fetchIPFS(cid: string, gateway: string): Promise<Report> {
     const endTimer = this.prometheusService.ipfsRequestDuration.startTimer();
     try {
-      await this.assertIpfsReportSize(cid, gateway);
-
-      const report = await fetchIPFS<Report>(
-        {
-          cid,
-          gateway,
-          bigNumberType: 'string',
-        },
-        false,
-      );
+      const report = await this.fetchIPFSWithLimitAndVerify<Report>(cid, gateway);
       endTimer({ result: 'success', gateway });
       return report;
     } catch (error) {
@@ -113,10 +153,21 @@ export class LsvService {
 
   public async fetchIPFS(cid: string): Promise<Report> {
     const endOverallTimer = this.prometheusService.ipfsOverallRequestDuration.startTimer();
+    let lastError: Error | null = null;
+
     try {
-      const report = await iterateUrls(this.configService.ipfsGateways, (url) => this._fetchIPFS(cid, url));
-      endOverallTimer({ result: 'success' });
-      return report;
+      for (const gateway of this.configService.ipfsGateways) {
+        try {
+          const report = await this._fetchIPFS(cid, gateway);
+          endOverallTimer({ result: 'success' });
+          return report;
+        } catch (error) {
+          lastError = error;
+          if (error instanceof ReportTooLargeError) break;
+        }
+      }
+
+      throw lastError ?? new Error('All IPFS gateways failed');
     } catch (error) {
       endOverallTimer({ result: 'error', cid });
       this.logger.error(`[LsvService.fetchIPFS] All IPFS gateways failed for cid=${cid}: ${error.message}`);

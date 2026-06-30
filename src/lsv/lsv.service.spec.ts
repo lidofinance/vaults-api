@@ -1,4 +1,4 @@
-import { fetchIPFS } from '@lidofinance/lsv-cli/dist/utils/ipfs';
+import { calculateIPFSAddCID } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 
 import { LsvService } from './lsv.service';
 
@@ -13,7 +13,7 @@ jest.mock('common/logger', () => ({
   LoggerService: class LoggerService {},
 }));
 jest.mock('@lidofinance/lsv-cli/dist/utils/ipfs', () => ({
-  fetchIPFS: jest.fn(),
+  calculateIPFSAddCID: jest.fn(),
 }));
 jest.mock('@lidofinance/lsv-cli/dist/utils/report/report', () => ({
   getVaultReport: jest.fn(),
@@ -38,6 +38,7 @@ jest.mock('@lidofinance/lsv-cli/dist/utils/statistic/report-statistic', () => ({
 describe('LsvService', () => {
   const cid = 'QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB';
   const gateway = 'https://ipfs.io/ipfs';
+  const fallbackGateway = 'https://dweb.link/ipfs';
   const maxBytes = 20 * 1024 * 1024;
 
   const configService = {
@@ -45,7 +46,7 @@ describe('LsvService', () => {
       if (key === 'REPORT_IPFS_MAX_CONTENT_LENGTH_BYTES') return maxBytes;
       return undefined;
     }),
-    ipfsGateways: [gateway],
+    ipfsGateways: [gateway, fallbackGateway],
   };
 
   const prometheusService = {
@@ -59,6 +60,7 @@ describe('LsvService', () => {
 
   const logger = {
     error: jest.fn(),
+    warn: jest.fn(),
   };
 
   let service: LsvService;
@@ -71,44 +73,108 @@ describe('LsvService', () => {
     global.fetch = fetchMock;
   });
 
-  it('rejects IPFS reports larger than REPORT_IPFS_MAX_CONTENT_LENGTH_BYTES before downloading body', async () => {
+  it('rejects IPFS reports larger than REPORT_IPFS_MAX_CONTENT_LENGTH_BYTES from content-length', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
+      statusText: 'OK',
       headers: {
         get: jest.fn((name: string) => (name.toLowerCase() === 'content-length' ? '2785017856' : null)),
       },
     });
 
     await expect(service.fetchIPFS(cid)).rejects.toThrow(
-      `IPFS report is too large: contentLength=2785017856, maxBytes=${maxBytes}`,
+      `IPFS report is too large (checked with content-length): contentLength=2785017856, maxBytes=${maxBytes}`,
     );
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { method: 'HEAD' });
-    expect(fetchIPFS).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
+    expect(calculateIPFSAddCID).not.toHaveBeenCalled();
   });
 
-  it('downloads IPFS report when content-length is within the limit', async () => {
+  it('downloads IPFS report using bounded stream when content-length is within the limit', async () => {
     const report = { values: [], tree: [] };
+    const encodedReport = new TextEncoder().encode(JSON.stringify(report));
+    const calculatedCid = {
+      toString: () => cid,
+    };
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
+      statusText: 'OK',
       headers: {
-        get: jest.fn((name: string) => (name.toLowerCase() === 'content-length' ? '10397' : null)),
+        get: jest.fn((name: string) => (name.toLowerCase() === 'content-length' ? String(encodedReport.length) : null)),
       },
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(encodedReport);
+          controller.close();
+        },
+      }),
     });
-    (fetchIPFS as jest.Mock).mockResolvedValue(report);
+    (calculateIPFSAddCID as jest.Mock).mockResolvedValue(calculatedCid);
 
-    await expect(service.fetchIPFS(cid)).resolves.toBe(report);
+    await expect(service.fetchIPFS(cid)).resolves.toEqual(report);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { method: 'HEAD' });
-    expect(fetchIPFS).toHaveBeenCalledWith(
-      {
-        cid,
-        gateway,
-        bigNumberType: 'string',
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(calculateIPFSAddCID).toHaveBeenCalledWith(encodedReport);
+  });
+
+  it('downloads IPFS report using bounded stream when content-length is missing', async () => {
+    const report = { values: [], tree: [] };
+    const encodedReport = new TextEncoder().encode(JSON.stringify(report));
+    const calculatedCid = {
+      toString: () => cid,
+    };
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      headers: {
+        get: jest.fn(() => null),
       },
-      false,
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(encodedReport);
+          controller.close();
+        },
+      }),
+    });
+    (calculateIPFSAddCID as jest.Mock).mockResolvedValue(calculatedCid);
+
+    await expect(service.fetchIPFS(cid)).resolves.toEqual(report);
+
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(calculateIPFSAddCID).toHaveBeenCalledWith(encodedReport);
+  });
+
+  it('rejects IPFS reports that exceed the limit while streaming', async () => {
+    const firstChunk = new Uint8Array(maxBytes);
+    const secondChunk = new Uint8Array(1);
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      headers: {
+        get: jest.fn(() => null),
+      },
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(firstChunk);
+          controller.enqueue(secondChunk);
+          controller.close();
+        },
+      }),
+    });
+
+    await expect(service.fetchIPFS(cid)).rejects.toThrow(
+      `IPFS report is too large (checked with streaming): receivedBytes=${maxBytes + 1}, maxBytes=${maxBytes}`,
     );
+
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
+    expect(calculateIPFSAddCID).not.toHaveBeenCalled();
   });
 });
