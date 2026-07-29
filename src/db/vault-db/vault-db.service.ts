@@ -1,9 +1,10 @@
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, MoreThan, Repository } from 'typeorm';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
+import { DASHBOARD_OWNER_ROLE, STAKING_VAULT_OWNER_ROLE } from 'vault/vault.constants';
 import { ReportEntity } from 'db/report-db/entities';
 
 import { Direction, DirectionEnum, SortFields } from './enums';
@@ -41,8 +42,9 @@ export class VaultDbService {
     private readonly vaultReportStatRepo: Repository<VaultReportStatEntity>,
   ) {}
 
-  async getVaults(limit = 10, offset = 0): Promise<VaultEntity[]> {
+  async getVaults(limit = 10, offset = 0, filter?: { isDisconnected?: boolean }): Promise<VaultEntity[]> {
     return await this.vaultRepo.find({
+      where: filter?.isDisconnected === undefined ? {} : { isDisconnected: filter.isDisconnected },
       take: limit,
       skip: offset,
       // ASC (ascending order) - 1 → 2 → 3 → 4 → ...
@@ -60,10 +62,55 @@ export class VaultDbService {
     return this.vaultRepo.count();
   }
 
+  /**
+   * Vaults created before the ownership columns existed — the one-off backfill input.
+   * Paginated by an id cursor rather than an offset: filled rows drop out of the result set,
+   * so an offset would skip the vaults that shifted into its place.
+   */
+  async getVaultsWithoutOwnership(limit: number, afterId = 0): Promise<VaultEntity[]> {
+    return this.vaultRepo.find({
+      where: { effectiveOwnerAddress: IsNull(), id: MoreThan(afterId) },
+      take: limit,
+      order: { id: 'ASC' },
+    });
+  }
+
+  /**
+   * Disconnected vaults with no Dashboard owner recorded. Either the owner is a plain address (there
+   * is nothing to record) or the rows were lost to a `VaultViewer` zero-response refresh, which is
+   * what the role members repair looks for. Paginated by an id cursor for the same reason as
+   * {@link getVaultsWithoutOwnership}.
+   */
+  async getDisconnectedVaultsWithoutDashboardOwner(limit: number, afterId = 0): Promise<VaultEntity[]> {
+    return this.vaultRepo
+      .createQueryBuilder('vault')
+      .where('vault.is_disconnected = true')
+      .andWhere('vault.id > :afterId', { afterId })
+      .andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM vault_members m
+          WHERE m.vault_id = vault.id AND m.role = :dashboardOwnerRole
+        )`,
+        { dashboardOwnerRole: DASHBOARD_OWNER_ROLE },
+      )
+      .orderBy('vault.id', 'ASC')
+      .take(limit)
+      .getMany();
+  }
+
   async getAllConnectedVaultAddresses(): Promise<string[]> {
     const rows = await this.vaultRepo.find({
       where: { isDisconnected: false },
       select: ['address'],
+    });
+    return rows.map((vault) => vault.address);
+  }
+
+  async getAllDisconnectedVaultAddresses(): Promise<string[]> {
+    const rows = await this.vaultRepo.find({
+      where: { isDisconnected: true },
+      select: ['address'],
+      order: { id: 'ASC' },
     });
     return rows.map((vault) => vault.address);
   }
@@ -92,12 +139,37 @@ export class VaultDbService {
     );
   }
 
-  async connectVault(vaultAddress: string): Promise<void> {
-    await this.vaultRepo.update({ address: vaultAddress }, { isDisconnected: false });
+  /** `connectionOwnerAddress` is `VaultHub`'s `connection.owner` — the effective owner while connected. */
+  async connectVault(vaultAddress: string, blockNumber: number, connectionOwnerAddress: string): Promise<void> {
+    await this.updateVaultOwnershipColumns(
+      vaultAddress,
+      blockNumber,
+      { isDisconnected: false, effectiveOwnerAddress: connectionOwnerAddress },
+      {},
+    );
   }
 
-  async disconnectVault(vaultAddress: string): Promise<void> {
-    await this.vaultRepo.update({ address: vaultAddress }, { isDisconnected: true });
+  async disconnectVault(vaultAddress: string, blockNumber: number, effectiveOwnerAddress: string): Promise<void> {
+    await this.updateVaultOwnershipColumns(
+      vaultAddress,
+      blockNumber,
+      { isDisconnected: true, effectiveOwnerAddress },
+      {},
+    );
+  }
+
+  async updateVaultOwnership(
+    vaultAddress: string,
+    effectiveOwnerAddress: string,
+    blockNumber: number,
+    opts: { onlyDisconnected?: boolean } = {},
+  ): Promise<void> {
+    await this.updateVaultOwnershipColumns(
+      vaultAddress,
+      blockNumber,
+      { effectiveOwnerAddress },
+      { onlyDisconnected: opts.onlyDisconnected },
+    );
   }
 
   async addOrUpdateState(entry: Partial<VaultStateEntity>): Promise<void> {
@@ -110,7 +182,7 @@ export class VaultDbService {
   async getVaultData(vaultAddress: string): Promise<VaultData | null> {
     return this.dataSource.transaction(async (manager) => {
       const vaultBaseQuery = buildVaultsBaseQuery(manager, {
-        includeDisconnected: false,
+        includeDisconnected: true,
         vaultAddress,
       }).limit(1);
 
@@ -156,8 +228,12 @@ export class VaultDbService {
         .limit(1)
         .getRawOne();
 
+      // Filtering by an address is the owner's personal view, so it has to surface the vaults
+      // they still own after a disconnect. The unfiltered list stays connected-only.
+      const isPersonalView = !!address;
+
       const vaultsBaseQuery = buildVaultsBaseQuery(manager, {
-        includeDisconnected: false,
+        includeDisconnected: isPersonalView,
         memberAddress: address,
         memberRole: role,
       });
@@ -466,7 +542,35 @@ export class VaultDbService {
       if (toInsert.length > 0) {
         await transactionalEntityManager.save(VaultMemberEntity, toInsert);
       }
+
+      // 3) Remember which owner answered for these roles. `VaultViewer` resolves them through the
+      // vault owner and reports it back under `STAKING_VAULT_OWNER_ROLE`, so it is the provenance
+      // of the rows just written: once the vault moves to another owner they stop being valid.
+      await transactionalEntityManager.update(VaultEntity, vault.id, {
+        membersOwnerAddress: membersMap[STAKING_VAULT_OWNER_ROLE]?.[0] ?? null,
+      });
     });
+  }
+
+  /**
+   * Recovers `membersOwnerAddress` for rows written before the column existed.
+   * `VaultViewer` reports the owner it resolved the roles through under `STAKING_VAULT_OWNER_ROLE`,
+   * so the provenance is already in `vault_members` — no on-chain reads needed.
+   */
+  async backfillMembersOwnerFromRoleMembers(): Promise<number> {
+    const result = await this.dataSource
+      .createQueryBuilder()
+      .update(VaultEntity)
+      .set({
+        membersOwnerAddress: () =>
+          `(SELECT m.address FROM vault_members m WHERE m.vault_id = vaults.id AND m.role = :ownerRole LIMIT 1)`,
+      })
+      .where('members_owner_address IS NULL')
+      .andWhere(`EXISTS (SELECT 1 FROM vault_members m WHERE m.vault_id = vaults.id AND m.role = :ownerRole)`)
+      .setParameter('ownerRole', STAKING_VAULT_OWNER_ROLE)
+      .execute();
+
+    return result.affected ?? 0;
   }
 
   async addOrUpdateReportStats(entry: Partial<VaultReportStatEntity>): Promise<void> {
@@ -493,5 +597,30 @@ export class VaultDbService {
       loadRelationIds: true,
     });
     return !!row;
+  }
+
+  /**
+   * Ownership updates arrive both from contract events and from crons reading a safe (lagging)
+   * block, so they can be applied out of order. `ownership_block_number` keeps them monotonic:
+   * an update coming from an older block is discarded.
+   */
+  private async updateVaultOwnershipColumns(
+    vaultAddress: string,
+    blockNumber: number,
+    values: Partial<Pick<VaultEntity, 'isDisconnected' | 'effectiveOwnerAddress'>>,
+    opts: { onlyDisconnected?: boolean },
+  ): Promise<void> {
+    const query = this.vaultRepo
+      .createQueryBuilder()
+      .update(VaultEntity)
+      .set({ ...values, ownershipBlockNumber: blockNumber })
+      .where('LOWER(address) = LOWER(:vaultAddress)', { vaultAddress })
+      .andWhere('ownership_block_number <= :blockNumber', { blockNumber });
+
+    if (opts.onlyDisconnected) {
+      query.andWhere('is_disconnected = true');
+    }
+
+    await query.execute();
   }
 }

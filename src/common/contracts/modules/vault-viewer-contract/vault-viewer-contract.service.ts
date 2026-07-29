@@ -11,6 +11,7 @@ export type Overrides = { blockTag?: number | string };
 
 export type VaultData = {
   vault: string;
+  connectionOwner: string;
   totalValue: bigint;
   liabilityShares: bigint;
   liabilityStETH: bigint;
@@ -111,6 +112,7 @@ export class VaultViewerContractService {
   private static transformVaultData(vaultData: any): VaultData {
     return {
       vault: vaultData.vaultAddress,
+      connectionOwner: vaultData.connection.owner,
       totalValue: vaultData.totalValue.toBigInt(),
       liabilityShares: vaultData.record.liabilityShares.toBigInt(),
       liabilityStETH: vaultData.liabilityStETH.toBigInt(),

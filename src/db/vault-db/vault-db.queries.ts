@@ -1,9 +1,14 @@
 import { EntityManager, SelectQueryBuilder } from 'typeorm';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
-import { LABEL_TO_ROLE } from 'vault/vault.constants';
+import { DASHBOARD_OWNER_ROLE, LABEL_TO_ROLE } from 'vault/vault.constants';
 
 import { VaultStateEntity, VaultMemberEntity, VaultReportStatEntity } from './entities';
-import { VAULT_APR_SMA_DAYS, SECONDS_PER_DAY, QUERY_METRICS_COMMENTS } from './vault-db.constants';
+import {
+  VAULT_APR_SMA_DAYS,
+  SECONDS_PER_DAY,
+  QUERY_METRICS_COMMENTS,
+  MEMBERS_OWNER_IS_CURRENT_CONDITION,
+} from './vault-db.constants';
 
 export type VaultsBaseQueryOpts = {
   includeDisconnected?: boolean;
@@ -131,18 +136,34 @@ export function buildVaultsBaseQuery(manager: EntityManager, opts: VaultsBaseQue
       { role: LABEL_TO_ROLE[memberRole], address: memberAddress },
     );
   } else if (memberAddress) {
-    qb.innerJoin(
-      VaultMemberEntity,
-      'member',
-      `"member"."vault_id" = "vault"."id"
-       AND LOWER("member"."address") = LOWER(:address)`,
-      { address: memberAddress },
+    // Match the vault either by its owner directly (covers a disconnected vault transferred from
+    // its Dashboard to an arbitrary address) or, while the recorded roles are still authoritative,
+    // by the Dashboard's own owner role.
+    qb.andWhere(
+      `(
+        LOWER(vault.effective_owner_address) = LOWER(:address)
+        OR (
+          ${MEMBERS_OWNER_IS_CURRENT_CONDITION}
+          AND EXISTS (
+            SELECT 1
+            FROM vault_members dashboard_owner
+            WHERE dashboard_owner.vault_id = vault.id
+              AND dashboard_owner.role = :dashboardOwnerRole
+              AND LOWER(dashboard_owner.address) = LOWER(:address)
+          )
+        )
+      )`,
+      {
+        address: memberAddress,
+        dashboardOwnerRole: DASHBOARD_OWNER_ROLE,
+      },
     );
   }
 
   qb.select([
     // vault
     `DISTINCT ON (vault.id) vault.address AS "address"`,
+    `vault.is_disconnected AS "isDisconnected"`,
     `vault.ens AS "ens"`,
     `vault.custom_name AS "customName"`,
 
