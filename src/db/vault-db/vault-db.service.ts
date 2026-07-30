@@ -1,4 +1,5 @@
 import { DataSource, IsNull, MoreThan, Repository } from 'typeorm';
+import { constants } from 'ethers';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
@@ -149,11 +150,20 @@ export class VaultDbService {
     );
   }
 
-  async disconnectVault(vaultAddress: string, blockNumber: number, effectiveOwnerAddress: string): Promise<void> {
+  /**
+   * `effectiveOwnerAddress` may be `null` when the `StakingVault` has not named a new owner yet — the
+   * vault is still marked disconnected, but the previously recorded owner is left in place rather than
+   * overwritten with a sentinel nobody can query by.
+   */
+  async disconnectVault(
+    vaultAddress: string,
+    blockNumber: number,
+    effectiveOwnerAddress: string | null,
+  ): Promise<void> {
     await this.updateVaultOwnershipColumns(
       vaultAddress,
       blockNumber,
-      { isDisconnected: true, effectiveOwnerAddress },
+      effectiveOwnerAddress === null ? { isDisconnected: true } : { isDisconnected: true, effectiveOwnerAddress },
       {},
     );
   }
@@ -546,8 +556,11 @@ export class VaultDbService {
       // 3) Remember which owner answered for these roles. `VaultViewer` resolves them through the
       // vault owner and reports it back under `STAKING_VAULT_OWNER_ROLE`, so it is the provenance
       // of the rows just written: once the vault moves to another owner they stop being valid.
+      // A zero address means the viewer had no connection record to resolve them through, which is
+      // not a provenance — recording it would assert these rows belong to nobody.
+      const membersOwner = membersMap[STAKING_VAULT_OWNER_ROLE]?.[0];
       await transactionalEntityManager.update(VaultEntity, vault.id, {
-        membersOwnerAddress: membersMap[STAKING_VAULT_OWNER_ROLE]?.[0] ?? null,
+        membersOwnerAddress: !membersOwner || membersOwner === constants.AddressZero ? null : membersOwner,
       });
     });
   }
@@ -563,11 +576,21 @@ export class VaultDbService {
       .update(VaultEntity)
       .set({
         membersOwnerAddress: () =>
-          `(SELECT m.address FROM vault_members m WHERE m.vault_id = vaults.id AND m.role = :ownerRole LIMIT 1)`,
+          `(SELECT m.address FROM vault_members m
+            WHERE m.vault_id = vaults.id AND m.role = :ownerRole AND m.address <> :zeroAddress
+            LIMIT 1)`,
       })
       .where('members_owner_address IS NULL')
-      .andWhere(`EXISTS (SELECT 1 FROM vault_members m WHERE m.vault_id = vaults.id AND m.role = :ownerRole)`)
+      // Zero-address rows are the artefact of refreshing a disconnected vault through `VaultViewer`;
+      // they name no owner, so leaving the column NULL is the honest outcome.
+      .andWhere(
+        `EXISTS (
+          SELECT 1 FROM vault_members m
+          WHERE m.vault_id = vaults.id AND m.role = :ownerRole AND m.address <> :zeroAddress
+        )`,
+      )
       .setParameter('ownerRole', STAKING_VAULT_OWNER_ROLE)
+      .setParameter('zeroAddress', constants.AddressZero)
       .execute();
 
     return result.affected ?? 0;
@@ -603,6 +626,9 @@ export class VaultDbService {
    * Ownership updates arrive both from contract events and from crons reading a safe (lagging)
    * block, so they can be applied out of order. `ownership_block_number` keeps them monotonic:
    * an update coming from an older block is discarded.
+   *
+   * Discarding is expected and normal, but it must not be invisible: a write that matched no row is
+   * also how a missing vault row or a case-mangled address would look, so the reason is logged.
    */
   private async updateVaultOwnershipColumns(
     vaultAddress: string,
@@ -621,6 +647,12 @@ export class VaultDbService {
       query.andWhere('is_disconnected = true');
     }
 
-    await query.execute();
+    const result = await query.execute();
+    if (result.affected === 0) {
+      this.logger.log(
+        `[updateVaultOwnershipColumns] No row updated for vault ${vaultAddress} at block ${blockNumber} ` +
+          `(onlyDisconnected=${!!opts.onlyDisconnected}): the vault is unknown, or a newer block was already applied`,
+      );
+    }
   }
 }

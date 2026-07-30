@@ -19,7 +19,16 @@ import {
   STAKING_VAULT_OWNER_ROLE,
 } from 'vault/vault.constants';
 import { LsvService } from 'lsv';
-import { constants } from 'ethers';
+import { constants, errors as ethersErrors } from 'ethers';
+
+/**
+ * ethers error codes that mean "this address does not implement the Dashboard interface" rather than
+ * "the read failed". A plain EOA answers `eth_call` with `0x`, which ethers reports as CALL_EXCEPTION.
+ */
+const NOT_A_DASHBOARD_ERROR_CODES: ReadonlySet<string> = new Set([
+  ethersErrors.CALL_EXCEPTION,
+  ethersErrors.INVALID_ARGUMENT,
+]);
 
 @Injectable()
 export class VaultService {
@@ -147,17 +156,26 @@ export class VaultService {
       try {
         const dbVaultAddresses = await this.vaultDbService.getAllConnectedVaultAddresses();
         for (const dbAddress of dbVaultAddresses) {
-          if (!onChainVaultAddresses.has(dbAddress.toLowerCase())) {
+          if (onChainVaultAddresses.has(dbAddress.toLowerCase())) continue;
+
+          // Per-vault: resolving the owner is an on-chain read now, so a single flaky call must not
+          // leave every later vault in this run still marked connected.
+          try {
             const effectiveOwner = await this.resolveDisconnectedEffectiveOwner(dbAddress, blockNumber);
             await this.vaultDbService.disconnectVault(dbAddress, blockNumber, effectiveOwner);
             this.logger.log(
               `[fetchAllVaultsAndCalculateStates] Set vault ${dbAddress} as disconnected (not returned by contract at block ${blockNumber})`,
             );
+          } catch (err) {
+            this.logger.error(
+              `[fetchAllVaultsAndCalculateStates] Failed to mark vault ${dbAddress} as disconnected ` +
+                `at block ${blockNumber}: ${err}`,
+            );
           }
         }
       } catch (err) {
         this.logger.error(
-          `[fetchAllVaultsAndCalculateStates] Failed to detect and set disconnected vaults at block ${blockNumber} — ${err} at block ${blockNumber}`,
+          `[fetchAllVaultsAndCalculateStates] Failed to detect and set disconnected vaults at block ${blockNumber} — ${err}`,
         );
       }
     } else {
@@ -277,6 +295,16 @@ export class VaultService {
             blockTag: blockNumber,
           });
 
+          // `vaultData` is a plain read with no zero-response guard: when the node serves a state where
+          // the connection is not visible yet, every address in the struct comes back zeroed. Writing
+          // that would create a junk `0x000…0` vault row and blank the real vault's owner.
+          if (item.vault === constants.AddressZero || item.connectionOwner === constants.AddressZero) {
+            throw new Error(
+              `VaultViewer returned no connection for vault ${vault} at block ${blockNumber} ` +
+                `(vault=${item.vault}, connectionOwner=${item.connectionOwner})`,
+            );
+          }
+
           const vaultDbEntity = await this.vaultDbService.getOrCreateVaultByAddress(item.vault, {
             isDisconnected: false,
           });
@@ -361,6 +389,12 @@ export class VaultService {
 
         try {
           await this.vaultDbService.updateVaultOwnership(vault, newOwner, event.blockNumber);
+
+          // The recorded roles were resolved through the previous owner, so from this block they no
+          // longer describe who controls the vault: the query treats them as stale and the new owner's
+          // delegates would be invisible until the daily members cron. Refresh them right away.
+          await this.refreshVaultRoleMembers(vault, event.blockNumber, 'VaultOwnershipTransferred');
+
           this.prometheusService.contractEventHandledCounter
             .labels({ eventName: 'VaultOwnershipTransferred', result: 'success' })
             .inc();
@@ -382,7 +416,20 @@ export class VaultService {
 
       try {
         const blockNumber = event.blockNumber;
-        const effectiveOwner = await this.resolveDisconnectedEffectiveOwner(vault, blockNumber);
+
+        // The flag and the owner have different failure domains: the flag is what the whole listing
+        // depends on, the owner is a refinement that the 10-minute reconcile cron will retry anyway.
+        // So a failed on-chain read must not stop the vault from being marked disconnected.
+        let effectiveOwner: string | null = null;
+        try {
+          effectiveOwner = await this.resolveDisconnectedEffectiveOwner(vault, blockNumber);
+        } catch (err) {
+          this.logger.error(
+            `[subscribeToEvents, event:VaultDisconnectCompleted] Failed to resolve the new owner of ${vault} ` +
+              `at block ${blockNumber}, marking it disconnected without touching the recorded owner: ${err}`,
+          );
+        }
+
         await this.vaultDbService.disconnectVault(vault, blockNumber, effectiveOwner);
 
         this.logger.log(`[subscribeToEvents, event:VaultDisconnectCompleted] Set vault ${vault} as disconnected in DB`);
@@ -420,6 +467,16 @@ export class VaultService {
         batch.map(async (vault) => {
           try {
             const effectiveOwner = await this.resolveDisconnectedEffectiveOwner(vault, blockNumber);
+            if (effectiveOwner === null) {
+              // Hub-owned at this block: the vault is connected again and the DB row is just stale.
+              // The `VaultConnected` handler and the vaults cron own that transition.
+              this.logger.log(
+                `[reconcileDisconnectedVaultOwners] Vault ${vault} is owned by the VaultHub at block ` +
+                  `${blockNumber}, leaving its recorded owner alone`,
+              );
+              return;
+            }
+
             await this.vaultDbService.updateVaultOwnership(vault, effectiveOwner, blockNumber, {
               onlyDisconnected: true,
             });
@@ -509,6 +566,7 @@ export class VaultService {
     let afterId = 0;
     let repaired = 0;
     let skipped = 0;
+    let failed = 0;
 
     for (;;) {
       const vaults = await this.vaultDbService.getDisconnectedVaultsWithoutDashboardOwner(batchSize, afterId);
@@ -518,29 +576,45 @@ export class VaultService {
 
       await Promise.all(
         vaults.map(async (vault) => {
-          const admins = await this.readVaultDashboardAdmins(vault, blockNumber);
-          if (!admins?.length) {
-            skipped++;
-            return;
-          }
+          // Per-vault, because the cursor has already moved on: an unhandled rejection here would
+          // abort the whole scan and the vaults after this batch would never be repaired.
+          try {
+            const admins = await this.readVaultDashboardAdmins(vault, blockNumber);
+            if (!admins?.length) {
+              skipped++;
+              return;
+            }
 
-          // Recorded exactly like a regular refresh would, so `membersOwnerAddress` is set to the
-          // owner these roles came from and the vaults query starts trusting them.
-          await this.vaultDbService.setMembersForVault(vault.address, {
-            [STAKING_VAULT_OWNER_ROLE]: [vault.effectiveOwnerAddress as string],
-            [DASHBOARD_OWNER_ROLE]: admins,
-          });
-          repaired++;
+            // Recorded exactly like a regular refresh would, so `membersOwnerAddress` is set to the
+            // owner these roles came from and the vaults query starts trusting them.
+            await this.vaultDbService.setMembersForVault(vault.address, {
+              [STAKING_VAULT_OWNER_ROLE]: [vault.effectiveOwnerAddress as string],
+              [DASHBOARD_OWNER_ROLE]: admins,
+            });
+            repaired++;
+          } catch (err) {
+            failed++;
+            this.logger.error(
+              `[backfillVaultOwnership] Failed to repair role members of vault ${vault.address} ` +
+                `at block ${blockNumber}: ${err}`,
+            );
+          }
         }),
       );
     }
 
-    if (repaired === 0 && skipped === 0) return;
+    if (repaired === 0 && skipped === 0 && failed === 0) return;
 
     this.logger.log(
       `[backfillVaultOwnership] Disconnected vault role members: repaired=${repaired}, ` +
-        `skipped=${skipped} (owner is not this vault's Dashboard, so it grants access by address only)`,
+        `skipped=${skipped} (owner is not this vault's Dashboard, so it grants access by address only), ` +
+        `failed=${failed}`,
     );
+
+    // Surfaced so the caller can retry instead of dropping the one-off job on a transient RPC failure.
+    if (failed > 0) {
+      throw new Error(`[backfillVaultOwnership] Role members repair failed for ${failed} vault(s)`);
+    }
   }
 
   /**
@@ -562,38 +636,94 @@ export class VaultService {
       const admins = await dashboard.getRoleMembers(DEFAULT_ADMIN_ROLE, { blockTag: blockNumber });
       return admins.filter((admin) => admin !== constants.AddressZero);
     } catch (err) {
-      // Expected for a plain address owner: it implements neither `stakingVault()` nor AccessControl.
-      this.logger.debug?.(
-        `[backfillVaultOwnership] ${owner} is not the Dashboard of vault ${vault.address}: ${err}`,
-      );
+      // Only a revert (or an EOA answering `0x`) proves the owner is not a Dashboard. Everything else
+      // — RPC down, timeout, rate limit — must propagate: swallowing it here would mark the vault
+      // "not a Dashboard" forever and quietly cut its admins off from their own vault.
+      const code = err instanceof Error && 'code' in err ? String((err as { code: unknown }).code) : undefined;
+      if (!NOT_A_DASHBOARD_ERROR_CODES.has(code)) throw err;
+
+      this.logger.debug(`[backfillVaultOwnership] ${owner} is not the Dashboard of vault ${vault.address}: ${err}`);
       return null;
     }
   }
 
   private async backfillSingleVaultOwnership(vault: VaultEntity, blockNumber: number): Promise<void> {
-    if (!vault.isDisconnected) {
-      const connectionOwner = await this.vaultHubContractService.getVaultOwner(vault.address, {
-        blockTag: blockNumber,
-      });
-      await this.vaultDbService.connectVault(vault.address, blockNumber, connectionOwner);
+    if (vault.isDisconnected) {
+      // `membersOwnerAddress` is recovered separately from `vault_members`, which is the only place
+      // the pre-disconnect owner is still recorded.
+      const effectiveOwner = await this.resolveDisconnectedEffectiveOwner(vault.address, blockNumber);
+      if (effectiveOwner !== null) {
+        await this.vaultDbService.disconnectVault(vault.address, blockNumber, effectiveOwner);
+        return;
+      }
+
+      // Hub-owned, so the `is_disconnected` flag is wrong: rows are also created by the report import,
+      // which has no way to tell and defaults to disconnected. Resolve it as connected instead of
+      // trusting the flag — the chain is the authority here.
+      this.logger.log(
+        `[backfillVaultOwnership] Vault ${vault.address} is flagged disconnected but owned by the VaultHub ` +
+          `at block ${blockNumber}, resolving it as connected`,
+      );
+    }
+
+    const connectionOwner = await this.vaultHubContractService.getVaultOwner(vault.address, {
+      blockTag: blockNumber,
+    });
+
+    if (connectionOwner === constants.AddressZero) {
+      // Neither the hub nor the vault names an owner: nothing to record, and writing the zero address
+      // would look like a resolved owner and stop the backfill from ever retrying this vault.
+      this.logger.warn(
+        `[backfillVaultOwnership] Vault ${vault.address} has no owner in the VaultHub at block ${blockNumber}, skipping`,
+      );
       return;
     }
 
-    // `membersOwnerAddress` is recovered separately from `vault_members`, which is the only place
-    // the pre-disconnect owner is still recorded.
-    const effectiveOwner = await this.resolveDisconnectedEffectiveOwner(vault.address, blockNumber);
-    await this.vaultDbService.disconnectVault(vault.address, blockNumber, effectiveOwner);
+    await this.vaultDbService.connectVault(vault.address, blockNumber, connectionOwner);
   }
 
-  private async resolveDisconnectedEffectiveOwner(vault: string, blockNumber: number): Promise<string> {
+  /**
+   * Re-reads the role members of a single vault. Failures are logged and swallowed: the caller has
+   * already recorded the ownership change, which is the part the listing depends on, and the daily
+   * members cron will retry. Losing the whole event handler over a role refresh would be worse.
+   */
+  private async refreshVaultRoleMembers(vault: string, blockNumber: number, context: string): Promise<void> {
+    try {
+      const roleMembersMap = await this.vaultViewerContractService.getRoleMembersWithRetry(vault, ROLE_BYTES32, {
+        blockTag: blockNumber,
+      });
+      await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
+      this.logger.log(`[${context}] Refreshed role members of vault ${vault} at block ${blockNumber}`);
+    } catch (err) {
+      this.logger.error(
+        `[${context}] Failed to refresh role members of vault ${vault} at block ${blockNumber}, ` +
+          `they stay marked stale until the members cron runs: ${err}`,
+      );
+    }
+  }
+
+  /**
+   * The address to show as the owner of a vault that is no longer in the hub, or `null` when the
+   * `StakingVault` says nothing useful yet.
+   *
+   * `StakingVault` is `Ownable2Step`, so ownership arrives in two steps and every step reads
+   * differently:
+   * - `owner` is the `VaultHub` and `pendingOwner` is set — the disconnect completed and the hub
+   *   handed the vault to the Dashboard, which has not accepted yet. That pending address is the one
+   *   the user recognises, so it is what we record.
+   * - `owner` is the `VaultHub` and there is no pending owner — the vault is hub-owned, i.e. it is
+   *   (again) connected and this read is simply behind the DB. Recording the `VaultHub` here would
+   *   hide the vault from its real owner, so we record nothing and let the connected path do it.
+   * - anything else — `owner` is a Dashboard or a plain address that already accepted. Note that a
+   *   further `pendingOwner` (an `abandonDashboard` awaiting `acceptOwnership`) is deliberately
+   *   ignored: until the handover is accepted, the vault still belongs to the current owner.
+   */
+  private async resolveDisconnectedEffectiveOwner(vault: string, blockNumber: number): Promise<string | null> {
     const stakingVault = this.stakingVaultContractFactory.get(vault);
     const { owner, pendingOwner } = await stakingVault.getOwnership({ blockTag: blockNumber });
 
-    if (
-      owner.toLowerCase() === this.vaultHubContractService.address.toLowerCase() &&
-      pendingOwner !== constants.AddressZero
-    ) {
-      return pendingOwner;
+    if (owner.toLowerCase() === this.vaultHubContractService.address.toLowerCase()) {
+      return pendingOwner === constants.AddressZero ? null : pendingOwner;
     }
 
     return owner;

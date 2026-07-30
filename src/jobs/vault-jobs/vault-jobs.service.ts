@@ -11,6 +11,8 @@ const DISCONNECTED_VAULTS_OWNERSHIP_JOB = 'disconnected-vaults-ownership-cron';
 const OWNERSHIP_BACKFILL_JOB = 'vaults-ownership-backfill-cron';
 // Gives the execution provider time to warm up before the one-off backfill starts reading on-chain.
 const OWNERSHIP_BACKFILL_STARTUP_DELAY_MS = 30_000;
+// Ceiling for the doubling retry delay, so a long outage settles into a steady 10-minute retry.
+const OWNERSHIP_BACKFILL_MAX_RETRY_DELAY_MS = 600_000;
 
 @Injectable()
 export class VaultJobsService {
@@ -81,7 +83,18 @@ export class VaultJobsService {
           return;
         }
 
-        await this.vaultService.reconcileDisconnectedVaultOwners(blockNumber);
+        // `cron` does not await this callback unless `waitForCompletion` is set, so its own try/catch
+        // never sees an async rejection: anything escaping here is an unhandled rejection that takes
+        // the worker down. `reconcileDisconnectedVaultOwners` isolates per-vault failures internally,
+        // but the DB read and the metric writes around them are not covered.
+        try {
+          await this.vaultService.reconcileDisconnectedVaultOwners(blockNumber);
+        } catch (err) {
+          this.logger.error(
+            `[VaultJobsService.jobDisconnectedVaultsOwnership.CronJob] Failed to reconcile disconnected ` +
+              `vault owners at block ${blockNumber}: ${err}`,
+          );
+        }
       },
       null,
       false,
@@ -102,18 +115,38 @@ export class VaultJobsService {
    * Vaults stored before the ownership columns existed need them filled in once. A `Date` cron time
    * makes the job fire exactly once shortly after startup; it is then dropped from the registry.
    * The backfill itself is idempotent, so running it again after a redeploy costs a single query.
+   *
+   * It is only dropped once it has actually succeeded. The reasons it can fail are all transient and
+   * all likely right after boot — the RPC is not warm yet, or the API replica has not applied the
+   * migration that adds the columns — and a backfill that never completes leaves owners unable to find
+   * their disconnected vaults, with nothing but one log line to say so. So it is rescheduled instead,
+   * with the delay doubling up to a cap.
    */
-  private scheduleOwnershipBackfill(): void {
-    const backfillJob = new CronJob(new Date(Date.now() + OWNERSHIP_BACKFILL_STARTUP_DELAY_MS), async () => {
+  private scheduleOwnershipBackfill(delayMs = OWNERSHIP_BACKFILL_STARTUP_DELAY_MS, attempt = 1): void {
+    const backfillJob = new CronJob(new Date(Date.now() + delayMs), async () => {
+      let succeeded = false;
       try {
         const blockNumber = await this.executionProviderService.getSafeBlockNumber();
-        this.logger.log(`[VaultJobsService.ownershipBackfill.CronJob] blockNumber=${blockNumber}`);
+        this.logger.log(`[VaultJobsService.ownershipBackfill.CronJob] attempt=${attempt} blockNumber=${blockNumber}`);
 
         await this.vaultService.backfillVaultOwnership(blockNumber);
+        succeeded = true;
       } catch (err) {
-        this.logger.error(`[VaultJobsService.ownershipBackfill.CronJob] Failed to backfill vault ownership: ${err}`);
+        this.logger.error(
+          `[VaultJobsService.ownershipBackfill.CronJob] Failed to backfill vault ownership ` +
+            `(attempt=${attempt}): ${err}`,
+        );
       } finally {
+        // The registry rejects a duplicate name, so the finished job has to go before the retry is added.
         this.schedulerRegistry.deleteCronJob(OWNERSHIP_BACKFILL_JOB);
+
+        if (!succeeded) {
+          const retryDelayMs = Math.min(delayMs * 2, OWNERSHIP_BACKFILL_MAX_RETRY_DELAY_MS);
+          this.logger.warn(
+            `[VaultJobsService.ownershipBackfill.CronJob] Retrying vault ownership backfill in ${retryDelayMs}ms`,
+          );
+          this.scheduleOwnershipBackfill(retryDelayMs, attempt + 1);
+        }
       }
     });
 

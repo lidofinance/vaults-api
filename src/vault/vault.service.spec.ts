@@ -22,7 +22,12 @@ describe('VaultService ownership lifecycle', () => {
   let vaultHubContractService: any;
   let stakingVault: any;
   let dashboardContract: any;
+  let stakingVaultContractFactory: any;
+  let dashboardContractFactory: any;
   let service: VaultService;
+
+  /** An ethers revert, as produced by calling a contract method on an EOA or on the wrong interface. */
+  const callException = () => Object.assign(new Error('call revert exception'), { code: 'CALL_EXCEPTION' });
 
   beforeEach(() => {
     hubListeners = {};
@@ -84,6 +89,11 @@ describe('VaultService ownership lifecycle', () => {
       getRoleMembers: jest.fn().mockResolvedValue([dashboardAdmin]),
     };
 
+    // Both factories are keyed by address in production — `dashboardContractFactory` resolves a Dashboard
+    // by the vault's *owner*, not by the vault — so the mocks record what they were asked for.
+    stakingVaultContractFactory = { get: jest.fn(() => stakingVault) };
+    dashboardContractFactory = { get: jest.fn(() => dashboardContract) };
+
     const logger = { log: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
     const counter = { labels: jest.fn().mockReturnValue({ inc: jest.fn() }) };
     const gauge = { labels: jest.fn().mockReturnValue({ set: jest.fn() }) };
@@ -100,8 +110,8 @@ describe('VaultService ownership lifecycle', () => {
       vaultDbService,
       vaultViewerContractService,
       vaultHubContractService,
-      { get: jest.fn(() => stakingVault) } as any,
-      { get: jest.fn(() => dashboardContract) } as any,
+      stakingVaultContractFactory as any,
+      dashboardContractFactory as any,
       { calculateHealth: jest.fn().mockResolvedValue({ healthRatio: 1 }) } as any,
       prometheusService as any,
     );
@@ -126,12 +136,74 @@ describe('VaultService ownership lifecycle', () => {
       expect(vaultDbService.disconnectVault).toHaveBeenCalledWith(vault, 100, directOwner);
     });
 
+    // `abandonDashboard(newOwner)` accepts the handover from the hub and immediately starts a second
+    // one, so the Dashboard is the owner and the new owner is only pending. Deliberate product
+    // decision: until that handover is accepted the vault still belongs to the Dashboard, so its
+    // admins keep it and the new owner does not see it yet.
+    it('keeps the Dashboard as the owner until the new owner accepts', async () => {
+      const newOwner = '0x5151515151515151515151515151515151515151';
+      stakingVault.getOwnership.mockResolvedValue({ owner: dashboard, pendingOwner: newOwner });
+      await service.subscribeToEvents();
+
+      await hubListeners.VaultDisconnectCompleted(vault, { blockNumber: 100 });
+
+      expect(vaultDbService.disconnectVault).toHaveBeenCalledWith(vault, 100, dashboard);
+    });
+
+    // The hub owning the vault with nothing pending means it is connected, not disconnected. Recording
+    // the hub as the owner would hide the vault from everyone who actually controls it.
+    it('never records the VaultHub itself as the owner', async () => {
+      stakingVault.getOwnership.mockResolvedValue({ owner: vaultHub, pendingOwner: constants.AddressZero });
+      await service.subscribeToEvents();
+
+      await hubListeners.VaultDisconnectCompleted(vault, { blockNumber: 100 });
+
+      expect(vaultDbService.disconnectVault).toHaveBeenCalledWith(vault, 100, null);
+    });
+
+    it('compares the VaultHub address case-insensitively', async () => {
+      vaultHubContractService.address = vaultHub.toUpperCase().replace('0X', '0x');
+      await service.subscribeToEvents();
+
+      await hubListeners.VaultDisconnectCompleted(vault, { blockNumber: 100 });
+
+      expect(vaultDbService.disconnectVault).toHaveBeenCalledWith(vault, 100, dashboard);
+    });
+
+    // The flag drives the whole listing; the owner is a refinement the reconcile cron retries anyway.
+    it('still marks the vault disconnected when the ownership read fails', async () => {
+      stakingVault.getOwnership.mockRejectedValue(new Error('rpc is down'));
+      await service.subscribeToEvents();
+
+      await hubListeners.VaultDisconnectCompleted(vault, { blockNumber: 100 });
+
+      expect(vaultDbService.disconnectVault).toHaveBeenCalledWith(vault, 100, null);
+    });
+
     it('stores the connection owner as the effective owner on VaultConnected', async () => {
       await service.subscribeToEvents();
 
       await hubListeners.VaultConnected(vault, 0n, 0n, 0n, 0n, 0n, 0n, { blockNumber: 102 });
 
       expect(vaultDbService.connectVault).toHaveBeenCalledWith(vault, 102, dashboard);
+    });
+
+    // `vaultData` is a plain read: a node serving a state where the connection is not visible yet
+    // returns a fully zeroed struct, which would create a junk `0x000…0` vault row and blank the real
+    // vault's owner.
+    it('writes nothing when VaultViewer reports no connection', async () => {
+      vaultViewerContractService.getVaultData.mockResolvedValue({
+        ...(await vaultViewerContractService.getVaultData()),
+        vault: constants.AddressZero,
+        connectionOwner: constants.AddressZero,
+      });
+      await service.subscribeToEvents();
+
+      await hubListeners.VaultConnected(vault, 0n, 0n, 0n, 0n, 0n, 0n, { blockNumber: 102 });
+
+      expect(vaultDbService.getOrCreateVaultByAddress).not.toHaveBeenCalled();
+      expect(vaultDbService.connectVault).not.toHaveBeenCalled();
+      expect(vaultDbService.addOrUpdateState).not.toHaveBeenCalled();
     });
 
     it('follows the connection owner while the vault stays connected', async () => {
@@ -153,6 +225,25 @@ describe('VaultService ownership lifecycle', () => {
       expect(vaultDbService.updateVaultOwnership).toHaveBeenCalledWith(vault, directOwner, 200, {
         onlyDisconnected: true,
       });
+    });
+
+    // Reading a lagging safe block can catch a vault that has already reconnected. The hub owning it
+    // is not an owner to record — the connected path owns that transition.
+    it('leaves the recorded owner alone when the vault is hub-owned again', async () => {
+      vaultDbService.getAllDisconnectedVaultAddresses.mockResolvedValue([vault]);
+      stakingVault.getOwnership.mockResolvedValue({ owner: vaultHub, pendingOwner: constants.AddressZero });
+
+      await service.reconcileDisconnectedVaultOwners(200);
+
+      expect(vaultDbService.updateVaultOwnership).not.toHaveBeenCalled();
+    });
+
+    it('reads ownership of the vault itself, not of its owner', async () => {
+      vaultDbService.getAllDisconnectedVaultAddresses.mockResolvedValue([vault]);
+
+      await service.reconcileDisconnectedVaultOwners(200);
+
+      expect(stakingVaultContractFactory.get).toHaveBeenCalledWith(vault);
     });
 
     it('keeps going when a single vault fails', async () => {
@@ -240,11 +331,65 @@ describe('VaultService ownership lifecycle', () => {
       vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
         .mockResolvedValueOnce([{ id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: directOwner }])
         .mockResolvedValueOnce([]);
-      dashboardContract.getStakingVault.mockRejectedValue(new Error('call revert exception'));
+      // An EOA answers `eth_call` with `0x`, which ethers surfaces as CALL_EXCEPTION.
+      dashboardContract.getStakingVault.mockRejectedValue(callException());
 
       await service.backfillVaultOwnership(300);
 
       expect(vaultDbService.setMembersForVault).not.toHaveBeenCalled();
+    });
+
+    // A transient RPC failure looks nothing like a revert, and treating it as "not a Dashboard" would
+    // leave the vault's admins locked out for good: the repair only ever runs from the startup backfill.
+    it('does not mistake an unreachable RPC for a plain-address owner', async () => {
+      vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
+        .mockResolvedValueOnce([{ id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: dashboard }])
+        .mockResolvedValueOnce([]);
+      dashboardContract.getStakingVault.mockRejectedValue(Object.assign(new Error('timeout'), { code: 'TIMEOUT' }));
+
+      await expect(service.backfillVaultOwnership(300)).rejects.toThrow(/repair failed for 1 vault/);
+      expect(vaultDbService.setMembersForVault).not.toHaveBeenCalled();
+    });
+
+    it('repairs the remaining vaults when one of them fails', async () => {
+      const otherVault = '0x7777777777777777777777777777777777777777';
+      const otherDashboard = '0x8888888888888888888888888888888888888888';
+
+      // One Dashboard per vault, resolved by owner address — the same shape as production.
+      const boundVaultByDashboard: Record<string, string> = {
+        [dashboard]: vault,
+        [otherDashboard]: otherVault,
+      };
+      dashboardContractFactory.get.mockImplementation((owner: string) => ({
+        getStakingVault: jest.fn().mockResolvedValue(boundVaultByDashboard[owner]),
+        getRoleMembers: jest.fn().mockResolvedValue([dashboardAdmin]),
+      }));
+
+      vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
+        .mockResolvedValueOnce([
+          { id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: dashboard },
+          { id: 10, address: otherVault, isDisconnected: true, effectiveOwnerAddress: otherDashboard },
+        ])
+        .mockResolvedValueOnce([]);
+      vaultDbService.setMembersForVault.mockImplementation(async (address: string) => {
+        if (address === vault) throw new Error('deadlock detected');
+      });
+
+      await expect(service.backfillVaultOwnership(300)).rejects.toThrow(/repair failed for 1 vault/);
+
+      // The failing vault must not take the ones after it down with it.
+      expect(vaultDbService.setMembersForVault).toHaveBeenCalledWith(otherVault, expect.anything());
+      expect(vaultDbService.setMembersForVault).toHaveBeenCalledTimes(2);
+    });
+
+    it('resolves the Dashboard by the vault owner, not by the vault address', async () => {
+      vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
+        .mockResolvedValueOnce([{ id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: dashboard }])
+        .mockResolvedValueOnce([]);
+
+      await service.backfillVaultOwnership(300);
+
+      expect(dashboardContractFactory.get).toHaveBeenCalledWith(dashboard);
     });
 
     it('advances the cursor past a failing vault instead of rescanning it', async () => {

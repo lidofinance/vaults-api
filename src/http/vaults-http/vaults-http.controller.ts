@@ -154,7 +154,13 @@ export class VaultsHttpController {
   @ApiParam({ name: 'vaultAddress', type: String, description: 'Vault address (0x...)' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Vault data with last report data',
+    description:
+      'Vault data with last report data. Disconnected vaults are returned too, flagged with ' +
+      '"isDisconnected": true. Their state is the snapshot taken when they left the protocol and is ' +
+      'never refreshed again — by design, since Lido accounting stops at disconnection. Read ' +
+      '"updatedAt"/"blockNumber" for how old the snapshot is; "isReportFresh" is frozen at its last ' +
+      'value and carries no meaning for such a vault. Anything that must be current (the balance ' +
+      'above all) has to be read from the vault contract.',
     schema: {
       example: vaultExample,
     },

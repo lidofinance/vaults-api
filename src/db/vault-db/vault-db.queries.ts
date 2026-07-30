@@ -135,6 +135,10 @@ export function buildVaultsBaseQuery(manager: EntityManager, opts: VaultsBaseQue
        AND LOWER("member"."address") = LOWER(:address)`,
       { role: LABEL_TO_ROLE[memberRole], address: memberAddress },
     );
+
+    // Same rule as the address-only branch below: recorded roles stop granting access once the vault
+    // has changed hands. Without this, asking for an explicit role would be a way around the check.
+    qb.andWhere(MEMBERS_OWNER_IS_CURRENT_CONDITION);
   } else if (memberAddress) {
     // Match the vault either by its owner directly (covers a disconnected vault transferred from
     // its Dashboard to an arbitrary address) or, while the recorded roles are still authoritative,
