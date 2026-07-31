@@ -522,7 +522,7 @@ export class VaultService {
     let processed = 0;
     let failed = 0;
 
-    for (;;) {
+    while (true) {
       const vaults = await this.vaultDbService.getVaultsWithoutOwnership(batchSize, afterId);
       if (vaults.length === 0) break;
 
@@ -568,7 +568,7 @@ export class VaultService {
     let skipped = 0;
     let failed = 0;
 
-    for (;;) {
+    while (true) {
       const vaults = await this.vaultDbService.getDisconnectedVaultsWithoutDashboardOwner(batchSize, afterId);
       if (vaults.length === 0) break;
 
