@@ -8,6 +8,7 @@ import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { VaultService } from 'vault';
 
 const DISCONNECTED_VAULTS_OWNERSHIP_JOB = 'disconnected-vaults-ownership-cron';
+const DISCONNECTED_VAULTS_OWNERSHIP_SCAN_JOB = 'disconnected-vaults-ownership-scan-cron';
 const OWNERSHIP_BACKFILL_JOB = 'vaults-ownership-backfill-cron';
 // Gives the execution provider time to warm up before the one-off backfill starts reading on-chain.
 const OWNERSHIP_BACKFILL_STARTUP_DELAY_MS = 30_000;
@@ -102,6 +103,37 @@ export class VaultJobsService {
     );
     this.schedulerRegistry.addCronJob(DISCONNECTED_VAULTS_OWNERSHIP_JOB, jobDisconnectedVaultsOwnership);
     jobDisconnectedVaultsOwnership.start();
+
+    const jobDisconnectedVaultsOwnershipScan = new CronJob(
+      this.configService.jobs['disconnectedVaultsOwnershipScanCron'],
+      async () => {
+        let blockNumber: number;
+        try {
+          blockNumber = await this.executionProviderService.getSafeBlockNumber();
+        } catch (err) {
+          this.logger.error(
+            `[VaultJobsService.jobDisconnectedVaultsOwnershipScan.CronJob] Failed to fetch blockNumber: ${err}`,
+          );
+          return;
+        }
+
+        // Same as the reconcile job above: `cron` does not await this callback, so an escaping
+        // rejection would be unhandled and take the worker down.
+        try {
+          await this.vaultService.syncDisconnectedVaultOwnersFromLogs(blockNumber);
+        } catch (err) {
+          this.logger.error(
+            `[VaultJobsService.jobDisconnectedVaultsOwnershipScan.CronJob] Failed to scan ownership ` +
+              `logs at block ${blockNumber}: ${err}`,
+          );
+        }
+      },
+      null,
+      false,
+      this.configService.jobs['disconnectedVaultsOwnershipScanCronTZ'],
+    );
+    this.schedulerRegistry.addCronJob(DISCONNECTED_VAULTS_OWNERSHIP_SCAN_JOB, jobDisconnectedVaultsOwnershipScan);
+    jobDisconnectedVaultsOwnershipScan.start();
 
     this.scheduleOwnershipBackfill();
 

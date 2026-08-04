@@ -91,7 +91,10 @@ describe('VaultService ownership lifecycle', () => {
 
     // Both factories are keyed by address in production — `dashboardContractFactory` resolves a Dashboard
     // by the vault's *owner*, not by the vault — so the mocks record what they were asked for.
-    stakingVaultContractFactory = { get: jest.fn(() => stakingVault) };
+    stakingVaultContractFactory = {
+      get: jest.fn(() => stakingVault),
+      getOwnershipTransferredLogs: jest.fn().mockResolvedValue([]),
+    };
     dashboardContractFactory = { get: jest.fn(() => dashboardContract) };
 
     const logger = { log: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
@@ -262,6 +265,96 @@ describe('VaultService ownership lifecycle', () => {
     });
   });
 
+  describe('syncDisconnectedVaultOwnersFromLogs', () => {
+    const transfer = (overrides: Record<string, unknown> = {}) => ({
+      vault,
+      previousOwner: dashboard,
+      newOwner: directOwner,
+      blockNumber: 190,
+      logIndex: 0,
+      ...overrides,
+    });
+
+    it('does not touch the chain when there are no disconnected vaults', async () => {
+      await service.syncDisconnectedVaultOwnersFromLogs(200);
+
+      expect(stakingVaultContractFactory.getOwnershipTransferredLogs).not.toHaveBeenCalled();
+    });
+
+    it('applies a transfer of a disconnected vault at the block of the log, not of the scan', async () => {
+      vaultDbService.getAllDisconnectedVaultAddresses.mockResolvedValue([vault]);
+      stakingVaultContractFactory.getOwnershipTransferredLogs.mockResolvedValue([transfer()]);
+
+      await service.syncDisconnectedVaultOwnersFromLogs(200);
+
+      expect(vaultDbService.updateVaultOwnership).toHaveBeenCalledWith(vault, directOwner, 190, {
+        onlyDisconnected: true,
+      });
+    });
+
+    // The topic is the generic OZ Ownable event: the scan sees transfers of every contract on the
+    // chain, and only the disconnected vaults' ones may reach the DB.
+    it('ignores transfers of contracts that are not disconnected vaults', async () => {
+      const stranger = '0x9999999999999999999999999999999999999999';
+      vaultDbService.getAllDisconnectedVaultAddresses.mockResolvedValue([vault]);
+      stakingVaultContractFactory.getOwnershipTransferredLogs.mockResolvedValue([transfer({ vault: stranger })]);
+
+      await service.syncDisconnectedVaultOwnersFromLogs(200);
+
+      expect(vaultDbService.updateVaultOwnership).not.toHaveBeenCalled();
+    });
+
+    it('matches vault addresses case-insensitively', async () => {
+      vaultDbService.getAllDisconnectedVaultAddresses.mockResolvedValue([vault.toUpperCase().replace('0X', '0x')]);
+      stakingVaultContractFactory.getOwnershipTransferredLogs.mockResolvedValue([transfer()]);
+
+      await service.syncDisconnectedVaultOwnersFromLogs(200);
+
+      expect(vaultDbService.updateVaultOwnership).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips a transfer back to the VaultHub — that is the vault reconnecting', async () => {
+      vaultDbService.getAllDisconnectedVaultAddresses.mockResolvedValue([vault]);
+      stakingVaultContractFactory.getOwnershipTransferredLogs.mockResolvedValue([transfer({ newOwner: vaultHub })]);
+
+      await service.syncDisconnectedVaultOwnersFromLogs(200);
+
+      expect(vaultDbService.updateVaultOwnership).not.toHaveBeenCalled();
+    });
+
+    it('applies same-block transfers in log order so the last one wins', async () => {
+      const finalOwner = '0x7777777777777777777777777777777777777777';
+      vaultDbService.getAllDisconnectedVaultAddresses.mockResolvedValue([vault]);
+      // Returned out of order on purpose: the on-chain order is (logIndex 1) → (logIndex 3).
+      stakingVaultContractFactory.getOwnershipTransferredLogs.mockResolvedValue([
+        transfer({ newOwner: finalOwner, blockNumber: 190, logIndex: 3 }),
+        transfer({ newOwner: directOwner, blockNumber: 190, logIndex: 1 }),
+      ]);
+
+      await service.syncDisconnectedVaultOwnersFromLogs(200);
+
+      const calls = vaultDbService.updateVaultOwnership.mock.calls;
+      expect(calls.map((call: unknown[]) => call[1])).toEqual([directOwner, finalOwner]);
+    });
+
+    it('keeps applying the remaining transfers when one write fails', async () => {
+      const otherVault = '0x5555555555555555555555555555555555555555';
+      vaultDbService.getAllDisconnectedVaultAddresses.mockResolvedValue([vault, otherVault]);
+      stakingVaultContractFactory.getOwnershipTransferredLogs.mockResolvedValue([
+        transfer({ blockNumber: 190 }),
+        transfer({ vault: otherVault, blockNumber: 191 }),
+      ]);
+      vaultDbService.updateVaultOwnership.mockRejectedValueOnce(new Error('db is down'));
+
+      await service.syncDisconnectedVaultOwnersFromLogs(200);
+
+      expect(vaultDbService.updateVaultOwnership).toHaveBeenCalledTimes(2);
+      expect(vaultDbService.updateVaultOwnership).toHaveBeenLastCalledWith(otherVault, directOwner, 191, {
+        onlyDisconnected: true,
+      });
+    });
+  });
+
   describe('backfillVaultOwnership', () => {
     it('recovers the members provenance from vault_members before resolving owners', async () => {
       vaultDbService.backfillMembersOwnerFromRoleMembers.mockResolvedValue(42);
@@ -315,7 +408,7 @@ describe('VaultService ownership lifecycle', () => {
       });
     });
 
-    it('leaves a disconnected vault alone when its owner is not this vault\'s Dashboard', async () => {
+    it("leaves a disconnected vault alone when its owner is not this vault's Dashboard", async () => {
       vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
         .mockResolvedValueOnce([{ id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: directOwner }])
         .mockResolvedValueOnce([]);
