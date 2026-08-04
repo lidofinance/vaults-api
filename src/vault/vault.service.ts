@@ -30,6 +30,13 @@ const NOT_A_DASHBOARD_ERROR_CODES: ReadonlySet<string> = new Set([
   ethersErrors.INVALID_ARGUMENT,
 ]);
 
+/**
+ * Sliding window of the ownership log scan, ~1 hour of mainnet blocks. Must exceed the scan cron
+ * interval so consecutive windows overlap; the extra width lets a worker that was down for less
+ * than the window catch up on its own. Anything older is the reconcile cron's job.
+ */
+const OWNERSHIP_LOGS_LOOKBACK_BLOCKS = 300;
+
 @Injectable()
 export class VaultService {
   constructor(
@@ -449,10 +456,76 @@ export class VaultService {
   }
 
   /**
-   * Once a vault leaves the VaultHub, its owner changes without any VaultHub event: the Dashboard
-   * accepts the ownership handover and may pass it on to an arbitrary address. Those transfers are
-   * picked up by polling `StakingVault` ownership instead of per-vault log filters — the execution
-   * provider is HTTP-based, so every filter would cost its own `eth_getLogs` on every poll.
+   * Event-driven counterpart of {@link reconcileDisconnectedVaultOwners} and the primary way owner
+   * changes of disconnected vaults reach the DB: one `eth_getLogs` over the last
+   * {@link OWNERSHIP_LOGS_LOOKBACK_BLOCKS} blocks instead of two `eth_call`s per vault, so the cost
+   * does not grow with the number of disconnected vaults.
+   *
+   * The scan is a sliding window with no persisted cursor: consecutive windows overlap, and
+   * re-applying an already-applied log is a no-op thanks to the monotonic `ownership_block_number`
+   * guard. Downtime longer than the window is the reconcile cron's job.
+   */
+  @TrackJob('syncDisconnectedVaultOwnersFromLogs')
+  @SingleFlight({ key: 'syncDisconnectedVaultOwnersFromLogs', log: true })
+  public async syncDisconnectedVaultOwnersFromLogs(blockNumber: number): Promise<void> {
+    const vaults = await this.vaultDbService.getAllDisconnectedVaultAddresses();
+    if (vaults.length === 0) return;
+
+    const disconnected = new Set(vaults.map((address) => address.toLowerCase()));
+    const fromBlock = Math.max(blockNumber - OWNERSHIP_LOGS_LOOKBACK_BLOCKS + 1, 0);
+
+    const logs = await this.stakingVaultContractFactory.getOwnershipTransferredLogs(fromBlock, blockNumber);
+
+    // The topic is emitted by every OZ Ownable contract on the chain, so most logs are not ours.
+    const vaultLogs = logs
+      .filter((log) => disconnected.has(log.vault.toLowerCase()))
+      // Several transfers of one vault in one block all pass the `<=` block guard, so they must be
+      // applied in on-chain order for the last write to be the actual on-chain owner.
+      .sort((a, b) => a.blockNumber - b.blockNumber || a.logIndex - b.logIndex);
+
+    this.logger.log(
+      `[syncDisconnectedVaultOwnersFromLogs] Scanned blocks ${fromBlock}-${blockNumber}: ` +
+        `${logs.length} OwnershipTransferred log(s), ${vaultLogs.length} for disconnected vault(s)`,
+    );
+
+    const hubAddress = this.vaultHubContractService.address.toLowerCase();
+
+    for (const log of vaultLogs) {
+      // A transfer back to the hub is the vault reconnecting: the `VaultConnected` handler and the
+      // vaults cron own that transition — same rule as `resolveDisconnectedEffectiveOwner`.
+      if (log.newOwner.toLowerCase() === hubAddress) continue;
+
+      try {
+        await this.vaultDbService.updateVaultOwnership(log.vault, log.newOwner, log.blockNumber, {
+          onlyDisconnected: true,
+        });
+        this.logger.log(
+          `[syncDisconnectedVaultOwnersFromLogs] Vault ${log.vault} transferred to ${log.newOwner} ` +
+            `at block ${log.blockNumber}`,
+        );
+      } catch (err) {
+        // Per-log isolation: the next window re-covers this log anyway, and the reconcile cron is
+        // behind it — one failed write must not drop the rest of the batch.
+        this.logger.error(
+          `[syncDisconnectedVaultOwnersFromLogs] Failed to apply transfer of vault ${log.vault} ` +
+            `at block ${log.blockNumber}: ${err}`,
+        );
+      }
+    }
+
+    this.prometheusService.lastUpdateGauge
+      .labels({ source: 'syncDisconnectedVaultOwnersFromLogs', type: 'timestamp' })
+      .set(Date.now() / 1000);
+    this.prometheusService.lastUpdateGauge
+      .labels({ source: 'syncDisconnectedVaultOwnersFromLogs', type: 'blockNumber' })
+      .set(blockNumber);
+  }
+
+  /**
+   * State-based safety net behind {@link syncDisconnectedVaultOwnersFromLogs}: re-reads the actual
+   * `StakingVault` ownership of every disconnected vault, so it heals anything the log scan cannot
+   * see — downtime longer than the scan window, and vaults whose disconnect handler failed to
+   * resolve the owner. Costs two `eth_call`s per vault, which is why it runs rarely.
    */
   @TrackJob('reconcileDisconnectedVaultOwners')
   @SingleFlight({ key: 'reconcileDisconnectedVaultOwners', log: true })

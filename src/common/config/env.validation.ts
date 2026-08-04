@@ -118,7 +118,11 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
-  DISCONNECTED_VAULTS_OWNERSHIP_CRON = '*/10 * * * *';
+  DISCONNECTED_VAULTS_OWNERSHIP_CRON = '40 8 * * *';
+
+  @IsOptional()
+  @IsString()
+  DISCONNECTED_VAULTS_OWNERSHIP_SCAN_CRON = '*/10 * * * *';
 
   @IsOptional()
   @IsNumber()
