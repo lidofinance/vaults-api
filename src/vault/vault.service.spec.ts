@@ -35,9 +35,13 @@ describe('VaultService ownership lifecycle', () => {
     vaultDbService = {
       getAllDisconnectedVaultAddresses: jest.fn().mockResolvedValue([]),
       getVaultsWithoutOwnership: jest.fn().mockResolvedValue([]),
-      getDisconnectedVaultsWithoutDashboardOwner: jest.fn().mockResolvedValue([]),
+      getDisconnectedVaultsWithStaleMembers: jest.fn().mockResolvedValue([]),
+      countVaultsWithoutOwnership: jest.fn().mockResolvedValue(0),
+      countDisconnectedVaultsWithStaleMembers: jest.fn().mockResolvedValue(0),
       backfillMembersOwnerFromRoleMembers: jest.fn().mockResolvedValue(0),
       getOrCreateVaultByAddress: jest.fn().mockResolvedValue({ id: 1, address: vault }),
+      getVaultsCount: jest.fn().mockResolvedValue(0),
+      getVaults: jest.fn().mockResolvedValue([]),
       connectVault: jest.fn().mockResolvedValue(undefined),
       disconnectVault: jest.fn().mockResolvedValue(undefined),
       updateVaultOwnership: jest.fn().mockResolvedValue(undefined),
@@ -66,6 +70,7 @@ describe('VaultService ownership lifecycle', () => {
         quarantineEndTimestamp: 0,
       }),
       getRoleMembersWithRetry: jest.fn().mockResolvedValue({}),
+      getRoleMembersBatch: jest.fn().mockResolvedValue([]),
     };
 
     vaultHubContractService = {
@@ -103,11 +108,12 @@ describe('VaultService ownership lifecycle', () => {
     const prometheusService = {
       contractEventHandledCounter: counter,
       lastUpdateGauge: gauge,
+      ownershipBacklogGauge: gauge,
       jobDuration: { startTimer: jest.fn(() => jest.fn(() => 0)) },
     };
 
     service = new VaultService(
-      { jobs: { vaultsBatchSize: 10 }, get: jest.fn() } as any,
+      { jobs: { vaultsBatchSize: 10, vaultMembersBatchSize: 10 }, get: jest.fn() } as any,
       {} as any,
       logger as any,
       vaultDbService,
@@ -395,21 +401,25 @@ describe('VaultService ownership lifecycle', () => {
     });
 
     it('restores the Dashboard admins of a disconnected vault whose role rows were wiped', async () => {
-      vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
+      vaultDbService.getDisconnectedVaultsWithStaleMembers
         .mockResolvedValueOnce([{ id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: dashboard }])
         .mockResolvedValueOnce([]);
 
       await service.backfillVaultOwnership(300);
 
       expect(dashboardContract.getStakingVault).toHaveBeenCalledWith({ blockTag: 300 });
-      expect(vaultDbService.setMembersForVault).toHaveBeenCalledWith(vault, {
-        'vaults.StakingVault.owner': [dashboard],
-        'vaults.Dashboard.owner': [dashboardAdmin],
-      });
+      expect(vaultDbService.setMembersForVault).toHaveBeenCalledWith(
+        vault,
+        {
+          'vaults.StakingVault.owner': [dashboard],
+          'vaults.Dashboard.owner': [dashboardAdmin],
+        },
+        300,
+      );
     });
 
-    it("leaves a disconnected vault alone when its owner is not this vault's Dashboard", async () => {
-      vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
+    it("grants no role access when the owner is not this vault's Dashboard", async () => {
+      vaultDbService.getDisconnectedVaultsWithStaleMembers
         .mockResolvedValueOnce([{ id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: directOwner }])
         .mockResolvedValueOnce([]);
       dashboardContract.getStakingVault.mockResolvedValue('0x9999999999999999999999999999999999999999');
@@ -417,11 +427,18 @@ describe('VaultService ownership lifecycle', () => {
       await service.backfillVaultOwnership(300);
 
       expect(dashboardContract.getRoleMembers).not.toHaveBeenCalled();
-      expect(vaultDbService.setMembersForVault).not.toHaveBeenCalled();
+      // Owner-only write: records the provenance and, in the same transaction, drops any rows left by
+      // a previous owner — recording the provenance alone would re-enable them.
+      expect(vaultDbService.setMembersForVault).toHaveBeenCalledWith(
+        vault,
+        { 'vaults.StakingVault.owner': [directOwner] },
+        300,
+      );
     });
 
-    it('leaves a disconnected vault alone when the owner is a plain address', async () => {
-      vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
+    // Otherwise every restart re-reads the same vaults on-chain forever.
+    it('records the provenance of a plain-address owner so it is not re-read', async () => {
+      vaultDbService.getDisconnectedVaultsWithStaleMembers
         .mockResolvedValueOnce([{ id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: directOwner }])
         .mockResolvedValueOnce([]);
       // An EOA answers `eth_call` with `0x`, which ethers surfaces as CALL_EXCEPTION.
@@ -429,13 +446,17 @@ describe('VaultService ownership lifecycle', () => {
 
       await service.backfillVaultOwnership(300);
 
-      expect(vaultDbService.setMembersForVault).not.toHaveBeenCalled();
+      expect(vaultDbService.setMembersForVault).toHaveBeenCalledWith(
+        vault,
+        { 'vaults.StakingVault.owner': [directOwner] },
+        300,
+      );
     });
 
     // A transient RPC failure looks nothing like a revert, and treating it as "not a Dashboard" would
     // leave the vault's admins locked out for good: the repair only ever runs from the startup backfill.
     it('does not mistake an unreachable RPC for a plain-address owner', async () => {
-      vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
+      vaultDbService.getDisconnectedVaultsWithStaleMembers
         .mockResolvedValueOnce([{ id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: dashboard }])
         .mockResolvedValueOnce([]);
       dashboardContract.getStakingVault.mockRejectedValue(Object.assign(new Error('timeout'), { code: 'TIMEOUT' }));
@@ -458,7 +479,7 @@ describe('VaultService ownership lifecycle', () => {
         getRoleMembers: jest.fn().mockResolvedValue([dashboardAdmin]),
       }));
 
-      vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
+      vaultDbService.getDisconnectedVaultsWithStaleMembers
         .mockResolvedValueOnce([
           { id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: dashboard },
           { id: 10, address: otherVault, isDisconnected: true, effectiveOwnerAddress: otherDashboard },
@@ -471,12 +492,12 @@ describe('VaultService ownership lifecycle', () => {
       await expect(service.backfillVaultOwnership(300)).rejects.toThrow(/repair failed for 1 vault/);
 
       // The failing vault must not take the ones after it down with it.
-      expect(vaultDbService.setMembersForVault).toHaveBeenCalledWith(otherVault, expect.anything());
+      expect(vaultDbService.setMembersForVault).toHaveBeenCalledWith(otherVault, expect.anything(), 300);
       expect(vaultDbService.setMembersForVault).toHaveBeenCalledTimes(2);
     });
 
     it('resolves the Dashboard by the vault owner, not by the vault address', async () => {
-      vaultDbService.getDisconnectedVaultsWithoutDashboardOwner
+      vaultDbService.getDisconnectedVaultsWithStaleMembers
         .mockResolvedValueOnce([{ id: 9, address: vault, isDisconnected: true, effectiveOwnerAddress: dashboard }])
         .mockResolvedValueOnce([]);
 
@@ -491,10 +512,70 @@ describe('VaultService ownership lifecycle', () => {
         .mockResolvedValueOnce([]);
       vaultHubContractService.getVaultOwner.mockRejectedValue(new Error('rpc is down'));
 
-      await service.backfillVaultOwnership(300);
+      // Surfaced so the one-off job retries instead of being dropped with work left over.
+      await expect(service.backfillVaultOwnership(300)).rejects.toThrow(/Owner resolution failed for 1 vault/);
 
       expect(vaultDbService.getVaultsWithoutOwnership).toHaveBeenNthCalledWith(1, 10, 0);
       expect(vaultDbService.getVaultsWithoutOwnership).toHaveBeenNthCalledWith(2, 10, 7);
+    });
+  });
+  describe('fetchAllVaultsRoleMembers', () => {
+    const zeroResponse = {
+      'vaults.StakingVault.owner': [constants.AddressZero],
+      'vaults.StakingVault.nodeOperator': [constants.AddressZero],
+    };
+    const realResponse = {
+      'vaults.StakingVault.owner': [dashboard],
+      'vaults.StakingVault.nodeOperator': [directOwner],
+      'vaults.Dashboard.owner': [dashboardAdmin],
+    };
+
+    beforeEach(() => {
+      vaultDbService.getVaultsCount.mockResolvedValue(1);
+      vaultDbService.getVaults.mockResolvedValueOnce([{ id: 1, address: vault }]).mockResolvedValue([]);
+    });
+
+    it('only walks connected vaults', async () => {
+      await service.fetchAllVaultsRoleMembers(400);
+
+      expect(vaultDbService.getVaultsCount).toHaveBeenCalledWith({ isDisconnected: false });
+      // The batch is capped by the total, which is 1 here.
+      expect(vaultDbService.getVaults).toHaveBeenCalledWith(1, 0, { isDisconnected: false });
+    });
+
+    it('stores the members of a resolved vault together with the block they were read at', async () => {
+      vaultViewerContractService.getRoleMembersBatch.mockResolvedValue([
+        { vault, roleMembersMap: realResponse, resolved: true },
+      ]);
+
+      await service.fetchAllVaultsRoleMembers(400);
+
+      expect(vaultDbService.setMembersForVault).toHaveBeenCalledWith(vault, realResponse, 400);
+    });
+
+    // The viewer answers with zero addresses instead of reverting when it cannot resolve a vault.
+    // Persisting that would delete the real members and lock the owner out of their own vault.
+    it('keeps the stored members when the viewer answers with zero addresses', async () => {
+      vaultViewerContractService.getRoleMembersBatch.mockResolvedValue([
+        { vault, roleMembersMap: zeroResponse, resolved: false },
+      ]);
+
+      await service.fetchAllVaultsRoleMembers(400);
+
+      expect(vaultDbService.setMembersForVault).not.toHaveBeenCalled();
+    });
+
+    it('still stores the resolved vaults of a batch that also contains an unresolved one', async () => {
+      const otherVault = '0x7777777777777777777777777777777777777777';
+      vaultViewerContractService.getRoleMembersBatch.mockResolvedValue([
+        { vault, roleMembersMap: zeroResponse, resolved: false },
+        { vault: otherVault, roleMembersMap: realResponse, resolved: true },
+      ]);
+
+      await service.fetchAllVaultsRoleMembers(400);
+
+      expect(vaultDbService.setMembersForVault).toHaveBeenCalledTimes(1);
+      expect(vaultDbService.setMembersForVault).toHaveBeenCalledWith(otherVault, realResponse, 400);
     });
   });
 });

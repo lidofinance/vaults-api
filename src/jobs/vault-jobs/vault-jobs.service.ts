@@ -144,9 +144,13 @@ export class VaultJobsService {
   }
 
   /**
+   * TODO: TEMP - remove after ownership fields are backfilled in all environments.
+   *
    * Vaults stored before the ownership columns existed need them filled in once. A `Date` cron time
    * makes the job fire exactly once shortly after startup; it is then dropped from the registry.
    * The backfill itself is idempotent, so running it again after a redeploy costs a single query.
+   * Watch `ownership_backlog` in Prometheus: once it is 0 in every environment, this and
+   * `VaultService.backfillVaultOwnership` can go.
    *
    * It is only dropped once it has actually succeeded. The reasons it can fail are all transient and
    * all likely right after boot — the RPC is not warm yet, or the API replica has not applied the

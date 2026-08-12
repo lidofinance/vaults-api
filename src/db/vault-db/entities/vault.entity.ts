@@ -40,6 +40,10 @@ export class VaultEntity {
   @Column({ name: 'ownership_block_number', type: 'integer', default: 0 })
   ownershipBlockNumber: number;
 
+  /** Block the `vault_members` rows were read at, guards them against out-of-order writes. */
+  @Column({ name: 'members_owner_block_number', type: 'integer', default: 0 })
+  membersOwnerBlockNumber: number;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

@@ -5,7 +5,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { ConfigService } from 'common/config';
 import { PrometheusService } from 'common/prometheus';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
-import { VaultViewerContractService, type RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
+import { VaultViewerContractService, type VaultRoleMembers } from 'common/contracts/modules/vault-viewer-contract';
 import { VaultHubContractService } from 'common/contracts/modules/vault-hub-contract';
 import { StakingVaultContractFactory } from 'common/contracts/modules/staking-vault-contract';
 import { DashboardContractFactory } from 'common/contracts/modules/dashboard-contract';
@@ -217,6 +217,8 @@ export class VaultService {
     const totalVaults = await this.vaultDbService.getVaultsCount(roleMembersFilter);
     this.logger.log(`[fetchAllVaultsRoleMembers] Total vaults: ${totalVaults}`);
 
+    let skippedUnresolved = 0;
+
     let vaultsLimit = totalVaults;
     if (minimalVaultsFetchingCount > 0 && totalVaults > 0) {
       vaultsLimit = Math.min(minimalVaultsFetchingCount, totalVaults);
@@ -234,7 +236,7 @@ export class VaultService {
       );
       const vaultAddresses = vaultEntities.map((vault) => vault.address);
 
-      let batchResults: Array<{ vault: string; roleMembersMap: RoleMembers }>;
+      let batchResults: VaultRoleMembers[];
       try {
         batchResults = await this.vaultViewerContractService.getRoleMembersBatch(vaultAddresses, ROLE_BYTES32, {
           blockTag: blockNumber,
@@ -247,26 +249,29 @@ export class VaultService {
       this.logger.log(
         `[fetchAllVaultsRoleMembers] Saving vaults range(${offset}..${offset + vaultEntities.length - 1})`,
       );
-      for (const { vault, roleMembersMap } of batchResults) {
-        try {
-          await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
-          this.logger.log(`[fetchAllVaultsRoleMembers] Saved 'membersForVault' data to DB for vault ${vault}`);
-          // zero response is
-          // roleMembersMap: {
-          //   'vaults.StakingVault.owner': [ '0x0000000000000000000000000000000000000000' ],
-          //   'vaults.StakingVault.nodeOperator': [ '0x0000000000000000000000000000000000000000' ]
-          // }
-          // Object.keys(roleMembersMap).length = 2
-          this.logger.log(
-            `[fetchAllVaultsRoleMembers] Object.keys(roleMembersMap).length ${Object.keys(roleMembersMap).length}`,
+      for (const { vault, roleMembersMap, resolved } of batchResults) {
+        // A zero-address response carries no roles. Persisting it would delete the real members and
+        // leave the vault with nothing to match its owner against until the next successful refresh,
+        // so the previous members are kept as the last known good state instead.
+        if (!resolved) {
+          skippedUnresolved++;
+          this.logger.warn(
+            `[fetchAllVaultsRoleMembers] Viewer returned zero addresses for vault ${vault} at block ` +
+              `${blockNumber}, keeping its previously stored role members`,
           );
+          continue;
+        }
+
+        try {
+          await this.vaultDbService.setMembersForVault(vault, roleMembersMap, blockNumber);
+          this.logger.log(`[fetchAllVaultsRoleMembers] Saved 'membersForVault' data to DB for vault ${vault}`);
         } catch (err) {
           this.logger.error(`[fetchAllVaultsRoleMembers] Error saving role members for vault ${vault}: ${err.message}`);
         }
       }
     }
 
-    this.logger.log('[fetchAllVaultsRoleMembers] Finished');
+    this.logger.log(`[fetchAllVaultsRoleMembers] Finished, skippedUnresolved=${skippedUnresolved}`);
     this.prometheusService.lastUpdateGauge
       .labels({ source: 'fetchAllVaultsRoleMembers', type: 'timestamp' })
       .set(Date.now() / 1000);
@@ -353,7 +358,7 @@ export class VaultService {
             blockTag: blockNumber,
           });
 
-          await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
+          await this.vaultDbService.setMembersForVault(vault, roleMembersMap, blockNumber);
           this.logger.log(
             `[subscribeToEvents, event:VaultConnected] Saved 'membersForVault' data to DB for vault ${vault}`,
           );
@@ -573,9 +578,16 @@ export class VaultService {
   }
 
   /**
-   * Fills the ownership columns for vaults stored before those columns existed.
-   * Idempotent: it only looks at rows with an empty `effectiveOwnerAddress`, so re-running it on
-   * every deploy is a single cheap query once the backfill is done.
+   * TODO: TEMP - remove after ownership fields are backfilled in all environments.
+   *
+   * Fills the ownership columns for vaults stored before those columns existed. Idempotent, and once
+   * every environment has run it all three phases converge to plain queries with no on-chain reads:
+   * the provenance recovery is a single `UPDATE`, owner resolution selects on
+   * `effectiveOwnerAddress IS NULL`, and the role members repair selects on a members provenance that
+   * no longer matches the owner — which it records for every vault it touches, Dashboard or not.
+   *
+   * Until then it stays: dropping it while an environment is still unmigrated would leave owners
+   * unable to find their own vaults.
    */
   @TrackJob('backfillVaultOwnership')
   @SingleFlight({ key: 'backfillVaultOwnership', log: true })
@@ -585,8 +597,42 @@ export class VaultService {
       this.logger.log(`[backfillVaultOwnership] Recovered membersOwnerAddress for ${membersOwnerFilled} vault(s)`);
     }
 
-    await this.resolveMissingVaultOwners(blockNumber);
-    await this.repairDisconnectedVaultRoleMembers(blockNumber);
+    try {
+      await this.resolveMissingVaultOwners(blockNumber);
+      await this.repairDisconnectedVaultRoleMembers(blockNumber);
+    } finally {
+      // Reported even on failure: the point of the gauge is to show work still outstanding, which is
+      // exactly what a failed run leaves behind.
+      await this.reportOwnershipBacklog(blockNumber);
+    }
+  }
+
+  /**
+   * Publishes how much the backfill still has to do, so a partial failure is alertable instead of
+   * living in one log line. Reaching zero is what says the backfill — and this whole TEMP path — is
+   * done and safe to remove.
+   */
+  private async reportOwnershipBacklog(blockNumber: number): Promise<void> {
+    try {
+      const [withoutOwner, staleMembers] = await Promise.all([
+        this.vaultDbService.countVaultsWithoutOwnership(),
+        this.vaultDbService.countDisconnectedVaultsWithStaleMembers(),
+      ]);
+
+      this.prometheusService.ownershipBacklogGauge.labels({ kind: 'withoutOwner' }).set(withoutOwner);
+      this.prometheusService.ownershipBacklogGauge.labels({ kind: 'staleMembers' }).set(staleMembers);
+      this.prometheusService.lastUpdateGauge
+        .labels({ source: 'backfillVaultOwnership', type: 'timestamp' })
+        .set(Date.now() / 1000);
+      this.prometheusService.lastUpdateGauge
+        .labels({ source: 'backfillVaultOwnership', type: 'blockNumber' })
+        .set(blockNumber);
+
+      this.logger.log(`[backfillVaultOwnership] Backlog: withoutOwner=${withoutOwner}, staleMembers=${staleMembers}`);
+    } catch (err) {
+      // Reporting must not mask the backfill's own outcome, which drives the retry.
+      this.logger.error(`[backfillVaultOwnership] Failed to report the ownership backlog: ${err}`);
+    }
   }
 
   private async resolveMissingVaultOwners(blockNumber: number): Promise<void> {
@@ -626,6 +672,12 @@ export class VaultService {
     this.logger.log(
       `[backfillVaultOwnership] Resolved owners at blockNumber=${blockNumber}: processed=${processed}, failed=${failed}`,
     );
+
+    // Same contract as the repair phase: a partially completed backfill must not count as done, or the
+    // one-off job is dropped and the vaults that failed stay ownerless until the next deploy.
+    if (failed > 0) {
+      throw new Error(`[backfillVaultOwnership] Owner resolution failed for ${failed} vault(s)`);
+    }
   }
 
   /**
@@ -642,7 +694,7 @@ export class VaultService {
     let failed = 0;
 
     while (true) {
-      const vaults = await this.vaultDbService.getDisconnectedVaultsWithoutDashboardOwner(batchSize, afterId);
+      const vaults = await this.vaultDbService.getDisconnectedVaultsWithStaleMembers(batchSize, afterId);
       if (vaults.length === 0) break;
 
       afterId = vaults[vaults.length - 1].id;
@@ -652,19 +704,26 @@ export class VaultService {
           // Per-vault, because the cursor has already moved on: an unhandled rejection here would
           // abort the whole scan and the vaults after this batch would never be repaired.
           try {
+            const owner = vault.effectiveOwnerAddress as string;
             const admins = await this.readVaultDashboardAdmins(vault, blockNumber);
-            if (!admins?.length) {
-              skipped++;
-              return;
-            }
 
             // Recorded exactly like a regular refresh would, so `membersOwnerAddress` is set to the
             // owner these roles came from and the vaults query starts trusting them.
-            await this.vaultDbService.setMembersForVault(vault.address, {
-              [STAKING_VAULT_OWNER_ROLE]: [vault.effectiveOwnerAddress as string],
-              [DASHBOARD_OWNER_ROLE]: admins,
-            });
-            repaired++;
+            //
+            // The owner-only write for a non-Dashboard owner is not a no-op: it drops the rows left
+            // by the previous owner in the same transaction that claims the new provenance. Recording
+            // the provenance without deleting them would re-enable the role branch over stale rows and
+            // hand the previous owner's admins access to a vault they no longer control.
+            await this.vaultDbService.setMembersForVault(
+              vault.address,
+              admins?.length
+                ? { [STAKING_VAULT_OWNER_ROLE]: [owner], [DASHBOARD_OWNER_ROLE]: admins }
+                : { [STAKING_VAULT_OWNER_ROLE]: [owner] },
+              blockNumber,
+            );
+
+            if (admins?.length) repaired++;
+            else skipped++;
           } catch (err) {
             failed++;
             this.logger.error(
@@ -681,7 +740,8 @@ export class VaultService {
     this.logger.log(
       `[backfillVaultOwnership] Disconnected vault role members: repaired=${repaired}, ` +
         `skipped=${skipped} (owner is not this vault's Dashboard, so it grants access by address only), ` +
-        `failed=${failed}`,
+        `failed=${failed}. Both repaired and skipped vaults now have their members provenance recorded ` +
+        `and will not be re-read on the next run.`,
     );
 
     // Surfaced so the caller can retry instead of dropping the one-off job on a transient RPC failure.
@@ -765,7 +825,7 @@ export class VaultService {
       const roleMembersMap = await this.vaultViewerContractService.getRoleMembersWithRetry(vault, ROLE_BYTES32, {
         blockTag: blockNumber,
       });
-      await this.vaultDbService.setMembersForVault(vault, roleMembersMap);
+      await this.vaultDbService.setMembersForVault(vault, roleMembersMap, blockNumber);
       this.logger.log(`[${context}] Refreshed role members of vault ${vault} at block ${blockNumber}`);
     } catch (err) {
       this.logger.error(
