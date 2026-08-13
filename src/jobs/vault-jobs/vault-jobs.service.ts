@@ -71,7 +71,7 @@ export class VaultJobsService {
     jobVaultsMembers.start();
 
     const jobDisconnectedVaultsOwnership = new CronJob(
-      this.configService.jobs['disconnectedVaultsOwnershipCron'],
+      this.configService.jobs['disconnectedVaultsOwnershipReconcileCron'],
       async () => {
         let blockNumber: number;
         try {

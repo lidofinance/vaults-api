@@ -86,7 +86,7 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
       vaultsCron: this.get('VAULTS_CRON'),
       vaultsCronTZ: 'UTC',
 
-      disconnectedVaultsOwnershipCron: this.get('DISCONNECTED_VAULTS_OWNERSHIP_CRON'),
+      disconnectedVaultsOwnershipReconcileCron: this.get('DISCONNECTED_VAULTS_OWNERSHIP_RECONCILE_CRON'),
       disconnectedVaultsOwnershipCronTZ: 'UTC',
 
       disconnectedVaultsOwnershipScanCron: this.get('DISCONNECTED_VAULTS_OWNERSHIP_SCAN_CRON'),
