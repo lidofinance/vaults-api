@@ -15,6 +15,10 @@ export class VaultHubContractService {
     this.contract = new Contract(address, VaultHubAbi, provider);
   }
 
+  get address(): string {
+    return this.contract.address;
+  }
+
   async getVaultOwner(vault: string, overrides?: Overrides): Promise<string> {
     const result = await this.contract.callStatic.vaultConnection(...(overrides ? [vault, overrides] : [vault]));
 

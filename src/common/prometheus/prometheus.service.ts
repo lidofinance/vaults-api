@@ -96,4 +96,11 @@ export class PrometheusService {
     buckets: [0.2, 0.6, 1, 2, 3, 5, 8, 13, 30, 60],
     labelNames: ['name', 'status'],
   });
+
+  // TODO: TEMP - remove together with the ownership backfill.
+  public ownershipBacklogGauge = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'ownership_backlog',
+    help: 'Vaults the ownership backfill has not resolved yet, labeled by what is missing. Expected to reach 0',
+    labelNames: ['kind'],
+  });
 }

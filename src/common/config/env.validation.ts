@@ -117,6 +117,14 @@ export class EnvironmentVariables {
   VAULTS_CRON = '0 * * * *';
 
   @IsOptional()
+  @IsString()
+  DISCONNECTED_VAULTS_OWNERSHIP_RECONCILE_CRON = '40 8 * * *';
+
+  @IsOptional()
+  @IsString()
+  DISCONNECTED_VAULTS_OWNERSHIP_SCAN_CRON = '*/10 * * * *';
+
+  @IsOptional()
   @IsNumber()
   @Transform(toNumber())
   VAULT_MEMBERS_BATCH_SIZE = 10;
