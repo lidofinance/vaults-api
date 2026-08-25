@@ -282,8 +282,12 @@ export class VaultDbService {
         .createQueryBuilder()
         .select('*')
         .from(`(${vaultsBaseQuery.getQuery()})`, 'vaults_sorted')
+        // Disconnected vaults show all metrics as "-" on the frontend, so group them by the same
+        // direction toggle instead of sorting them by stale data: ASC keeps them at the bottom,
+        // DESC brings them to the top.
+        .orderBy(`vaults_sorted."isDisconnected"`, direction)
         // Use 'NULLS LAST' to ensure records with NULL in the sort field always appear at the bottom (regardless of ASC or DESC)
-        .orderBy(`vaults_sorted."${sortBy}"`, direction, 'NULLS LAST')
+        .addOrderBy(`vaults_sorted."${sortBy}"`, direction, 'NULLS LAST')
         .limit(limit)
         .offset(offset)
         .setParameters(vaultsBaseQuery.getParameters());
