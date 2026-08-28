@@ -1,9 +1,11 @@
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, MoreThan, Repository, SelectQueryBuilder } from 'typeorm';
+import { constants } from 'ethers';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { RoleMembers } from 'common/contracts/modules/vault-viewer-contract';
+import { STAKING_VAULT_OWNER_ROLE } from 'vault/vault.constants';
 import { ReportEntity } from 'db/report-db/entities';
 
 import { Direction, DirectionEnum, SortFields } from './enums';
@@ -41,8 +43,9 @@ export class VaultDbService {
     private readonly vaultReportStatRepo: Repository<VaultReportStatEntity>,
   ) {}
 
-  async getVaults(limit = 10, offset = 0): Promise<VaultEntity[]> {
+  async getVaults(limit = 10, offset = 0, filter?: { isDisconnected?: boolean }): Promise<VaultEntity[]> {
     return await this.vaultRepo.find({
+      where: filter?.isDisconnected === undefined ? {} : { isDisconnected: filter.isDisconnected },
       take: limit,
       skip: offset,
       // ASC (ascending order) - 1 → 2 → 3 → 4 → ...
@@ -60,10 +63,73 @@ export class VaultDbService {
     return this.vaultRepo.count();
   }
 
+  /**
+   * Vaults created before the ownership columns existed — the one-off backfill input.
+   * Paginated by an id cursor rather than an offset: filled rows drop out of the result set,
+   * so an offset would skip the vaults that shifted into its place.
+   */
+  async getVaultsWithoutOwnership(limit: number, afterId = 0): Promise<VaultEntity[]> {
+    return this.vaultRepo.find({
+      where: { effectiveOwnerAddress: IsNull(), id: MoreThan(afterId) },
+      take: limit,
+      order: { id: 'ASC' },
+    });
+  }
+
+  /**
+   * Disconnected vaults whose recorded role members do not belong to their current owner — either
+   * lost to a `VaultViewer` zero-response refresh (provenance is `NULL`) or left behind by a transfer
+   * (provenance is the previous owner). These are what the role members repair re-reads straight off
+   * the owner contract.
+   *
+   * Keyed on the provenance rather than on "has no dashboard-owner row", so the scan converges: a
+   * vault owned by a plain address gets its provenance recorded once and stops being selected, instead
+   * of costing an on-chain read on every restart. Paginated by an id cursor for the same reason as
+   * {@link getVaultsWithoutOwnership}.
+   */
+  async getDisconnectedVaultsWithStaleMembers(limit: number, afterId = 0): Promise<VaultEntity[]> {
+    return this.buildDisconnectedVaultsWithStaleMembersQuery()
+      .andWhere('vault.id > :afterId', { afterId })
+      .orderBy('vault.id', 'ASC')
+      .take(limit)
+      .getMany();
+  }
+
+  /** Backlog counters for the ownership backfill, see `VaultService.reportOwnershipBacklog`. */
+  async countVaultsWithoutOwnership(): Promise<number> {
+    return this.vaultRepo.count({ where: { effectiveOwnerAddress: IsNull() } });
+  }
+
+  async countDisconnectedVaultsWithStaleMembers(): Promise<number> {
+    return this.buildDisconnectedVaultsWithStaleMembersQuery().getCount();
+  }
+
+  private buildDisconnectedVaultsWithStaleMembersQuery(): SelectQueryBuilder<VaultEntity> {
+    return this.vaultRepo
+      .createQueryBuilder('vault')
+      .where('vault.is_disconnected = true')
+      .andWhere('vault.effective_owner_address IS NOT NULL')
+      .andWhere(
+        `(
+          vault.members_owner_address IS NULL
+          OR LOWER(vault.members_owner_address) <> LOWER(vault.effective_owner_address)
+        )`,
+      );
+  }
+
   async getAllConnectedVaultAddresses(): Promise<string[]> {
     const rows = await this.vaultRepo.find({
       where: { isDisconnected: false },
       select: ['address'],
+    });
+    return rows.map((vault) => vault.address);
+  }
+
+  async getAllDisconnectedVaultAddresses(): Promise<string[]> {
+    const rows = await this.vaultRepo.find({
+      where: { isDisconnected: true },
+      select: ['address'],
+      order: { id: 'ASC' },
     });
     return rows.map((vault) => vault.address);
   }
@@ -92,12 +158,46 @@ export class VaultDbService {
     );
   }
 
-  async connectVault(vaultAddress: string): Promise<void> {
-    await this.vaultRepo.update({ address: vaultAddress }, { isDisconnected: false });
+  /** `connectionOwnerAddress` is `VaultHub`'s `connection.owner` — the effective owner while connected. */
+  async connectVault(vaultAddress: string, blockNumber: number, connectionOwnerAddress: string): Promise<void> {
+    await this.updateVaultOwnershipColumns(
+      vaultAddress,
+      blockNumber,
+      { isDisconnected: false, effectiveOwnerAddress: connectionOwnerAddress },
+      {},
+    );
   }
 
-  async disconnectVault(vaultAddress: string): Promise<void> {
-    await this.vaultRepo.update({ address: vaultAddress }, { isDisconnected: true });
+  /**
+   * `effectiveOwnerAddress` may be `null` when the `StakingVault` has not named a new owner yet — the
+   * vault is still marked disconnected, but the previously recorded owner is left in place rather than
+   * overwritten with a sentinel nobody can query by.
+   */
+  async disconnectVault(
+    vaultAddress: string,
+    blockNumber: number,
+    effectiveOwnerAddress: string | null,
+  ): Promise<void> {
+    await this.updateVaultOwnershipColumns(
+      vaultAddress,
+      blockNumber,
+      effectiveOwnerAddress === null ? { isDisconnected: true } : { isDisconnected: true, effectiveOwnerAddress },
+      {},
+    );
+  }
+
+  async updateVaultOwnership(
+    vaultAddress: string,
+    effectiveOwnerAddress: string,
+    blockNumber: number,
+    opts: { onlyDisconnected?: boolean } = {},
+  ): Promise<void> {
+    await this.updateVaultOwnershipColumns(
+      vaultAddress,
+      blockNumber,
+      { effectiveOwnerAddress },
+      { onlyDisconnected: opts.onlyDisconnected },
+    );
   }
 
   async addOrUpdateState(entry: Partial<VaultStateEntity>): Promise<void> {
@@ -110,7 +210,7 @@ export class VaultDbService {
   async getVaultData(vaultAddress: string): Promise<VaultData | null> {
     return this.dataSource.transaction(async (manager) => {
       const vaultBaseQuery = buildVaultsBaseQuery(manager, {
-        includeDisconnected: false,
+        includeDisconnected: true,
         vaultAddress,
       }).limit(1);
 
@@ -156,8 +256,12 @@ export class VaultDbService {
         .limit(1)
         .getRawOne();
 
+      // Filtering by an address is the owner's personal view, so it has to surface the vaults
+      // they still own after a disconnect. The unfiltered list stays connected-only.
+      const isPersonalView = !!address;
+
       const vaultsBaseQuery = buildVaultsBaseQuery(manager, {
-        includeDisconnected: false,
+        includeDisconnected: isPersonalView,
         memberAddress: address,
         memberRole: role,
       });
@@ -178,8 +282,16 @@ export class VaultDbService {
         .createQueryBuilder()
         .select('*')
         .from(`(${vaultsBaseQuery.getQuery()})`, 'vaults_sorted')
+        // Disconnected vaults show all metrics as "-" on the frontend, so they're grouped
+        // to the end of the list for the default DESC direction (and to the start for ASC),
+        // instead of being sorted by stale data. That means the opposite direction from the
+        // one applied to `sortBy` below.
+        .orderBy(
+          `vaults_sorted."isDisconnected"`,
+          direction === DirectionEnum.ASC ? DirectionEnum.DESC : DirectionEnum.ASC,
+        )
         // Use 'NULLS LAST' to ensure records with NULL in the sort field always appear at the bottom (regardless of ASC or DESC)
-        .orderBy(`vaults_sorted."${sortBy}"`, direction, 'NULLS LAST')
+        .addOrderBy(`vaults_sorted."${sortBy}"`, direction, 'NULLS LAST')
         .limit(limit)
         .offset(offset)
         .setParameters(vaultsBaseQuery.getParameters());
@@ -434,7 +546,7 @@ export class VaultDbService {
    *   ...
    * }
    */
-  async setMembersForVault(vaultAddress: string, membersMap: RoleMembers): Promise<void> {
+  async setMembersForVault(vaultAddress: string, membersMap: RoleMembers, blockNumber: number): Promise<void> {
     const vault = await this.vaultRepo.findOne({
       where: { address: vaultAddress },
     });
@@ -445,6 +557,22 @@ export class VaultDbService {
 
     // Perform an atomic operation: 1) delete old records and 2) save new ones
     await this.vaultMemberRepo.manager.transaction(async (transactionalEntityManager) => {
+      // 0) Lock the vault row and re-read the recorded block inside the transaction: writers read
+      // different blocks (daily cron, event handler, backfill), so an older read can arrive last and
+      // roll the members — and their provenance — back to a previous owner.
+      const [current] = await transactionalEntityManager.query(
+        `SELECT members_owner_block_number FROM vaults WHERE id = $1 FOR UPDATE`,
+        [vault.id],
+      );
+
+      if (current && current.members_owner_block_number > blockNumber) {
+        this.logger.log(
+          `[setMembersForVault] Skipped vault ${vaultAddress}: members from block ` +
+            `${current.members_owner_block_number} are newer than block ${blockNumber}`,
+        );
+        return;
+      }
+
       // 1) Delete all existing records for this vault
       await transactionalEntityManager.delete(VaultMemberEntity, {
         vault: { id: vault.id },
@@ -466,7 +594,49 @@ export class VaultDbService {
       if (toInsert.length > 0) {
         await transactionalEntityManager.save(VaultMemberEntity, toInsert);
       }
+
+      // 3) Remember which owner answered for these roles. `VaultViewer` resolves them through the
+      // vault owner and reports it back under `STAKING_VAULT_OWNER_ROLE`, so it is the provenance
+      // of the rows just written: once the vault moves to another owner they stop being valid.
+      // A zero address means the viewer had no connection record to resolve them through, which is
+      // not a provenance — recording it would assert these rows belong to nobody.
+      const membersOwner = membersMap[STAKING_VAULT_OWNER_ROLE]?.[0];
+      await transactionalEntityManager.update(VaultEntity, vault.id, {
+        membersOwnerAddress: !membersOwner || membersOwner === constants.AddressZero ? null : membersOwner,
+        membersOwnerBlockNumber: blockNumber,
+      });
     });
+  }
+
+  /**
+   * Recovers `membersOwnerAddress` for rows written before the column existed.
+   * `VaultViewer` reports the owner it resolved the roles through under `STAKING_VAULT_OWNER_ROLE`,
+   * so the provenance is already in `vault_members` — no on-chain reads needed.
+   */
+  async backfillMembersOwnerFromRoleMembers(): Promise<number> {
+    const result = await this.dataSource
+      .createQueryBuilder()
+      .update(VaultEntity)
+      .set({
+        membersOwnerAddress: () =>
+          `(SELECT m.address FROM vault_members m
+            WHERE m.vault_id = vaults.id AND m.role = :ownerRole AND m.address <> :zeroAddress
+            LIMIT 1)`,
+      })
+      .where('members_owner_address IS NULL')
+      // Zero-address rows are the artefact of refreshing a disconnected vault through `VaultViewer`;
+      // they name no owner, so leaving the column NULL is the honest outcome.
+      .andWhere(
+        `EXISTS (
+          SELECT 1 FROM vault_members m
+          WHERE m.vault_id = vaults.id AND m.role = :ownerRole AND m.address <> :zeroAddress
+        )`,
+      )
+      .setParameter('ownerRole', STAKING_VAULT_OWNER_ROLE)
+      .setParameter('zeroAddress', constants.AddressZero)
+      .execute();
+
+    return result.affected ?? 0;
   }
 
   async addOrUpdateReportStats(entry: Partial<VaultReportStatEntity>): Promise<void> {
@@ -493,5 +663,39 @@ export class VaultDbService {
       loadRelationIds: true,
     });
     return !!row;
+  }
+
+  /**
+   * Ownership updates arrive both from contract events and from crons reading a safe (lagging)
+   * block, so they can be applied out of order. `ownership_block_number` keeps them monotonic:
+   * an update coming from an older block is discarded.
+   *
+   * Discarding is expected and normal, but it must not be invisible: a write that matched no row is
+   * also how a missing vault row or a case-mangled address would look, so the reason is logged.
+   */
+  private async updateVaultOwnershipColumns(
+    vaultAddress: string,
+    blockNumber: number,
+    values: Partial<Pick<VaultEntity, 'isDisconnected' | 'effectiveOwnerAddress'>>,
+    opts: { onlyDisconnected?: boolean },
+  ): Promise<void> {
+    const query = this.vaultRepo
+      .createQueryBuilder()
+      .update(VaultEntity)
+      .set({ ...values, ownershipBlockNumber: blockNumber })
+      .where('LOWER(address) = LOWER(:vaultAddress)', { vaultAddress })
+      .andWhere('ownership_block_number <= :blockNumber', { blockNumber });
+
+    if (opts.onlyDisconnected) {
+      query.andWhere('is_disconnected = true');
+    }
+
+    const result = await query.execute();
+    if (result.affected === 0) {
+      this.logger.log(
+        `[updateVaultOwnershipColumns] No row updated for vault ${vaultAddress} at block ${blockNumber} ` +
+          `(onlyDisconnected=${!!opts.onlyDisconnected}): the vault is unknown, or a newer block was already applied`,
+      );
+    }
   }
 }

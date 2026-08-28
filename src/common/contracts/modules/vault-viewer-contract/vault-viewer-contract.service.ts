@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Contract, constants } from 'ethers';
+import { Contract } from 'ethers';
+import { zeroAddress } from 'viem';
 
 import { LoggerService } from 'common/logger';
 import { ExecutionProvider } from 'common/execution-provider';
@@ -11,6 +12,7 @@ export type Overrides = { blockTag?: number | string };
 
 export type VaultData = {
   vault: string;
+  connectionOwner: string;
   totalValue: bigint;
   liabilityShares: bigint;
   liabilityStETH: bigint;
@@ -30,6 +32,23 @@ export type VaultData = {
 };
 
 export type RoleMembers = Record<string, string[]>;
+
+export type VaultRoleMembers = {
+  vault: string;
+  roleMembersMap: RoleMembers;
+  /** See {@link isResolvedRoleMembers}. */
+  resolved: boolean;
+};
+
+/**
+ * Whether the viewer actually resolved the roles of a vault. It answers with zero addresses instead
+ * of reverting when it cannot reach the vault through its `VaultHub` connection record — for a
+ * disconnected vault, or transiently while reading a block where the connection is not visible.
+ * Such a response carries no roles and must never be persisted: it would replace the last known good
+ * members and cut the vault owner off from their own vault.
+ */
+export const isResolvedRoleMembers = (owner: string, nodeOperator: string): boolean =>
+  owner !== zeroAddress && nodeOperator !== zeroAddress;
 
 export type RawVaultRoleMembers = [
   string, // owner
@@ -85,8 +104,7 @@ export class VaultViewerContractService {
       {
         callName: 'getRoleMembers',
         logger: this.logger,
-        acceptResult: ({ owner, nodeOperator }) =>
-          owner !== constants.AddressZero && nodeOperator !== constants.AddressZero,
+        acceptResult: ({ owner, nodeOperator }) => isResolvedRoleMembers(owner, nodeOperator),
       },
     );
 
@@ -95,22 +113,29 @@ export class VaultViewerContractService {
     return VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, membersRaw);
   }
 
+  /**
+   * Unlike {@link getRoleMembersWithRetry}, a batch cannot be retried per vault, so unresolved
+   * entries are flagged rather than filtered out or retried: the caller has to know a vault was
+   * skipped instead of silently seeing a shorter list.
+   */
   async getRoleMembersBatch(
     vaultAddresses: string[],
     roles: string[],
     overrides?: Overrides,
-  ): Promise<Array<{ vault: string; roleMembersMap: RoleMembers }>> {
+  ): Promise<VaultRoleMembers[]> {
     const raw: RawVaultRoleMembers[] = await this.contract.roleMembersBatch(vaultAddresses, roles, overrides);
 
     return raw.map(([vault, owner, nodeOperator, membersRaw]) => ({
       vault,
       roleMembersMap: VaultViewerContractService.transformRoleMembersMap(owner, nodeOperator, membersRaw),
+      resolved: isResolvedRoleMembers(owner, nodeOperator),
     }));
   }
 
   private static transformVaultData(vaultData: any): VaultData {
     return {
       vault: vaultData.vaultAddress,
+      connectionOwner: vaultData.connection.owner,
       totalValue: vaultData.totalValue.toBigInt(),
       liabilityShares: vaultData.record.liabilityShares.toBigInt(),
       liabilityStETH: vaultData.liabilityStETH.toBigInt(),
