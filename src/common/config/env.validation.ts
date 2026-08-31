@@ -97,12 +97,32 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsNumber()
+  @Min(1)
+  @Transform(toNumber())
+  REPORT_IPFS_MAX_CONTENT_LENGTH_BYTES = 20 * 1024 * 1024;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Transform(toNumber())
+  REPORT_IPFS_FETCH_TIMEOUT_MS = 20_000;
+
+  @IsOptional()
+  @IsNumber()
   @Transform(toNumber())
   VAULTS_BATCH_SIZE = 50;
 
   @IsOptional()
   @IsString()
   VAULTS_CRON = '0 * * * *';
+
+  @IsOptional()
+  @IsString()
+  DISCONNECTED_VAULTS_OWNERSHIP_RECONCILE_CRON = '40 8 * * *';
+
+  @IsOptional()
+  @IsString()
+  DISCONNECTED_VAULTS_OWNERSHIP_SCAN_CRON = '*/10 * * * *';
 
   @IsOptional()
   @IsNumber()

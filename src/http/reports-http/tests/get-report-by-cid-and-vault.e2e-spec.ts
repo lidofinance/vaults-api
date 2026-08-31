@@ -15,18 +15,20 @@ describe('ReportsHttpController (e2e) - getReportByCidAndVault', () => {
   let app: INestApplication;
   let loggerMock;
   let vaultDbServiceMock;
+  let reportDbServiceMock;
   let reportsMerkleServiceMock;
 
   beforeAll(async () => {
     const bootstrap = await bootstrapTestApp();
     app = bootstrap.app;
 
-    ({ vaultDbServiceMock, reportsMerkleServiceMock, loggerMock } = bootstrap.mocks);
+    ({ vaultDbServiceMock, reportDbServiceMock, reportsMerkleServiceMock, loggerMock } = bootstrap.mocks);
   });
 
   beforeEach(() => {
     jest.clearAllMocks();
     vaultDbServiceMock.existsVaultByAddress.mockResolvedValue(true);
+    reportDbServiceMock.existsByCid.mockResolvedValue(true);
     reportsMerkleServiceMock.getReportProofByVault.mockResolvedValue(reportByVaultExample);
   });
 
@@ -61,6 +63,22 @@ describe('ReportsHttpController (e2e) - getReportByCidAndVault', () => {
     expect(reportsMerkleServiceMock.getReportProofByVault).not.toHaveBeenCalled();
   });
 
+  it(`${HttpStatus.OK}: cid is not present in DB -> controller returns { report: null } without IPFS fetch`, async () => {
+    reportDbServiceMock.existsByCid.mockResolvedValueOnce(false);
+    const resp = await request(app.getHttpServer()).get(`/v1/report/${cid}/${vaultAddress}`);
+    expect(resp.status).toBe(HttpStatus.OK);
+    expect(resp.body).toEqual({ report: null });
+
+    expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledTimes(1);
+    expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledWith(vaultAddress);
+
+    expect(reportDbServiceMock.existsByCid).toHaveBeenCalledTimes(1);
+    expect(reportDbServiceMock.existsByCid).toHaveBeenCalledWith(cid);
+
+    expect(loggerMock.warn).toHaveBeenCalledTimes(1);
+    expect(reportsMerkleServiceMock.getReportProofByVault).not.toHaveBeenCalled();
+  });
+
   it(`${HttpStatus.OK}: returns vault report`, async () => {
     const resp = await request(app.getHttpServer()).get(`/v1/report/${cid}/${vaultAddress}`);
     expect(resp.status).toBe(HttpStatus.OK);
@@ -68,6 +86,9 @@ describe('ReportsHttpController (e2e) - getReportByCidAndVault', () => {
 
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledTimes(1);
     expect(vaultDbServiceMock.existsVaultByAddress).toHaveBeenCalledWith(vaultAddress);
+
+    expect(reportDbServiceMock.existsByCid).toHaveBeenCalledTimes(1);
+    expect(reportDbServiceMock.existsByCid).toHaveBeenCalledWith(cid);
 
     expect(reportsMerkleServiceMock.getReportProofByVault).toHaveBeenCalledTimes(1);
     expect(reportsMerkleServiceMock.getReportProofByVault).toHaveBeenCalledWith(vaultAddress, cid);

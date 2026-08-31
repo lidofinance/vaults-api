@@ -23,6 +23,7 @@ export type VaultLastReport = {
 
 export type VaultData = {
   address: string;
+  isDisconnected: boolean;
   ens: string | null;
   customName: string | null;
   totalValue: string;

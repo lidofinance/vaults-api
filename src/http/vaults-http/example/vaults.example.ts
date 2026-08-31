@@ -6,6 +6,7 @@ export const vaultsOverviewExample = {
 
 export const vaultExample = {
   "address": "0x7228FC874C1D08cAE68a558d7B650fc4862B1DB7",
+  "isDisconnected": false,
   "ens": null,
   "customName": null,
   "totalValue": "65067839043411226337",

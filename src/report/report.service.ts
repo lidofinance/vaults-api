@@ -18,6 +18,7 @@ import { TrackJob } from 'common/job/track-job.decorator';
 import { LsvService, NOFeeSnapshot } from 'lsv';
 
 import { APR_ANOMALY_THRESHOLD_PERCENT } from './report.constants';
+import { neutralizeStoppedFeeAccrual } from './no-fee-snapshot.utils';
 
 const VAULTS_COUNT_CACHE = 10_000;
 
@@ -370,13 +371,25 @@ export class ReportService {
             return;
           }
 
+          const {
+            snapshots: [effectiveNoFeeCurr, effectiveNoFeePrev],
+            stopped: feeAccrualStopped,
+          } = neutralizeStoppedFeeAccrual(noFeeCurr, noFeePrev);
+
+          if (feeAccrualStopped) {
+            this.logger.log(
+              `[calculateForVaultsBasedPrevReport] Node operator fee accrual is stopped for vault=${vaultAddress}, ` +
+                `charging no fee for blocks ${previousVaultReport.blockNumber}..${currentVaultReport.blockNumber}`,
+            );
+          }
+
           const metrics = await this.lsvService.calcReportMetrics({
             reports: {
               current: currentVaultReport,
               previous: previousVaultReport,
             },
-            noFeeCurr,
-            noFeePrev,
+            noFeeCurr: effectiveNoFeeCurr,
+            noFeePrev: effectiveNoFeePrev,
             stEthLiabilityRebaseRewards: rebaseReward,
           });
 
@@ -407,7 +420,14 @@ export class ReportService {
             carrySpreadAPR: metrics.carrySpread.apr.toString(),
             carrySpreadAprBps: metrics.carrySpread.apr_bps,
             carrySpreadAprPercent: metrics.carrySpread.apr_percent,
-            anomaly: Math.abs(metrics.grossStakingAPR.apr_percent) >= APR_ANOMALY_THRESHOLD_PERCENT,
+            // Every leg is checked, not just gross: gross is derived from the report leaves alone,
+            // so a blow-up confined to the node operator fee leaves it untouched and slips through.
+            anomaly:
+              Math.max(
+                Math.abs(metrics.grossStakingAPR.apr_percent),
+                Math.abs(metrics.netStakingAPR.apr_percent),
+                Math.abs(metrics.carrySpread.apr_percent),
+              ) >= APR_ANOMALY_THRESHOLD_PERCENT,
             updatedAt: new Date(),
           });
 

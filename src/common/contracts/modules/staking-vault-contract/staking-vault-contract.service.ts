@@ -28,4 +28,13 @@ export class StakingVaultContractService {
   async getOwner(overrides?: Overrides): Promise<string> {
     return String(await this.contract.callStatic.owner(...(overrides ? [overrides] : [])));
   }
+
+  async getPendingOwner(overrides?: Overrides): Promise<string> {
+    return String(await this.contract.callStatic.pendingOwner(...(overrides ? [overrides] : [])));
+  }
+
+  async getOwnership(overrides?: Overrides): Promise<{ owner: string; pendingOwner: string }> {
+    const [owner, pendingOwner] = await Promise.all([this.getOwner(overrides), this.getPendingOwner(overrides)]);
+    return { owner, pendingOwner };
+  }
 }

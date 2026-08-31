@@ -1,12 +1,19 @@
 import * as Sentry from '@sentry/node';
 import { NestFactory, Reflector } from '@nestjs/core';
-import { ValidationPipe, VersioningType, ClassSerializerInterceptor, BadRequestException } from '@nestjs/common';
+import {
+  ShutdownSignal,
+  ValidationPipe,
+  VersioningType,
+  ClassSerializerInterceptor,
+  BadRequestException,
+} from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { ConfigService } from 'common/config';
+import { registerSecretsRotationRestart } from 'common/shutdown';
 import { SWAGGER_URL } from 'http/common/swagger';
 
 async function bootstrap() {
@@ -25,7 +32,8 @@ async function bootstrap() {
   app.enableVersioning({ type: VersioningType.URI });
 
   // logger
-  app.useLogger(app.get(LOGGER_PROVIDER));
+  const logger = app.get(LOGGER_PROVIDER);
+  app.useLogger(logger);
 
   // sentry
   const release = `${APP_NAME}@${APP_VERSION}`;
@@ -43,8 +51,7 @@ async function bootstrap() {
         if (!origin || whitelistRegexp.test(origin)) {
           callback(null, true);
         } else {
-          // todo
-          callback(new Error('Not allowed by CORS'), null);
+          callback(new Error('Not allowed by CORS'), false);
         }
       },
     });
@@ -73,6 +80,11 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder().setTitle(APP_DESCRIPTION).setVersion(APP_VERSION).build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup(SWAGGER_URL, app, swaggerDocument);
+
+  // TERM/INT are the orchestrator's normal stop signals; OpenBao secret-rotation
+  // restarts are file-based (no signal path from the injector sidecar).
+  app.enableShutdownHooks([ShutdownSignal.SIGTERM, ShutdownSignal.SIGINT]);
+  registerSecretsRotationRestart(app, logger);
 
   // app
   await app.listen(appPort, '0.0.0.0');

@@ -19,6 +19,7 @@ jest.mock('report/reports-merkle.service', () => ({
 
 import { ConfigService } from 'common/config';
 import { VaultDbService } from 'db/vault-db/vault-db.service';
+import { ReportDbService } from 'db/report-db';
 import { LsvService } from 'lsv';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { ReportsMerkleService } from 'report/reports-merkle.service';
@@ -53,6 +54,9 @@ export async function bootstrapTestApp() {
   const vaultDbServiceMock = {
     existsVaultByAddress: jest.fn(async () => true),
   };
+  const reportDbServiceMock = {
+    existsByCid: jest.fn(async () => true),
+  };
   const lazyOracleMock = {
     getLatestReportData: jest.fn(async () => latestReportDataMock),
   };
@@ -70,6 +74,7 @@ export async function bootstrapTestApp() {
     { provide: LOGGER_PROVIDER, useValue: loggerMock },
     { provide: ConfigService, useValue: {} },
     { provide: VaultDbService, useValue: vaultDbServiceMock },
+    { provide: ReportDbService, useValue: reportDbServiceMock },
     { provide: LsvService, useValue: lsvServiceMock },
     { provide: LazyOracleContractService, useValue: lazyOracleMock },
     { provide: ReportsMerkleService, useValue: reportsMerkleServiceMock },
@@ -105,6 +110,7 @@ export async function bootstrapTestApp() {
   const mocks = {
     loggerMock,
     vaultDbServiceMock,
+    reportDbServiceMock,
     lazyOracleMock,
     lsvServiceMock,
     reportsMerkleServiceMock,

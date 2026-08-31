@@ -12,28 +12,47 @@ const MULTICALL3_ABI = [
 
 export class DashboardContractService {
   public readonly contract: Contract;
-  private readonly multicall3: Contract;
 
   constructor(
     private readonly provider: ExecutionProvider,
     private readonly dashboardAddress: string,
-    private readonly multicall3Address: string,
+    private readonly multicall3Address: string | undefined,
     private readonly logger: LoggerService,
   ) {
     if (!dashboardAddress) {
       throw new Error('Dashboard contract address is not defined');
     }
 
-    if (!multicall3Address) {
-      throw new Error('Multicall3 contract address is not defined');
-    }
-
     this.contract = new Contract(dashboardAddress, DashboardAbi, provider);
-    this.multicall3 = new Contract(multicall3Address, MULTICALL3_ABI, provider);
   }
 
   get address(): string {
     return this.dashboardAddress;
+  }
+
+  /**
+   * Multicall3 is only needed by the batched reads, so it is resolved on use: plain single-call
+   * reads must stay available on networks that do not configure a Multicall3 address.
+   */
+  private getMulticall3(): Contract {
+    if (!this.multicall3Address) {
+      throw new Error('Multicall3 contract address is not defined');
+    }
+
+    return new Contract(this.multicall3Address, MULTICALL3_ABI, this.provider);
+  }
+
+  /** The `StakingVault` this Dashboard is bound to — used to confirm a vault owner really is its Dashboard. */
+  async getStakingVault(overrides?: Overrides): Promise<string> {
+    return String(await this.contract.callStatic.stakingVault(...(overrides ? [overrides] : [])));
+  }
+
+  async getRoleMembers(role: string, overrides?: Overrides): Promise<string[]> {
+    const members: string[] = await this.contract.callStatic.getRoleMembers(
+      ...(overrides ? [role, overrides] : [role]),
+    );
+
+    return members.map(String);
   }
 
   async getSettledGrowth(overrides?: Overrides): Promise<bigint> {
@@ -60,7 +79,7 @@ export class DashboardContractService {
       },
     ];
 
-    const results: Array<{ success: boolean; returnData: string }> = await this.multicall3.callStatic.aggregate3(
+    const results: Array<{ success: boolean; returnData: string }> = await this.getMulticall3().callStatic.aggregate3(
       calls,
       ...(overrides ? [overrides] : []),
     );

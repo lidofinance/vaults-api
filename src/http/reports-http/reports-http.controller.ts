@@ -8,6 +8,7 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { LazyOracleContractService } from 'common/contracts/modules/lazy-oracle-contract';
 import { ConfigService } from 'common/config';
 import { VaultDbService } from 'db/vault-db/vault-db.service';
+import { ReportDbService } from 'db/report-db';
 import { LsvService } from 'lsv';
 import { ReportsMerkleService } from 'report/reports-merkle.service';
 import { ErrorResponseType } from 'http/common/dto/error-response-type';
@@ -22,6 +23,7 @@ export class ReportsHttpController {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly configService: ConfigService,
     private readonly vaultDbService: VaultDbService,
+    private readonly reportDbService: ReportDbService,
     private readonly lsvService: LsvService,
     private readonly lazyOracleContractService: LazyOracleContractService,
     private readonly reportsMerkleService: ReportsMerkleService,
@@ -71,6 +73,12 @@ export class ReportsHttpController {
     const vault = params.vaultAddress;
 
     await this.assertVaultExists(vault);
+
+    const reportExists = await this.reportDbService.existsByCid(cid);
+    if (!reportExists) {
+      this.logger.warn(`Report CID not found in DB, cid=${cid}`);
+      return { report: null };
+    }
 
     try {
       // vault report and proof
