@@ -1597,20 +1597,20 @@
   resolved "https://registry.yarnpkg.com/@lido-nestjs/constants/-/constants-5.3.0.tgz#a257d9aff873bc10c8be940541405342f82e610e"
   integrity sha512-8lW8DPmZ1t4t8tOs7E4eqPlWCjhN9poe3q81DtG/Nt0+AMWzx4zTmeap0DGHdeMC4QPB3vRdjb2i3E+B4aJbgA==
 
-"@lido-nestjs/contracts@^9.8.2":
-  version "9.8.2"
-  resolved "https://registry.yarnpkg.com/@lido-nestjs/contracts/-/contracts-9.8.2.tgz#1fc297e1863148ae07fe84cd8a7a3b1764d93d91"
-  integrity sha512-qdg1BckGogfXFVm8DVsqqjbDR6rmZIZn4MpfZzax/9fX1VXBoqcG1lMtf7PsVhcxLAPnCTY50K9zl2YzFBo9cw==
+"@lido-nestjs/contracts@^9.8.4":
+  version "9.8.4"
+  resolved "https://registry.yarnpkg.com/@lido-nestjs/contracts/-/contracts-9.8.4.tgz#2461f8eacd3bfda8197e274079aa78239bc6bf7e"
+  integrity sha512-KoIXNHHBJgScQHsDc/j2XrDSOCm9xLr4ecOWKnbbg4QsaTZAnAKjY3rn/TAOPnoBsbEijrJbV9LayUF+/qDCyQ==
   dependencies:
     "@ethersproject/abi" "5.8.0"
     "@ethersproject/providers" "5.8.0"
     "@lido-nestjs/constants" "5.3.0"
     ethers "5.8.0"
 
-"@lido-nestjs/execution@^1.21.0":
-  version "1.21.0"
-  resolved "https://registry.yarnpkg.com/@lido-nestjs/execution/-/execution-1.21.0.tgz#eedbbb42ccece643324cbe43b56a35e1818202c8"
-  integrity sha512-rDFEET4r3EWgo7zihAdG6S1rwv/vRtlnQWlSkVFxOZaTeQoQkMt526Fw7T2Ppe8bifPI3q8f21cAHsj6pAqqfg==
+"@lido-nestjs/execution@^1.23.0":
+  version "1.23.0"
+  resolved "https://registry.yarnpkg.com/@lido-nestjs/execution/-/execution-1.23.0.tgz#f8bbc35129a5ef7a648c2b988fa8b340c1d8d6c8"
+  integrity sha512-s+8sd7SELesfdMa6bPoqgo0pIY/DOcj5ONvQqdSemIDsm5mOTi3bC2bfi8eMwRvSbShkqekgHUCqMaFlyP+FIA==
   dependencies:
     "@ethersproject/bignumber" "5.8.0"
     "@ethersproject/bytes" "5.8.0"
