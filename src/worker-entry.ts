@@ -9,9 +9,13 @@ import { registerSecretsRotationRestart } from 'common/shutdown';
 import { AppJobModule } from './app-job';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(AppJobModule, new FastifyAdapter({ trustProxy: true }), {
-    bufferLogs: true,
-  });
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppJobModule,
+    new FastifyAdapter({ forceCloseConnections: true, trustProxy: true }),
+    {
+      bufferLogs: true,
+    },
+  );
 
   // config
   const configService: ConfigService = app.get(ConfigService);
@@ -23,7 +27,9 @@ async function bootstrap() {
 
   // TERM/INT are the orchestrator's normal stop signals; OpenBao secret-rotation
   // restarts are file-based (no signal path from the injector sidecar).
-  app.enableShutdownHooks([ShutdownSignal.SIGTERM, ShutdownSignal.SIGINT]);
+  app.enableShutdownHooks([ShutdownSignal.SIGTERM, ShutdownSignal.SIGINT], {
+    useProcessExit: true,
+  });
   registerSecretsRotationRestart(app, logger);
 
   // app
