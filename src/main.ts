@@ -15,6 +15,7 @@ import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { ConfigService } from 'common/config';
 import { registerSecretsRotationRestart } from 'common/shutdown';
 import { SWAGGER_URL } from 'http/common/swagger';
+import { swaggerCacheControlHook } from 'http/common/hooks';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -84,6 +85,12 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder().setTitle(APP_DESCRIPTION).setVersion(APP_VERSION).build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup(SWAGGER_URL, app, swaggerDocument);
+
+  // Swagger registers its routes directly on the Fastify adapter, so they bypass
+  // CacheControlHeadersInterceptor: the UI, swagger-ui-init.js, -json and -yaml go
+  // out with no Cache-Control at all, while the static assets get `public, max-age=0`
+  // from @fastify/static. The hook sets a single explicit policy for all of them.
+  app.getHttpAdapter().getInstance().addHook('onSend', swaggerCacheControlHook);
 
   // TERM/INT are the orchestrator's normal stop signals; OpenBao secret-rotation
   // restarts are file-based (no signal path from the injector sidecar).
