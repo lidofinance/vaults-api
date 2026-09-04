@@ -17,6 +17,7 @@ import { PrometheusService } from 'common/prometheus';
 import { ConfigService } from 'common/config';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db';
+import { APP_NAME, APP_VERSION } from 'app';
 
 import { CalcAccruedFeeOffChainParams } from './lsv.types';
 
@@ -74,7 +75,10 @@ export class LsvService {
       : null;
 
     try {
-      const response = await fetch(this.getIpfsGatewayUrl(cid, gateway), { signal: abortController.signal });
+      const response = await fetch(this.getIpfsGatewayUrl(cid, gateway), {
+        signal: abortController.signal,
+        headers: { 'User-Agent': `${APP_NAME}/${APP_VERSION}` },
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch IPFS content: ${response.statusText}`);
       }
