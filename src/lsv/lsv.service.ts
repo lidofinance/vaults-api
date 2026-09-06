@@ -176,8 +176,9 @@ export class LsvService {
   }
 
   private async _getVaultReport(vault: Address, cid: string, gateway: string): Promise<VaultReportCliType> {
+    const endTimer = this.prometheusService.ipfsRequestDuration.startTimer();
     try {
-      return await getVaultReport(
+      const report = await getVaultReport(
         {
           vault,
           cid,
@@ -186,7 +187,10 @@ export class LsvService {
         },
         false,
       );
+      endTimer({ result: 'success', gateway });
+      return report;
     } catch (error) {
+      endTimer({ result: 'error', gateway });
       this.logger.error(
         `[LsvService._getVaultReport] Failed to get vault report (vault: ${vault}, cid: ${cid}): ${error.message}`,
       );
@@ -195,7 +199,17 @@ export class LsvService {
   }
 
   public async getVaultReport(vault: Address, cid: string): Promise<VaultReportCliType> {
-    return await iterateUrls(this.configService.ipfsGateways, (url) => this._getVaultReport(vault, cid, url));
+    const endOverallTimer = this.prometheusService.ipfsOverallRequestDuration.startTimer();
+
+    try {
+      const report = await iterateUrls(this.configService.ipfsGateways, (url) => this._getVaultReport(vault, cid, url));
+      endOverallTimer({ result: 'success' });
+      return report;
+    } catch (error) {
+      endOverallTimer({ result: 'error', cid });
+      this.logger.error(`[LsvService.getVaultReport] All IPFS gateways failed for cid=${cid}: ${error.message}`);
+      throw error;
+    }
   }
 
   private async _getReportProofByVault(
@@ -203,8 +217,9 @@ export class LsvService {
     cid: string,
     gateway: string,
   ): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
+    const endTimer = this.prometheusService.ipfsRequestDuration.startTimer();
     try {
-      return await getReportProofByVault(
+      const report = await getReportProofByVault(
         {
           vault,
           cid,
@@ -213,13 +228,17 @@ export class LsvService {
         },
         false,
       );
+      endTimer({ result: 'success', gateway });
+      return report;
     } catch (error) {
       // This is the behavior of the CLI
       if (error.message?.toLowerCase().includes(`vault ${vault.toLowerCase()} not found in report`)) {
+        endTimer({ result: 'not_found', gateway });
         this.logger.warn(`[LsvService._getReportProofByVault] ${error.message}`);
         return null;
       }
 
+      endTimer({ result: 'error', gateway });
       this.logger.error(
         `[LsvService._getReportProofByVault] Failed to get vault report and proof (vault: ${vault}, cid: ${cid}): ${error.message}`,
       );
@@ -231,7 +250,19 @@ export class LsvService {
     vault: Address,
     cid: string,
   ): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
-    return await iterateUrls(this.configService.ipfsGateways, (url) => this._getReportProofByVault(vault, cid, url));
+    const endOverallTimer = this.prometheusService.ipfsOverallRequestDuration.startTimer();
+
+    try {
+      const report = await iterateUrls(this.configService.ipfsGateways, (url) =>
+        this._getReportProofByVault(vault, cid, url),
+      );
+      endOverallTimer({ result: report === null ? 'not_found' : 'success' });
+      return report;
+    } catch (error) {
+      endOverallTimer({ result: 'error', cid });
+      this.logger.error(`[LsvService.getReportProofByVault] All IPFS gateways failed for cid=${cid}: ${error.message}`);
+      throw error;
+    }
   }
 
   public async calculateHealth(args: CalculateHealthArgs): Promise<ReturnType<typeof calculateHealth>> {
