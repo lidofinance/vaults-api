@@ -1,5 +1,6 @@
 import { calculateIPFSAddCID } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 
+import { APP_NAME, APP_VERSION } from 'app/app.constants';
 import { LsvService } from './lsv.service';
 
 jest.mock('common/prometheus', () => ({
@@ -87,7 +88,10 @@ describe('LsvService', () => {
       `IPFS report is too large (checked with content-length): contentLength=2785017856, maxBytes=${maxBytes}`,
     );
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
+      signal: expect.any(AbortSignal),
+      headers: { 'User-Agent': `${APP_NAME}/${APP_VERSION}` },
+    });
     expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
     expect(calculateIPFSAddCID).not.toHaveBeenCalled();
   });
@@ -116,7 +120,10 @@ describe('LsvService', () => {
 
     await expect(service.fetchIPFS(cid)).resolves.toEqual(report);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
+      signal: expect.any(AbortSignal),
+      headers: { 'User-Agent': `${APP_NAME}/${APP_VERSION}` },
+    });
     expect(calculateIPFSAddCID).toHaveBeenCalledWith(encodedReport);
   });
 
@@ -145,7 +152,10 @@ describe('LsvService', () => {
 
     await expect(service.fetchIPFS(cid)).resolves.toEqual(report);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
+      signal: expect.any(AbortSignal),
+      headers: { 'User-Agent': `${APP_NAME}/${APP_VERSION}` },
+    });
     expect(calculateIPFSAddCID).toHaveBeenCalledWith(encodedReport);
   });
 
@@ -173,7 +183,10 @@ describe('LsvService', () => {
       `IPFS report is too large (checked with streaming): receivedBytes=${maxBytes + 1}, maxBytes=${maxBytes}`,
     );
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
+      signal: expect.any(AbortSignal),
+      headers: { 'User-Agent': `${APP_NAME}/${APP_VERSION}` },
+    });
     expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
     expect(calculateIPFSAddCID).not.toHaveBeenCalled();
   });
