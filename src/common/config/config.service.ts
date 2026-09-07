@@ -38,7 +38,9 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
       const urlArr = url.split('/');
       return urlArr[urlArr.length - 1];
     });
-    return [this.get('SENTRY_DSN') ?? '', ...keys].filter((v) => v).map((v) => String(v));
+    return [this.get('SENTRY_DSN') ?? '', this.get('POSTGRES_PASSWORD') ?? '', ...keys]
+      .filter((v) => v)
+      .map((v) => String(v));
   }
 
   public get<T extends keyof EnvironmentVariables>(key: T): EnvironmentVariables[T] {
