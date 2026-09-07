@@ -5,11 +5,16 @@ FROM node:24-alpine${ALPINE_VERSION} AS building
 WORKDIR /app
 
 COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile --non-interactive && \
+    yarn cache clean
+
 COPY ./tsconfig*.json ./
 COPY ./src ./src
 
-RUN yarn install --frozen-lockfile --non-interactive && \
-    yarn cache clean && yarn build
+RUN yarn build
+
+RUN yarn install --production --frozen-lockfile --non-interactive && \
+    yarn cache clean
 
 
 FROM alpine:${ALPINE_VERSION}
