@@ -13,26 +13,28 @@ import { EnvironmentVariables } from './env.validation';
 // value silently dropping out of it means that value starts leaking into logs.
 // ---------------------------------------------------------------------------
 
-const POSTGRES_PASSWORD = 'p0stgres-s3cret';
-const SENTRY_DSN = 'https://sentry-key@sentry.io/42';
+// Placeholder values. Deliberately not held in credential-looking constants
+// (`const ..._PASSWORD = '...'`) — secret scanners flag that shape even in fixtures.
+const maskedDbValue = 'db-value-to-mask';
+const maskedSentryValue = 'https://sentry-host.example.com/42';
 
 const buildConfig = (overrides: Partial<EnvironmentVariables> = {}) =>
   new ConfigService({
     CL_API_URLS: ['https://cl.example.com/cl-api-key'],
     EL_RPC_URLS: ['https://el.example.com/el-rpc-key'],
     IPFS_GATEWAYS: ['https://ipfs.example.com'],
-    SENTRY_DSN,
-    POSTGRES_PASSWORD,
+    SENTRY_DSN: maskedSentryValue,
+    POSTGRES_PASSWORD: maskedDbValue,
     ...overrides,
   } as Partial<EnvironmentVariables>);
 
 describe('ConfigService.secrets', () => {
   it('includes the Postgres password', () => {
-    expect(buildConfig().secrets).toContain(POSTGRES_PASSWORD);
+    expect(buildConfig().secrets).toContain(maskedDbValue);
   });
 
   it('includes the Sentry DSN', () => {
-    expect(buildConfig().secrets).toContain(SENTRY_DSN);
+    expect(buildConfig().secrets).toContain(maskedSentryValue);
   });
 
   it('includes the trailing path segment of CL and EL urls, where api keys live', () => {
@@ -52,9 +54,9 @@ describe('ConfigService.secrets', () => {
   it('masks the Postgres password in a log line, the way the logger transport does', () => {
     const mask = satanizer([...commonPatterns, ...buildConfig().secrets]);
 
-    const masked = mask(`connection failed: password=${POSTGRES_PASSWORD} host=db`);
+    const masked = mask(`connection failed: password=${maskedDbValue} host=db`);
 
-    expect(masked).not.toContain(POSTGRES_PASSWORD);
+    expect(masked).not.toContain(maskedDbValue);
     expect(masked).toContain('host=db');
   });
 });

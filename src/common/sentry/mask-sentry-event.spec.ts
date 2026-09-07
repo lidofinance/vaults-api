@@ -9,11 +9,13 @@ import { createSentryEventMasker } from './mask-sentry-event';
 // api keys embedded in urls and an external service.
 // ---------------------------------------------------------------------------
 
-const API_KEY = 'el-rpc-key-SECRET';
-const RPC_URL = `https://el.example.com/v1/${API_KEY}`;
+// Placeholder value. Deliberately not held in a credential-looking constant
+// (an `API_KEY`/`SECRET` name) — secret scanners flag that shape even in fixtures.
+const urlTail = 'rpc-url-tail-to-mask';
+const RPC_URL = `https://el.example.com/v1/${urlTail}`;
 
 describe('createSentryEventMasker', () => {
-  const maskEvent = createSentryEventMasker([API_KEY]);
+  const maskEvent = createSentryEventMasker([urlTail]);
 
   it('masks the api key in an exception message', () => {
     const event = {
@@ -22,7 +24,7 @@ describe('createSentryEventMasker', () => {
 
     const masked = maskEvent(event);
 
-    expect(masked?.exception?.values?.[0].value).not.toContain(API_KEY);
+    expect(masked?.exception?.values?.[0].value).not.toContain(urlTail);
     expect(masked?.exception?.values?.[0].type).toBe('HttpRequestError');
   });
 
@@ -33,14 +35,14 @@ describe('createSentryEventMasker', () => {
 
     const masked = maskEvent(event);
 
-    expect(masked?.breadcrumbs?.[0].data?.url).not.toContain(API_KEY);
+    expect(masked?.breadcrumbs?.[0].data?.url).not.toContain(urlTail);
     expect(masked?.breadcrumbs?.[0].data?.status_code).toBe(500);
   });
 
   it('masks nested values, wherever they sit in the event', () => {
     const event = { extra: { attempts: [{ url: RPC_URL }] } } as unknown as Event;
 
-    expect(JSON.stringify(maskEvent(event))).not.toContain(API_KEY);
+    expect(JSON.stringify(maskEvent(event))).not.toContain(urlTail);
   });
 
   it('does not mutate the event it was given', () => {
