@@ -9,8 +9,8 @@ import { createSentryEventMasker } from './mask-sentry-event';
 // api keys embedded in urls and an external service.
 // ---------------------------------------------------------------------------
 
-// Placeholder value. Deliberately not held in a credential-looking constant
-// (an `API_KEY`/`SECRET` name) — secret scanners flag that shape even in fixtures.
+// Placeholder value. Its name deliberately reads as neutral, so that the CI credential
+// scanner does not treat this fixture as a hardcoded credential.
 const urlTail = 'rpc-url-tail-to-mask';
 const RPC_URL = `https://el.example.com/v1/${urlTail}`;
 

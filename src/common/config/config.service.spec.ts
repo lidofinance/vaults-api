@@ -13,8 +13,8 @@ import { EnvironmentVariables } from './env.validation';
 // value silently dropping out of it means that value starts leaking into logs.
 // ---------------------------------------------------------------------------
 
-// Placeholder values. Deliberately not held in credential-looking constants
-// (`const ..._PASSWORD = '...'`) — secret scanners flag that shape even in fixtures.
+// Placeholder values. Their names deliberately read as neutral, so that the CI credential
+// scanner does not treat these fixtures as hardcoded credentials.
 const maskedDbValue = 'db-value-to-mask';
 const maskedSentryValue = 'https://sentry-host.example.com/42';
 
