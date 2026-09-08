@@ -25,3 +25,5 @@ export const APP_COMMIT = buildInfo.commit ?? 'unknown';
 
 export const APP_NAME = process.env.npm_package_name ?? 'unnamed';
 export const APP_DESCRIPTION = process.env.npm_package_description;
+
+export const APP_USER_AGENT = `${APP_NAME}/${APP_VERSION}`;

@@ -1,6 +1,6 @@
 import { calculateIPFSAddCID } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 
-import { APP_NAME, APP_VERSION } from 'app/app.constants';
+import { APP_USER_AGENT } from 'app/app.constants';
 import { LsvService } from './lsv.service';
 
 jest.mock('common/prometheus', () => ({
@@ -90,7 +90,7 @@ describe('LsvService', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
       signal: expect.any(AbortSignal),
-      headers: { 'User-Agent': `${APP_NAME}/${APP_VERSION}` },
+      headers: { 'User-Agent': `${APP_USER_AGENT}` },
     });
     expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
     expect(calculateIPFSAddCID).not.toHaveBeenCalled();
@@ -122,7 +122,7 @@ describe('LsvService', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
       signal: expect.any(AbortSignal),
-      headers: { 'User-Agent': `${APP_NAME}/${APP_VERSION}` },
+      headers: { 'User-Agent': `${APP_USER_AGENT}` },
     });
     expect(calculateIPFSAddCID).toHaveBeenCalledWith(encodedReport);
   });
@@ -154,7 +154,7 @@ describe('LsvService', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
       signal: expect.any(AbortSignal),
-      headers: { 'User-Agent': `${APP_NAME}/${APP_VERSION}` },
+      headers: { 'User-Agent': `${APP_USER_AGENT}` },
     });
     expect(calculateIPFSAddCID).toHaveBeenCalledWith(encodedReport);
   });
@@ -185,7 +185,7 @@ describe('LsvService', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
       signal: expect.any(AbortSignal),
-      headers: { 'User-Agent': `${APP_NAME}/${APP_VERSION}` },
+      headers: { 'User-Agent': `${APP_USER_AGENT}` },
     });
     expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
     expect(calculateIPFSAddCID).not.toHaveBeenCalled();
