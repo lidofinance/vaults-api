@@ -7,7 +7,7 @@ import { METRICS_URL } from 'common/prometheus';
 import { SWAGGER_URL } from './common/swagger';
 import { ThrottlerModule, ThrottlerBehindProxyGuard } from './common/throttler';
 import { LoggerMiddleware, MetricsMiddleware } from './common/middleware';
-import { CacheModule, CacheControlHeadersInterceptor, CustomCacheInterceptor } from './common/cache';
+import { CacheModule, CacheControlHeadersInterceptor, HttpCacheInterceptor } from './common/cache';
 import { ProofHttpModule } from './proof-http';
 import { ReportsHttpModule } from './reports-http';
 import { VaultsHttpModule } from './vaults-http';
@@ -17,7 +17,7 @@ import { VaultsHttpModule } from './vaults-http';
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_INTERCEPTOR, useClass: CacheControlHeadersInterceptor },
-    { provide: APP_INTERCEPTOR, useClass: CustomCacheInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: HttpCacheInterceptor },
   ],
 })
 export class HTTPModule {

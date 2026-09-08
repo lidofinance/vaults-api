@@ -6,10 +6,10 @@ import { Test } from '@nestjs/testing';
 
 import { SkipCache } from 'common/decorators';
 
-import { CustomCacheInterceptor } from './custom-cache.interceptor';
+import { HttpCacheInterceptor } from './http-cache.interceptor';
 
 // ---------------------------------------------------------------------------
-// CustomCacheInterceptor
+// HttpCacheInterceptor
 //
 // `APP_INTERCEPTOR` applies application-wide even though it is registered inside
 // `HTTPModule`, so the response cache also covers controllers of unrelated modules —
@@ -60,14 +60,14 @@ class ProbeControllersModule {}
 // mirrors HTTPModule: registers the cache interceptor globally from a feature module
 @Module({
   imports: [CacheModuleSource.register({ ttl: 60_000 })],
-  providers: [{ provide: APP_INTERCEPTOR, useClass: CustomCacheInterceptor }],
+  providers: [{ provide: APP_INTERCEPTOR, useClass: HttpCacheInterceptor }],
 })
 class ProbeHttpModule {}
 
 @Module({ imports: [ProbeHttpModule, ProbeControllersModule] })
 class ProbeAppModule {}
 
-describe('CustomCacheInterceptor', () => {
+describe('HttpCacheInterceptor', () => {
   let app: NestFastifyApplication;
 
   const get = async (url: string) => {

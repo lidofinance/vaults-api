@@ -11,7 +11,7 @@ import { HealthController } from './health.controller';
 // 200 could answer a liveness/readiness probe while the service is already broken
 // (`GLOBAL_CACHE_TTL` is 120s in sample.env, so the stale window is minutes, not the
 // default 1s). The behaviour of the opt-out itself is covered in
-// `custom-cache.interceptor.spec.ts`; this asserts the decorator stays on the controller.
+// `http-cache.interceptor.spec.ts`; this asserts the decorator stays on the controller.
 // ---------------------------------------------------------------------------
 
 describe('HealthController', () => {
