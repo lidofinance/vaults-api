@@ -180,6 +180,15 @@ export class EnvironmentVariables {
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 
+/**
+ * Env vars whose values must never reach logs, Sentry payloads or Prometheus
+ * label values. `ConfigService.secrets` builds the log/Sentry masker from this
+ * list, and the startup env dump replaces these values outright — pattern-based
+ * masking cannot be relied on for arbitrary key/secret shapes.
+ */
+export const SECRET_ENV_KEYS: (keyof EnvironmentVariables)[] = ['SENTRY_DSN', 'POSTGRES_PASSWORD'];
+export const SECRET_URLS_KEYS: (keyof EnvironmentVariables)[] = ['CL_API_URLS', 'EL_RPC_URLS'];
+
 export function validate(config: Record<string, unknown>) {
   const validatedConfig = plainToClass(EnvironmentVariables, config);
 

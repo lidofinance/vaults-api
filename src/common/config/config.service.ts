@@ -3,7 +3,7 @@ import { LidoLocatorContractModule, LidoContractModule } from '@lido-nestjs/cont
 
 import { MULTICALL3_CONTRACT, VAULT_VIEWER_CONTRACT } from 'common/contracts/contracts.constants';
 
-import { EnvironmentVariables } from './env.validation';
+import { EnvironmentVariables, SECRET_ENV_KEYS, SECRET_URLS_KEYS } from './env.validation';
 import { findNetworkConfig } from './networks/utils/find-network-config';
 import { NetworkConfig } from './networks';
 
@@ -32,15 +32,18 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
    * List of env variables that should be hidden
    */
   public get secrets(): string[] {
-    const clAPIUrls = this.get('CL_API_URLS');
-    const elAPIUrls = this.get('EL_RPC_URLS');
-    const keys = [...clAPIUrls, ...elAPIUrls].map((url) => {
-      const urlArr = url.split('/');
-      return urlArr[urlArr.length - 1];
-    });
-    return [this.get('SENTRY_DSN') ?? '', this.get('POSTGRES_PASSWORD') ?? '', ...keys]
-      .filter((v) => v)
-      .map((v) => String(v));
+    const keys = SECRET_URLS_KEYS.map((key) => this.get(key))
+      .flat()
+      .map((url: string) => {
+        const urlArr = url.split('/');
+        return urlArr[urlArr.length - 1];
+      });
+
+    const envKeys = SECRET_ENV_KEYS.map((key) => this.get(key))
+      .filter((value) => value != null && value !== '')
+      .map((value) => String(value));
+
+    return [...envKeys, ...keys];
   }
 
   public get<T extends keyof EnvironmentVariables>(key: T): EnvironmentVariables[T] {
