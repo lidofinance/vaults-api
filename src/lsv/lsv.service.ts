@@ -154,9 +154,11 @@ export class LsvService {
   public async fetchIPFS(cid: string): Promise<Report> {
     const endOverallTimer = this.prometheusService.ipfsOverallRequestDuration.startTimer();
     let lastError: Error | null = null;
+    let lastGateway: string | undefined;
 
     try {
       for (const gateway of this.configService.ipfsGateways) {
+        lastGateway = gateway;
         try {
           const report = await this._fetchIPFS(cid, gateway);
           endOverallTimer({ result: 'success' });
@@ -169,7 +171,7 @@ export class LsvService {
 
       throw lastError ?? new Error('All IPFS gateways failed');
     } catch (error) {
-      endOverallTimer({ result: 'error', cid });
+      endOverallTimer({ result: 'error', gateway: lastGateway });
       this.logger.error(`[LsvService.fetchIPFS] All IPFS gateways failed for cid=${cid}: ${error.message}`);
       throw error;
     }
@@ -200,13 +202,17 @@ export class LsvService {
 
   public async getVaultReport(vault: Address, cid: string): Promise<VaultReportCliType> {
     const endOverallTimer = this.prometheusService.ipfsOverallRequestDuration.startTimer();
+    let lastGateway: string | undefined;
 
     try {
-      const report = await iterateUrls(this.configService.ipfsGateways, (url) => this._getVaultReport(vault, cid, url));
+      const report = await iterateUrls(this.configService.ipfsGateways, (url) => {
+        lastGateway = url;
+        return this._getVaultReport(vault, cid, url);
+      });
       endOverallTimer({ result: 'success' });
       return report;
     } catch (error) {
-      endOverallTimer({ result: 'error', cid });
+      endOverallTimer({ result: 'error', gateway: lastGateway });
       this.logger.error(`[LsvService.getVaultReport] All IPFS gateways failed for cid=${cid}: ${error.message}`);
       throw error;
     }
@@ -251,15 +257,17 @@ export class LsvService {
     cid: string,
   ): Promise<(VaultReportCliType & { proof: Hex[] }) | null> {
     const endOverallTimer = this.prometheusService.ipfsOverallRequestDuration.startTimer();
+    let lastGateway: string | undefined;
 
     try {
-      const report = await iterateUrls(this.configService.ipfsGateways, (url) =>
-        this._getReportProofByVault(vault, cid, url),
-      );
+      const report = await iterateUrls(this.configService.ipfsGateways, (url) => {
+        lastGateway = url;
+        return this._getReportProofByVault(vault, cid, url);
+      });
       endOverallTimer({ result: report === null ? 'not_found' : 'success' });
       return report;
     } catch (error) {
-      endOverallTimer({ result: 'error', cid });
+      endOverallTimer({ result: 'error', gateway: lastGateway });
       this.logger.error(`[LsvService.getReportProofByVault] All IPFS gateways failed for cid=${cid}: ${error.message}`);
       throw error;
     }

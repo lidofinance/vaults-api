@@ -236,7 +236,7 @@ describe('LsvService', () => {
         [{ result: 'error', gateway }],
         [{ result: 'error', gateway: fallbackGateway }],
       ]);
-      expect(endOverallTimer.mock.calls).toEqual([[{ result: 'error', cid }]]);
+      expect(endOverallTimer.mock.calls).toEqual([[{ result: 'error', gateway: fallbackGateway }]]);
     });
   });
 });
