@@ -1,4 +1,6 @@
 import { calculateIPFSAddCID } from '@lidofinance/lsv-cli/dist/utils/ipfs';
+import { getVaultReport } from '@lidofinance/lsv-cli/dist/utils/report/report';
+import { getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report/report-proof';
 
 import { APP_USER_AGENT } from 'app/app.constants';
 import { LsvService } from './lsv.service';
@@ -189,5 +191,65 @@ describe('LsvService', () => {
     });
     expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
     expect(calculateIPFSAddCID).not.toHaveBeenCalled();
+  });
+
+  describe('lsv-cli gateway calls are instrumented', () => {
+    const vault = '0x1234567890AbcdEF1234567890aBcdef12345678' as const;
+
+    let endTimer: jest.Mock;
+    let endOverallTimer: jest.Mock;
+
+    beforeEach(() => {
+      endTimer = jest.fn();
+      endOverallTimer = jest.fn();
+      prometheusService.ipfsRequestDuration.startTimer.mockReturnValue(endTimer);
+      prometheusService.ipfsOverallRequestDuration.startTimer.mockReturnValue(endOverallTimer);
+    });
+
+    it('observes a successful getVaultReport for the gateway that served it', async () => {
+      const report = { data: {} };
+      (getVaultReport as jest.Mock).mockResolvedValue(report);
+
+      await expect(service.getVaultReport(vault, cid)).resolves.toBe(report);
+
+      expect(getVaultReport).toHaveBeenCalledTimes(1);
+      expect(endTimer.mock.calls).toEqual([[{ result: 'success', gateway }]]);
+      expect(endOverallTimer.mock.calls).toEqual([[{ result: 'success' }]]);
+    });
+
+    it('observes a failed getVaultReport per gateway and succeeds on the fallback', async () => {
+      const report = { data: {} };
+      (getVaultReport as jest.Mock).mockRejectedValueOnce(new Error('gateway is down')).mockResolvedValueOnce(report);
+
+      await expect(service.getVaultReport(vault, cid)).resolves.toBe(report);
+
+      expect(endTimer.mock.calls).toEqual([
+        [{ result: 'error', gateway }],
+        [{ result: 'success', gateway: fallbackGateway }],
+      ]);
+      expect(endOverallTimer.mock.calls).toEqual([[{ result: 'success' }]]);
+    });
+
+    it('observes a missing vault in getReportProofByVault as not_found without trying other gateways', async () => {
+      (getReportProofByVault as jest.Mock).mockRejectedValue(new Error(`Vault ${vault} not found in report`));
+
+      await expect(service.getReportProofByVault(vault, cid)).resolves.toBeNull();
+
+      expect(getReportProofByVault).toHaveBeenCalledTimes(1);
+      expect(endTimer.mock.calls).toEqual([[{ result: 'not_found', gateway }]]);
+      expect(endOverallTimer.mock.calls).toEqual([[{ result: 'not_found' }]]);
+    });
+
+    it('observes an error per gateway and overall when every gateway fails getReportProofByVault', async () => {
+      (getReportProofByVault as jest.Mock).mockRejectedValue(new Error('gateway is down'));
+
+      await expect(service.getReportProofByVault(vault, cid)).rejects.toThrow('gateway is down');
+
+      expect(endTimer.mock.calls).toEqual([
+        [{ result: 'error', gateway }],
+        [{ result: 'error', gateway: fallbackGateway }],
+      ]);
+      expect(endOverallTimer.mock.calls).toEqual([[{ result: 'error', gateway: fallbackGateway }]]);
+    });
   });
 });
