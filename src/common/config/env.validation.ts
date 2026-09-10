@@ -23,6 +23,32 @@ export class EnvironmentVariables {
   @Transform(toNumber())
   WORKER_PORT = 3001;
 
+  // PostgreSQL connection settings. `db/config.ts` reads them straight from `process.env`
+  // (it also runs outside Nest, for the typeorm CLI), but they are declared here so that they
+  // are type-validated, exposed through `ConfigService`, and included in `ENV_KEYS` —
+  // i.e. in the startup config dump and the `envs_info` metric, with the password masked.
+  @IsOptional()
+  @IsString()
+  POSTGRES_HOST: string | null = null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Transform(toNumber())
+  POSTGRES_PORT: number | null = null;
+
+  @IsOptional()
+  @IsString()
+  POSTGRES_USER: string | null = null;
+
+  @IsOptional()
+  @IsString()
+  POSTGRES_PASSWORD: string | null = null;
+
+  @IsOptional()
+  @IsString()
+  POSTGRES_DATABASE: string | null = null;
+
   @IsOptional()
   @IsString()
   CORS_WHITELIST_REGEXP = '';
@@ -154,6 +180,15 @@ export class EnvironmentVariables {
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 
+/**
+ * Env vars whose values must never reach logs, Sentry payloads or Prometheus
+ * label values. `ConfigService.secrets` builds the log/Sentry masker from this
+ * list, and the startup env dump replaces these values outright — pattern-based
+ * masking cannot be relied on for arbitrary key/secret shapes.
+ */
+export const SECRET_ENV_KEYS: (keyof EnvironmentVariables)[] = ['SENTRY_DSN', 'POSTGRES_PASSWORD'];
+export const SECRET_URLS_KEYS: (keyof EnvironmentVariables)[] = ['CL_API_URLS', 'EL_RPC_URLS'];
+
 export function validate(config: Record<string, unknown>) {
   const validatedConfig = plainToClass(EnvironmentVariables, config);
 
@@ -161,6 +196,9 @@ export function validate(config: Record<string, unknown>) {
   const errors = validateSync(validatedConfig, validatorOptions);
 
   if (errors.length > 0) {
+    // Runs while the DI container is still booting, so the central logger does not exist yet.
+    // Safe to print: class-validator only reports property names and failed constraints, never values.
+    // eslint-disable-next-line no-console
     console.error(errors.toString());
     process.exit(1);
   }

@@ -13,6 +13,8 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { ConfigService } from 'common/config';
+import { redirectConsoleToLogger } from 'common/logger';
+import { createSentryEventMasker } from 'common/sentry';
 import { registerSecretsRotationRestart } from 'common/shutdown';
 import { SWAGGER_URL } from 'http/common/swagger';
 import { swaggerCacheControlHook } from 'http/common/hooks';
@@ -39,10 +41,21 @@ async function bootstrap() {
   // logger
   const logger = app.get(LOGGER_PROVIDER);
   app.useLogger(logger);
+  redirectConsoleToLogger(logger);
 
   // sentry
   const release = `${APP_NAME}@${APP_VERSION}`;
-  Sentry.init({ dsn: sentryDsn, release, environment });
+  Sentry.init({
+    dsn: sentryDsn,
+    release,
+    environment,
+    // Error messages and http breadcrumbs carry EL/CL urls with api keys in the path,
+    // so events go through the same secrets list as the logger before leaving the process.
+    beforeSend: createSentryEventMasker(configService.secrets),
+    // Console breadcrumbs only duplicate what the logger already reports, and they are how
+    // third-party console.* output reaches Sentry — masked now, but still noise.
+    integrations: (integrations) => integrations.filter((integration) => integration.name !== 'Console'),
+  });
 
   // interceptors
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));

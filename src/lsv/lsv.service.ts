@@ -16,6 +16,7 @@ import { calcAccruedFeeOffChain } from '@lidofinance/lsv-cli/dist/utils/statisti
 import { PrometheusService } from 'common/prometheus';
 import { ConfigService } from 'common/config';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { sanitizeError } from 'common/errors';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db';
 
 import { CalcAccruedFeeOffChainParams } from './lsv.types';
@@ -46,11 +47,14 @@ export class LsvService {
     } catch (error) {
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
         // endTimer({ result: 'error' });
-        console.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
+        this.logger.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
         return VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR;
       }
 
-      console.error(`[LsvService.createProof] Failed to create PDG proof for validatorIndex ${validatorIndex}:`, error);
+      this.logger.error(
+        `[LsvService.createProof] Failed to create PDG proof for validatorIndex ${validatorIndex}:`,
+        sanitizeError(error),
+      );
       throw error;
     }
   }
