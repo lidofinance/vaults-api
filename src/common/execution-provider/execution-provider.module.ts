@@ -1,8 +1,10 @@
 import { Global, Module } from '@nestjs/common';
 import { FallbackProviderModule } from '@lido-nestjs/execution';
 import { NonEmptyArray } from '@lido-nestjs/execution/dist/interfaces/non-empty-array';
+import type { ConnectionInfo } from '@ethersproject/web';
 import { PrometheusService } from 'common/prometheus';
 import { ConfigService } from 'common/config';
+import { APP_USER_AGENT } from 'app/app.constants';
 import { ExecutionProviderService } from './execution-provider.service';
 
 @Global()
@@ -10,7 +12,12 @@ import { ExecutionProviderService } from './execution-provider.service';
   imports: [
     FallbackProviderModule.forRootAsync({
       async useFactory(configService: ConfigService, prometheusService: PrometheusService) {
-        const urls = configService.get('EL_RPC_URLS') as NonEmptyArray<string>;
+        const urls = configService.get('EL_RPC_URLS').map(
+          (url): ConnectionInfo => ({
+            url,
+            headers: { 'User-Agent': APP_USER_AGENT },
+          }),
+        ) as NonEmptyArray<ConnectionInfo>;
         const network = configService.get('CHAIN_ID');
 
         return {

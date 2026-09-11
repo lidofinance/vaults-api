@@ -41,3 +41,5 @@ export const APP_COMMIT = isPlaceholder(buildInfo.commit) ? 'unknown' : buildInf
  */
 export const APP_NAME = process.env.npm_package_name ?? packageInfo.name ?? 'unnamed';
 export const APP_DESCRIPTION = process.env.npm_package_description ?? packageInfo.description;
+
+export const APP_USER_AGENT = `${APP_NAME}/${APP_VERSION}`;

@@ -18,6 +18,7 @@ import { ConfigService } from 'common/config';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { sanitizeError } from 'common/errors';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db';
+import { APP_USER_AGENT } from 'app/app.constants';
 
 import { CalcAccruedFeeOffChainParams } from './lsv.types';
 
@@ -78,7 +79,10 @@ export class LsvService {
       : null;
 
     try {
-      const response = await fetch(this.getIpfsGatewayUrl(cid, gateway), { signal: abortController.signal });
+      const response = await fetch(this.getIpfsGatewayUrl(cid, gateway), {
+        signal: abortController.signal,
+        headers: { 'User-Agent': `${APP_USER_AGENT}` },
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch IPFS content: ${response.statusText}`);
       }

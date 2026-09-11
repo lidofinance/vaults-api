@@ -2,6 +2,7 @@ import { calculateIPFSAddCID } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 import { getVaultReport } from '@lidofinance/lsv-cli/dist/utils/report/report';
 import { getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report/report-proof';
 
+import { APP_USER_AGENT } from 'app/app.constants';
 import { LsvService } from './lsv.service';
 
 jest.mock('common/prometheus', () => ({
@@ -89,7 +90,10 @@ describe('LsvService', () => {
       `IPFS report is too large (checked with content-length): contentLength=2785017856, maxBytes=${maxBytes}`,
     );
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
+      signal: expect.any(AbortSignal),
+      headers: { 'User-Agent': `${APP_USER_AGENT}` },
+    });
     expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
     expect(calculateIPFSAddCID).not.toHaveBeenCalled();
   });
@@ -118,7 +122,10 @@ describe('LsvService', () => {
 
     await expect(service.fetchIPFS(cid)).resolves.toEqual(report);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
+      signal: expect.any(AbortSignal),
+      headers: { 'User-Agent': `${APP_USER_AGENT}` },
+    });
     expect(calculateIPFSAddCID).toHaveBeenCalledWith(encodedReport);
   });
 
@@ -147,7 +154,10 @@ describe('LsvService', () => {
 
     await expect(service.fetchIPFS(cid)).resolves.toEqual(report);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
+      signal: expect.any(AbortSignal),
+      headers: { 'User-Agent': `${APP_USER_AGENT}` },
+    });
     expect(calculateIPFSAddCID).toHaveBeenCalledWith(encodedReport);
   });
 
@@ -175,7 +185,10 @@ describe('LsvService', () => {
       `IPFS report is too large (checked with streaming): receivedBytes=${maxBytes + 1}, maxBytes=${maxBytes}`,
     );
 
-    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, { signal: expect.any(AbortSignal) });
+    expect(fetchMock).toHaveBeenCalledWith(`${gateway}/${cid}`, {
+      signal: expect.any(AbortSignal),
+      headers: { 'User-Agent': `${APP_USER_AGENT}` },
+    });
     expect(fetchMock).not.toHaveBeenCalledWith(`${fallbackGateway}/${cid}`, expect.anything());
     expect(calculateIPFSAddCID).not.toHaveBeenCalled();
   });
