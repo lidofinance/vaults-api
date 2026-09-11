@@ -14,6 +14,8 @@ import { reportMetrics, type ReportMetricsArgs } from '@lidofinance/lsv-cli/dist
 import { calcAccruedFeeOffChain } from '@lidofinance/lsv-cli/dist/utils/statistic/report-statistic';
 
 import { PrometheusService } from 'common/prometheus';
+import { RPC_NETWORK_NAME } from 'common/prometheus/prometheus.constants';
+import { extractRpcErrorCode, normalizeRpcProvider } from 'common/prometheus/rpc-metrics.utils';
 import { ConfigService } from 'common/config';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { sanitizeError } from 'common/errors';
@@ -38,25 +40,57 @@ export class LsvService {
     validatorIndex: number,
     clApiUrl: string,
   ): Promise<ValidatorWitnessWithWC | typeof VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR> {
-    // TODO: Rename or refactor the metric associated with _createProof,
-    //  since createPDGProof performs multiple requests to the CL API.
-    // const endTimer = this.prometheusService.clApiRequestDuration.startTimer();
+    const endTimer = this.prometheusService.clApiRequestDuration.startTimer();
+    const startedAt = Date.now();
+    const rpcLabels = {
+      network: RPC_NETWORK_NAME,
+      layer: 'cl',
+      chain_id: String(this.configService.get('CHAIN_ID')),
+      provider: normalizeRpcProvider(clApiUrl),
+    };
+
     try {
       const proof = await createPDGProof(validatorIndex, clApiUrl);
-      // endTimer({ result: 'success' });
+      endTimer({ result: 'success' });
+      this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'success', '', startedAt);
       return proof;
     } catch (error) {
+      endTimer({ result: 'error' });
+
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
-        // endTimer({ result: 'error' });
+        this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'fail', '', startedAt);
         this.logger.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
         return VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR;
       }
 
+      this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'fail', extractRpcErrorCode(error), startedAt);
       this.logger.error(
         `[LsvService.createProof] Failed to create PDG proof for validatorIndex ${validatorIndex}:`,
         sanitizeError(error),
       );
       throw error;
+    }
+  }
+
+  // The RPC metrics policy set is recorded separately from `clApiRequestDuration` (which is
+  // legacy). It is wrapped so a metrics bug never changes the outcome of the CL call itself.
+  private observeClRpcMetrics(
+    rpcLabels: { network: string; layer: string; chain_id: string; provider: string },
+    method: string,
+    result: 'success' | 'fail',
+    rpcErrorCode: string,
+    startedAt: number,
+  ): void {
+    try {
+      this.prometheusService.httpRpcResponseSeconds.observe(rpcLabels, (Date.now() - startedAt) / 1000);
+      this.prometheusService.httpRpcRequestsTotal.inc({
+        ...rpcLabels,
+        method,
+        result,
+        rpc_error_code: rpcErrorCode,
+      });
+    } catch (error) {
+      this.logger.error('Failed to observe CL RPC metrics', { error });
     }
   }
 

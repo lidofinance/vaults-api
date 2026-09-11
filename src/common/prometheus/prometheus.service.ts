@@ -1,6 +1,6 @@
 import { getOrCreateMetric } from '@willsoto/nestjs-prometheus';
 import { Options, Metrics, Metric } from './interfaces';
-import { METRICS_PREFIX } from './prometheus.constants';
+import { METRICS_PREFIX, RPC_LABEL_NAMES } from './prometheus.constants';
 import { ENV_KEYS } from '../config';
 
 export class PrometheusService {
@@ -46,6 +46,42 @@ export class PrometheusService {
     help: 'CL API request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
     labelNames: ['result'],
+  });
+
+  // Standard RPC metrics policy set. Intentionally unprefixed so the service shows up
+  // on the shared Lido dashboards and alerts.
+  public httpRpcRequestsTotal = this.getOrCreateMetric('Counter', {
+    name: 'http_rpc_requests_total',
+    help: 'Total number of RPC requests made by the application',
+    labelNames: [...RPC_LABEL_NAMES, 'method', 'result', 'rpc_error_code'],
+  });
+
+  public httpRpcResponseSeconds = this.getOrCreateMetric('Histogram', {
+    name: 'http_rpc_response_seconds',
+    help: 'Distribution of RPC response times',
+    buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+    labelNames: RPC_LABEL_NAMES,
+  });
+
+  public httpRpcBatchSize = this.getOrCreateMetric('Histogram', {
+    name: 'http_rpc_batch_size',
+    help: 'Distribution of how many JSON-RPC calls are bundled in each HTTP request',
+    buckets: [1, 2, 5, 10, 20, 50, 100],
+    labelNames: RPC_LABEL_NAMES,
+  });
+
+  public httpRpcRequestPayloadBytes = this.getOrCreateMetric('Histogram', {
+    name: 'http_rpc_request_payload_bytes',
+    help: 'Distribution of RPC request payload sizes',
+    buckets: [256, 512, 1024, 4096, 16384, 65536, 262144],
+    labelNames: RPC_LABEL_NAMES,
+  });
+
+  public httpRpcResponsePayloadBytes = this.getOrCreateMetric('Histogram', {
+    name: 'http_rpc_response_payload_bytes',
+    help: 'Distribution of RPC response payload sizes',
+    buckets: [256, 1024, 4096, 16384, 65536, 262144, 1048576],
+    labelNames: RPC_LABEL_NAMES,
   });
 
   public ipfsRequestDuration = this.getOrCreateMetric('Histogram', {

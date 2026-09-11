@@ -1,9 +1,10 @@
 import { calculateIPFSAddCID } from '@lidofinance/lsv-cli/dist/utils/ipfs';
 import { getVaultReport } from '@lidofinance/lsv-cli/dist/utils/report/report';
+import { createPDGProof } from '@lidofinance/lsv-cli/dist/utils/proof/create-proof';
 import { getReportProofByVault } from '@lidofinance/lsv-cli/dist/utils/report/report-proof';
 
 import { APP_USER_AGENT } from 'app/app.constants';
-import { LsvService } from './lsv.service';
+import { LsvService, VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR } from './lsv.service';
 
 jest.mock('common/prometheus', () => ({
   PrometheusService: class PrometheusService {},
@@ -47,9 +48,11 @@ describe('LsvService', () => {
   const configService = {
     get: jest.fn((key: string) => {
       if (key === 'REPORT_IPFS_MAX_CONTENT_LENGTH_BYTES') return maxBytes;
+      if (key === 'CHAIN_ID') return 1;
       return undefined;
     }),
     ipfsGateways: [gateway, fallbackGateway],
+    clApiUrls: ['https://cl.example.com'],
   };
 
   const prometheusService = {
@@ -58,6 +61,15 @@ describe('LsvService', () => {
     },
     ipfsOverallRequestDuration: {
       startTimer: jest.fn(() => jest.fn()),
+    },
+    clApiRequestDuration: {
+      startTimer: jest.fn(() => jest.fn()),
+    },
+    httpRpcResponseSeconds: {
+      observe: jest.fn(),
+    },
+    httpRpcRequestsTotal: {
+      inc: jest.fn(),
     },
   };
 
@@ -250,6 +262,66 @@ describe('LsvService', () => {
         [{ result: 'error', gateway: fallbackGateway }],
       ]);
       expect(endOverallTimer.mock.calls).toEqual([[{ result: 'error', gateway: fallbackGateway }]]);
+    });
+  });
+
+  describe('CL proof RPC calls are instrumented', () => {
+    const clApiUrl = 'https://cl.example.com';
+    let endClTimer: jest.Mock;
+
+    beforeEach(() => {
+      endClTimer = jest.fn();
+      (prometheusService.clApiRequestDuration.startTimer as jest.Mock).mockReturnValue(endClTimer);
+    });
+
+    it('observes a successful createProof', async () => {
+      const proof = { proof: [] };
+      (createPDGProof as jest.Mock).mockResolvedValue(proof);
+
+      await expect(service.createProof(123)).resolves.toBe(proof);
+
+      expect(createPDGProof).toHaveBeenCalledWith(123, clApiUrl);
+      expect(endClTimer).toHaveBeenCalledWith({ result: 'success' });
+      expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith({
+        network: 'ethereum',
+        layer: 'cl',
+        chain_id: '1',
+        provider: 'example.com',
+        method: 'createPDGProof',
+        result: 'success',
+        rpc_error_code: '',
+      });
+      expect(prometheusService.httpRpcResponseSeconds.observe).toHaveBeenCalledWith(
+        { network: 'ethereum', layer: 'cl', chain_id: '1', provider: 'example.com' },
+        expect.any(Number),
+      );
+    });
+
+    it('observes a failed createProof', async () => {
+      (createPDGProof as jest.Mock).mockRejectedValue(new Error('cl is down'));
+
+      await expect(service.createProof(123)).rejects.toThrow('cl is down');
+
+      expect(endClTimer).toHaveBeenCalledWith({ result: 'error' });
+      expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith({
+        network: 'ethereum',
+        layer: 'cl',
+        chain_id: '1',
+        provider: 'example.com',
+        method: 'createPDGProof',
+        result: 'fail',
+        rpc_error_code: '',
+      });
+    });
+
+    it('observes an out-of-range validator as fail without throwing', async () => {
+      (createPDGProof as jest.Mock).mockRejectedValue(new Error('ValidatorIndex 123 out of range'));
+
+      await expect(service.createProof(123)).resolves.toBe(VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR);
+
+      expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'createPDGProof', result: 'fail', rpc_error_code: '' }),
+      );
     });
   });
 });
