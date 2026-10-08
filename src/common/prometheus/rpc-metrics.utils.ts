@@ -31,3 +31,12 @@ export const extractRpcErrorCode = (error: unknown): string => {
   if (typeof code === 'string' && /^-?\d+$/.test(code)) return code;
   return '';
 };
+
+/**
+ * Maps an HTTP status code to its class for the `response_code` label (`2xx`, `4xx`, ...).
+ * A missing status (network error) is left blank.
+ */
+export const toResponseCodeClass = (status?: number): string => {
+  if (!status) return '';
+  return `${Math.floor(status / 100)}xx`;
+};

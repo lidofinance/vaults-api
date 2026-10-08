@@ -52,8 +52,8 @@ export class PrometheusService {
   // on the shared Lido dashboards and alerts.
   public httpRpcRequestsTotal = this.getOrCreateMetric('Counter', {
     name: 'http_rpc_requests_total',
-    help: 'Total number of RPC requests made by the application',
-    labelNames: [...RPC_LABEL_NAMES, 'method', 'result', 'rpc_error_code'],
+    help: 'Counts total HTTP requests used by any layer (EL or CL)',
+    labelNames: [...RPC_LABEL_NAMES, 'batched', 'response_code', 'result'],
   });
 
   public httpRpcResponseSeconds = this.getOrCreateMetric('Histogram', {
@@ -82,6 +82,12 @@ export class PrometheusService {
     help: 'Distribution of RPC response payload sizes',
     buckets: [256, 1024, 4096, 16384, 65536, 262144, 1048576],
     labelNames: RPC_LABEL_NAMES,
+  });
+
+  public rpcRequestTotal = this.getOrCreateMetric('Counter', {
+    name: 'rpc_request_total',
+    help: 'Total number of RPC requests made by the application',
+    labelNames: [...RPC_LABEL_NAMES, 'method', 'result', 'rpc_error_code'],
   });
 
   public ipfsRequestDuration = this.getOrCreateMetric('Histogram', {

@@ -16,7 +16,7 @@ describe('ExecutionProviderService RPC instrumentation', () => {
     provider: { provider: { domain: string } };
   };
   let prometheusService: {
-    httpRpcRequestsTotal: { inc: jest.Mock };
+    rpcRequestTotal: { inc: jest.Mock };
     httpRpcBatchSize: { observe: jest.Mock };
     httpRpcRequestPayloadBytes: { observe: jest.Mock };
   };
@@ -30,7 +30,7 @@ describe('ExecutionProviderService RPC instrumentation', () => {
       provider: { provider: { domain: 'https://lb.drpc.org/abc' } },
     };
     prometheusService = {
-      httpRpcRequestsTotal: { inc: jest.fn() },
+      rpcRequestTotal: { inc: jest.fn() },
       httpRpcBatchSize: { observe: jest.fn() },
       httpRpcRequestPayloadBytes: { observe: jest.fn() },
     };
@@ -41,12 +41,12 @@ describe('ExecutionProviderService RPC instrumentation', () => {
   const createService = () =>
     new ExecutionProviderService(provider as any, prometheusService as any, configService as any, logger as any);
 
-  it('increments http_rpc_requests_total on a successful perform', async () => {
+  it('increments rpc_request_total on a successful perform', async () => {
     createService();
 
     await expect(provider.perform('getBlockNumber', {})).resolves.toBe('result');
 
-    expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith({
+    expect(prometheusService.rpcRequestTotal.inc).toHaveBeenCalledWith({
       network: 'ethereum',
       layer: 'el',
       chain_id: '1',
@@ -57,13 +57,13 @@ describe('ExecutionProviderService RPC instrumentation', () => {
     });
   });
 
-  it('increments http_rpc_requests_total with rpc_error_code on a failed perform', async () => {
+  it('increments rpc_request_total with rpc_error_code on a failed perform', async () => {
     provider.perform = jest.fn().mockRejectedValue({ code: -32603, message: 'boom' });
     createService();
 
     await expect(provider.perform('getBlockNumber', {})).rejects.toEqual({ code: -32603, message: 'boom' });
 
-    expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith({
+    expect(prometheusService.rpcRequestTotal.inc).toHaveBeenCalledWith({
       network: 'ethereum',
       layer: 'el',
       chain_id: '1',

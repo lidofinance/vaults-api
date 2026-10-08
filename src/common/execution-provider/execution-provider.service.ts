@@ -24,7 +24,7 @@ export class ExecutionProviderService {
   }
 
   /**
-   * `http_rpc_requests_total` needs the JSON-RPC method name, which fetchMiddlewares never sees
+   * `rpc_request_total` needs the JSON-RPC method name, which fetchMiddlewares never sees
    * (it only fires after ethers has already batched calls together). `perform()` is the one choke
    * point every ethers call goes through before batching, so it's wrapped here instead of a middleware.
    */
@@ -35,7 +35,7 @@ export class ExecutionProviderService {
     this.provider.perform = async (method: string, params: { [name: string]: unknown }) => {
       try {
         const result = await originalPerform(method, params);
-        this.observeRpcRequest(method, chainId, 'success', '');
+        this.observeRpcRequest(method, chainId, 'success');
         return result;
       } catch (error) {
         this.observeRpcRequest(method, chainId, 'fail', extractRpcErrorCode(error));
@@ -46,9 +46,9 @@ export class ExecutionProviderService {
 
   // Recording the metric is deliberately outside the try/catch that determines the RPC
   // call's own outcome: a bug here must never mask or replace the real result/error.
-  private observeRpcRequest(method: string, chainId: string, result: 'success' | 'fail', rpcErrorCode: string): void {
+  private observeRpcRequest(method: string, chainId: string, result: 'success' | 'fail', rpcErrorCode = ''): void {
     try {
-      this.prometheusService.httpRpcRequestsTotal.inc({
+      this.prometheusService.rpcRequestTotal.inc({
         network: RPC_NETWORK_NAME,
         layer: 'el',
         chain_id: chainId,
@@ -58,7 +58,7 @@ export class ExecutionProviderService {
         rpc_error_code: rpcErrorCode,
       });
     } catch (error) {
-      this.logger.error('Failed to observe http_rpc_requests_total', { error });
+      this.logger.error('Failed to observe rpc_request_total', { error });
     }
   }
 

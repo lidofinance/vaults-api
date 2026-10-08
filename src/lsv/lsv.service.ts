@@ -58,7 +58,7 @@ export class LsvService {
       endTimer({ result: 'error' });
 
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
-        this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'fail', startedAt);
+        this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'fail', startedAt, '');
         this.logger.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
         return VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR;
       }
@@ -83,7 +83,7 @@ export class LsvService {
   ): void {
     try {
       this.prometheusService.httpRpcResponseSeconds.observe(rpcLabels, (Date.now() - startedAt) / 1000);
-      this.prometheusService.httpRpcRequestsTotal.inc({
+      this.prometheusService.rpcRequestTotal.inc({
         ...rpcLabels,
         method,
         result,

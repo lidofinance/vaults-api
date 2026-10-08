@@ -68,7 +68,7 @@ describe('LsvService', () => {
     httpRpcResponseSeconds: {
       observe: jest.fn(),
     },
-    httpRpcRequestsTotal: {
+    rpcRequestTotal: {
       inc: jest.fn(),
     },
   };
@@ -282,7 +282,7 @@ describe('LsvService', () => {
 
       expect(createPDGProof).toHaveBeenCalledWith(123, clApiUrl);
       expect(endClTimer).toHaveBeenCalledWith({ result: 'success' });
-      expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith({
+      expect(prometheusService.rpcRequestTotal.inc).toHaveBeenCalledWith({
         network: 'ethereum',
         layer: 'cl',
         chain_id: '1',
@@ -303,7 +303,7 @@ describe('LsvService', () => {
       await expect(service.createProof(123)).rejects.toThrow('cl is down');
 
       expect(endClTimer).toHaveBeenCalledWith({ result: 'error' });
-      expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith({
+      expect(prometheusService.rpcRequestTotal.inc).toHaveBeenCalledWith({
         network: 'ethereum',
         layer: 'cl',
         chain_id: '1',
@@ -319,7 +319,7 @@ describe('LsvService', () => {
 
       await expect(service.createProof(123)).resolves.toBe(VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR);
 
-      expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith(
+      expect(prometheusService.rpcRequestTotal.inc).toHaveBeenCalledWith(
         expect.objectContaining({ method: 'createPDGProof', result: 'fail', rpc_error_code: '' }),
       );
     });
