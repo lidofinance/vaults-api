@@ -26,5 +26,6 @@ export class HTTPModule {
       .apply(MetricsMiddleware, LoggerMiddleware)
       .exclude(`${SWAGGER_URL}/(.*)`, SWAGGER_URL, METRICS_URL, HEALTH_URL)
       // https://docs.nestjs.com/middleware?utm_source=chatgpt.com#route-wildcards
-      .forRoutes('*splat');  }
+      .forRoutes('*splat');
+  }
 }

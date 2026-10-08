@@ -52,18 +52,18 @@ export class LsvService {
     try {
       const proof = await createPDGProof(validatorIndex, clApiUrl);
       endTimer({ result: 'success' });
-      this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'success', '', startedAt);
+      this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'success', startedAt, '');
       return proof;
     } catch (error) {
       endTimer({ result: 'error' });
 
       if (error instanceof Error && error.message.startsWith(`ValidatorIndex ${validatorIndex} out of range`)) {
-        this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'fail', '', startedAt);
+        this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'fail', startedAt);
         this.logger.warn(`[LsvService.createProof] Validator index ${validatorIndex} is out of range`);
         return VALIDATOR_INDEX_IS_OUT_OF_RANGE_ERROR;
       }
 
-      this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'fail', extractRpcErrorCode(error), startedAt);
+      this.observeClRpcMetrics(rpcLabels, 'createPDGProof', 'fail', startedAt, extractRpcErrorCode(error));
       this.logger.error(
         `[LsvService.createProof] Failed to create PDG proof for validatorIndex ${validatorIndex}:`,
         sanitizeError(error),
@@ -78,8 +78,8 @@ export class LsvService {
     rpcLabels: { network: string; layer: string; chain_id: string; provider: string },
     method: string,
     result: 'success' | 'fail',
-    rpcErrorCode: string,
     startedAt: number,
+    rpcErrorCode?: string | number,
   ): void {
     try {
       this.prometheusService.httpRpcResponseSeconds.observe(rpcLabels, (Date.now() - startedAt) / 1000);
