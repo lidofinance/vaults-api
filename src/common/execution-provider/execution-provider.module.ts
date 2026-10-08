@@ -35,7 +35,7 @@ import { ExecutionProviderService } from './execution-provider.service';
                 network: RPC_NETWORK_NAME,
                 layer: 'el',
                 chain_id: chainId,
-                provider: normalizeRpcProvider(ctx?.domain ?? ''),
+                provider: normalizeRpcProvider(ctx?.domain),
               };
 
               try {
