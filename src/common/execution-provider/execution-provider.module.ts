@@ -3,6 +3,8 @@ import { FallbackProviderModule } from '@lido-nestjs/execution';
 import { NonEmptyArray } from '@lido-nestjs/execution/dist/interfaces/non-empty-array';
 import type { ConnectionInfo } from '@ethersproject/web';
 import { PrometheusService } from 'common/prometheus';
+import { RPC_NETWORK_NAME } from 'common/prometheus/prometheus.constants';
+import { normalizeRpcProvider, toResponseCodeClass } from 'common/prometheus/rpc-metrics.utils';
 import { ConfigService } from 'common/config';
 import { APP_USER_AGENT } from 'app/app.constants';
 import { ExecutionProviderService } from './execution-provider.service';
@@ -19,20 +21,48 @@ import { ExecutionProviderService } from './execution-provider.service';
           }),
         ) as NonEmptyArray<ConnectionInfo>;
         const network = configService.get('CHAIN_ID');
+        const chainId = String(network);
 
         return {
           urls,
           network,
           fetchMiddlewares: [
-            async (next) => {
+            // TODO: deprecated
+            async (next, ctx) => {
               const endTimer = prometheusService.elRpcRequestDuration.startTimer();
+              const startedAt = Date.now();
+              const rpcLabels = {
+                network: RPC_NETWORK_NAME,
+                layer: 'el',
+                chain_id: chainId,
+                provider: normalizeRpcProvider(ctx?.domain),
+              };
 
               try {
                 const result = await next();
                 endTimer({ result: 'success' });
+                const batchSize = Array.isArray(result) ? result.length : 1;
+                prometheusService.httpRpcResponsePayloadBytes.observe(
+                  rpcLabels,
+                  Buffer.byteLength(JSON.stringify(result)),
+                );
+                prometheusService.httpRpcResponseSeconds.observe(rpcLabels, (Date.now() - startedAt) / 1000);
+                prometheusService.httpRpcRequestsTotal.inc({
+                  ...rpcLabels,
+                  batched: String(batchSize > 1),
+                  response_code: '2xx',
+                  result: 'success',
+                });
                 return result;
               } catch (error) {
                 endTimer({ result: 'error' });
+                prometheusService.httpRpcResponseSeconds.observe(rpcLabels, (Date.now() - startedAt) / 1000);
+                prometheusService.httpRpcRequestsTotal.inc({
+                  ...rpcLabels,
+                  batched: 'unknown',
+                  response_code: toResponseCodeClass((error as { status?: number })?.status),
+                  result: 'fail',
+                });
                 throw error;
               }
             },
