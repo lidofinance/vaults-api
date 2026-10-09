@@ -1,6 +1,7 @@
 import { plainToClass, Transform } from 'class-transformer';
 import { IsArray, ArrayMinSize, IsEnum, IsNumber, IsString, IsOptional, validateSync, Min } from 'class-validator';
 import { Environment, LogLevel, LogFormat } from './interfaces';
+import { logBootstrapError } from 'common/logger/bootstrap-logger';
 
 export const toNumber =
   () =>
@@ -191,10 +192,7 @@ export function validate(config: Record<string, unknown>) {
   const errors = validateSync(validatedConfig, validatorOptions);
 
   if (errors.length > 0) {
-    // Runs while the DI container is still booting, so the central logger does not exist yet.
-    // Safe to print: class-validator only reports property names and failed constraints, never values.
-    // eslint-disable-next-line no-console
-    console.error(errors.toString());
+    logBootstrapError(errors.toString(), 'EnvValidation');
     process.exit(1);
   }
 
