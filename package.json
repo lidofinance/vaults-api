@@ -12,7 +12,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "yarn typeorm:migration:run && node dist/main",
+    "start:prod": "node dist/db/run-migrations.js && node dist/main",
     "start:worker": "node dist/worker-entry.js",
     "start:worker:dev": "ts-node -r tsconfig-paths/register src/worker-entry.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
@@ -25,7 +25,7 @@
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "typeorm:migration:create": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create",
     "typeorm:migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/db/config.ts",
-    "typeorm:migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d ./dist/db/config",
+    "typeorm:migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d ./dist/db/config.js",
     "typeorm:schema:drop": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js schema:drop"
   },
   "dependencies": {
