@@ -1,6 +1,7 @@
 import { plainToClass, Transform } from 'class-transformer';
 import { IsArray, ArrayMinSize, IsEnum, IsNumber, IsString, IsOptional, validateSync, Min } from 'class-validator';
 import { Environment, LogLevel, LogFormat } from './interfaces';
+import { logBootstrapError } from 'common/logger/bootstrap-logger';
 
 export const toNumber =
   () =>
@@ -22,6 +23,32 @@ export class EnvironmentVariables {
   @Min(1)
   @Transform(toNumber())
   WORKER_PORT = 3001;
+
+  // PostgreSQL connection settings. `db/config.ts` reads them straight from `process.env`
+  // (it also runs outside Nest, for the typeorm CLI), but they are declared here so that they
+  // are type-validated, exposed through `ConfigService`, and included in `ENV_KEYS` —
+  // i.e. in the startup config dump and the `envs_info` metric, with the password masked.
+  @IsOptional()
+  @IsString()
+  POSTGRES_HOST: string | null = null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Transform(toNumber())
+  POSTGRES_PORT: number | null = null;
+
+  @IsOptional()
+  @IsString()
+  POSTGRES_USER: string | null = null;
+
+  @IsOptional()
+  @IsString()
+  POSTGRES_PASSWORD: string | null = null;
+
+  @IsOptional()
+  @IsString()
+  POSTGRES_DATABASE: string | null = null;
 
   @IsOptional()
   @IsString()
@@ -154,6 +181,10 @@ export class EnvironmentVariables {
 
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 
+// Re-exported from a tiny module so bootstrap scripts (migrations) can read the secret
+// key names without importing class-validator/class-transformer via this file.
+export { SECRET_ENV_KEYS, SECRET_URLS_KEYS } from './env.secrets';
+
 export function validate(config: Record<string, unknown>) {
   const validatedConfig = plainToClass(EnvironmentVariables, config);
 
@@ -161,7 +192,7 @@ export function validate(config: Record<string, unknown>) {
   const errors = validateSync(validatedConfig, validatorOptions);
 
   if (errors.length > 0) {
-    console.error(errors.toString());
+    logBootstrapError(errors.toString(), 'EnvValidation');
     process.exit(1);
   }
 

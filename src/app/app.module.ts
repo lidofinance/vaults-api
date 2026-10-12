@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PrometheusModule, PrometheusService } from 'common/prometheus';
 import { ConfigModule } from 'common/config';
+import { LoggerModule, LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ExecutionProviderModule } from 'common/execution-provider';
 import { ContractsModule } from 'common/contracts';
 import { SentryInterceptor } from 'common/sentry';
@@ -17,16 +18,17 @@ import { AppService } from './app.service';
 
 @Module({
   imports: [
+    LoggerModule,
     ExecutionProviderModule,
     HTTPModule,
     HealthModule,
     PrometheusModule,
     ConfigModule,
     TypeOrmModule.forRootAsync({
-      inject: [PrometheusService],
-      useFactory: (prometheusService: PrometheusService) => ({
+      inject: [PrometheusService, LOGGER_PROVIDER],
+      useFactory: (prometheusService: PrometheusService, logger: LoggerService) => ({
         ...getTypeOrmConfig(),
-        logger: new CustomLogger(prometheusService.dbQueryDuration, prometheusService.dbQueryCounter),
+        logger: new CustomLogger(prometheusService.dbQueryDuration, prometheusService.dbQueryCounter, logger),
       }),
     }),
     ContractsModule,

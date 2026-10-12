@@ -1,4 +1,5 @@
 import { Logger } from 'typeorm';
+import { LoggerService } from '@lido-nestjs/logger';
 import { Counter, Histogram } from 'prom-client';
 
 const UNKNOWN = 'unknown';
@@ -7,6 +8,7 @@ export class CustomLogger implements Logger {
   constructor(
     private readonly duration: Histogram<'operation' | 'detail'>,
     private readonly counter: Counter<'operation' | 'detail' | 'status'>,
+    private readonly logger: LoggerService,
   ) {}
 
   logQuery() {
@@ -16,7 +18,7 @@ export class CustomLogger implements Logger {
   logQueryError(error: string | Error, query: string) {
     const operation = CustomLogger.getOperation(query) ?? UNKNOWN;
     const detail = CustomLogger.getQueryTag(query) ?? CustomLogger.getEntity(query) ?? UNKNOWN;
-    console.log(`[DBCustomLogger.logQueryError] operation=${operation}, detail=${detail}, error=${error}`);
+    this.logger.error(`[DBCustomLogger.logQueryError] operation=${operation}, detail=${detail}, error=${error}`);
     this.counter.inc({ operation, detail, status: 'error' });
   }
 

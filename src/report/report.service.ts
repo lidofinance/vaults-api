@@ -15,6 +15,7 @@ import { ReportDbService, ReportEntity, ReportLeafEntity } from 'db/report-db';
 import { VaultDbService } from 'db/vault-db';
 import { SingleFlight } from 'common/job/single-flight.decorator';
 import { TrackJob } from 'common/job/track-job.decorator';
+import { sanitizeError } from 'common/errors';
 import { LsvService, NOFeeSnapshot } from 'lsv';
 
 import { APR_ANOMALY_THRESHOLD_PERCENT } from './report.constants';
@@ -106,7 +107,10 @@ export class ReportService {
             feeRate: snapshot.feeRate,
           };
         } catch (e) {
-          this.logger.error(`[noFeeSnapshotCache] Failed for vault=${vaultAddress} block=${blockNumber}`, e);
+          this.logger.error(
+            `[noFeeSnapshotCache] Failed for vault=${vaultAddress} block=${blockNumber}`,
+            sanitizeError(e),
+          );
           return null;
         }
       },
@@ -156,7 +160,7 @@ export class ReportService {
           break;
         }
       } catch (error) {
-        this.logger.error(`[fetchAllReports] Failed to fetch/save report with CID: ${cid}`, error);
+        this.logger.error(`[fetchAllReports] Failed to fetch/save report with CID: ${cid}`, sanitizeError(error));
         return;
       }
     }

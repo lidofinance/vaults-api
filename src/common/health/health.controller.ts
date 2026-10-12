@@ -1,10 +1,14 @@
 import { HealthCheckService, MemoryHealthIndicator, HealthCheck, TypeOrmHealthIndicator } from '@nestjs/terminus';
 import { Controller, Get } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
-import { HEALTH_URL } from './health.constants';
+import { SkipThrottle } from '@nestjs/throttler';
+import { SkipCache } from 'common/decorators';
+import { HEALTH_URL, MAX_MEMORY_HEAP } from './health.constants';
 
 @Controller(HEALTH_URL)
 @ApiExcludeController()
+@SkipThrottle()
+@SkipCache()
 export class HealthController {
   constructor(
     protected health: HealthCheckService,
@@ -16,7 +20,7 @@ export class HealthController {
   @HealthCheck()
   check() {
     return this.health.check([
-      async () => this.memory.checkHeap('memoryHeap', 1024 * 1024 * 1024),
+      async () => this.memory.checkHeap('memoryHeap', MAX_MEMORY_HEAP),
       async () => this.db.pingCheck('database'),
     ]);
   }
