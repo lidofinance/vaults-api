@@ -58,4 +58,4 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 HEALTHCHECK --interval=60s --timeout=10s --retries=3 \
   CMD sh -c "wget -nv -t1 --spider http://localhost:$PORT/health" || exit 1
 
-CMD ["sh", "-c", "node ./node_modules/typeorm/cli.js migration:run -d ./dist/db/config.js && exec node dist/main"]
+CMD ["sh", "-c", "node dist/db/run-migrations.js && exec node dist/main"]
