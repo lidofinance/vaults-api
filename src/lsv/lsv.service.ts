@@ -83,6 +83,12 @@ export class LsvService {
   ): void {
     try {
       this.prometheusService.httpRpcResponseSeconds.observe(rpcLabels, (Date.now() - startedAt) / 1000);
+      this.prometheusService.httpRpcRequestsTotal.inc({
+        ...rpcLabels,
+        batched: 'false',
+        response_code: 'unknown',
+        result,
+      });
       this.prometheusService.rpcRequestTotal.inc({
         ...rpcLabels,
         method,
