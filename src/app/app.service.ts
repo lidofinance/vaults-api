@@ -1,9 +1,9 @@
 import { DataSource } from 'typeorm';
 import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { commonPatterns, satanizer } from '@lidofinance/satanizer';
 
-import { ConfigService, ENV_KEYS, EnvironmentVariables } from 'common/config';
+import { ConfigService } from 'common/config';
+import { logMaskedStartupConfig } from 'common/config/log-masked-envs';
 import { ExecutionProviderService } from 'common/execution-provider';
 import { PrometheusService } from 'common/prometheus';
 import { APP_NAME, APP_VERSION, APP_BRANCH, APP_COMMIT } from './app.constants';
@@ -62,16 +62,7 @@ export class AppService implements OnModuleInit {
     this.logger.log('Init app', { name, version, env, network, branch, commit });
   }
 
-  protected prometheusEnvsInfoMetrics() {
-    const secrets = this.configService.secrets;
-    const mask = satanizer([...commonPatterns, ...secrets]);
-
-    const allConfigEnvs = {};
-    ENV_KEYS.forEach((key: keyof EnvironmentVariables) => {
-      allConfigEnvs[key] = mask(this.configService.get(key));
-    });
-
-    this.prometheusService.envsInfo.labels(allConfigEnvs).inc();
-    this.logger.log('Init app dumping envs', allConfigEnvs);
+  protected prometheusEnvsInfoMetrics(): void {
+    logMaskedStartupConfig(this.configService, this.prometheusService, this.logger);
   }
 }

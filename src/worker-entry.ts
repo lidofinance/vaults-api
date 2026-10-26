@@ -4,6 +4,8 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { ShutdownSignal } from '@nestjs/common';
 
 import { ConfigService } from 'common/config';
+import { logMaskedStartupConfig } from 'common/config/log-masked-envs';
+import { PrometheusService } from 'common/prometheus';
 import { redirectConsoleToLogger } from 'common/logger';
 import { registerSecretsRotationRestart } from 'common/shutdown';
 
@@ -26,6 +28,9 @@ async function bootstrap() {
   const logger = app.get(LOGGER_PROVIDER);
   app.useLogger(logger);
   redirectConsoleToLogger(logger);
+
+  // Masked config for this process
+  logMaskedStartupConfig(configService, app.get(PrometheusService), logger);
 
   // TERM/INT are the orchestrator's normal stop signals; OpenBao secret-rotation
   // restarts are file-based (no signal path from the injector sidecar).
