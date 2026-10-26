@@ -68,6 +68,9 @@ describe('LsvService', () => {
     httpRpcResponseSeconds: {
       observe: jest.fn(),
     },
+    httpRpcRequestsTotal: {
+      inc: jest.fn(),
+    },
     rpcRequestTotal: {
       inc: jest.fn(),
     },
@@ -282,6 +285,10 @@ describe('LsvService', () => {
 
       expect(createPDGProof).toHaveBeenCalledWith(123, clApiUrl);
       expect(endClTimer).toHaveBeenCalledWith({ result: 'success' });
+      expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith({
+        network: 'ethereum', layer: 'cl', chain_id: '1', provider: 'example.com',
+        batched: 'false', response_code: 'unknown', result: 'success',
+      });
       expect(prometheusService.rpcRequestTotal.inc).toHaveBeenCalledWith({
         network: 'ethereum',
         layer: 'cl',
@@ -303,6 +310,9 @@ describe('LsvService', () => {
       await expect(service.createProof(123)).rejects.toThrow('cl is down');
 
       expect(endClTimer).toHaveBeenCalledWith({ result: 'error' });
+      expect(prometheusService.httpRpcRequestsTotal.inc).toHaveBeenCalledWith(
+        expect.objectContaining({ batched: 'false', response_code: 'unknown', result: 'fail' }),
+      );
       expect(prometheusService.rpcRequestTotal.inc).toHaveBeenCalledWith({
         network: 'ethereum',
         layer: 'cl',
