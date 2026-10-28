@@ -75,7 +75,7 @@ async function bootstrap() {
     });
   }
 
-  // errors
+  // errors.
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
