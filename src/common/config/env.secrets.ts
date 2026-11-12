@@ -11,4 +11,4 @@ import type { EnvironmentVariables } from './env.validation';
  * class-transformer via `env.validation`.
  */
 export const SECRET_ENV_KEYS: (keyof EnvironmentVariables)[] = ['SENTRY_DSN', 'POSTGRES_PASSWORD'];
-export const SECRET_URLS_KEYS: (keyof EnvironmentVariables)[] = ['CL_API_URLS', 'EL_RPC_URLS'];
+export const SECRET_URLS_KEYS: Array<'CL_API_URLS' | 'EL_RPC_URLS'> = ['CL_API_URLS', 'EL_RPC_URLS'];
