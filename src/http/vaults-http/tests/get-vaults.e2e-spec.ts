@@ -36,12 +36,22 @@ describe('VaultsHttpController (e2e) - getVaultsByRoleAndAddress', () => {
   });
 
   it(`${HttpStatus.BAD_REQUEST}: role without address`, async () => {
-    const role = '__someRole__';
+    const role = 'burn';
     const resp = await request(app.getHttpServer()).get('/v1/vaults').query({ role });
 
     expect(resp.status).toBe(HttpStatus.BAD_REQUEST);
     expect(vaultDbServiceMock.getVaultsWithRoleAndSortingAndReportData).not.toHaveBeenCalled();
   });
+
+  it.each(['invalidRole', 'vaults.Permissions.burn', 'constructor', 'toString', '__proto__'])(
+    `${HttpStatus.BAD_REQUEST}: invalid role (%s)`,
+    async (role) => {
+      const resp = await request(app.getHttpServer()).get('/v1/vaults').query({ address: accountAddress, role });
+
+      expect(resp.status).toBe(HttpStatus.BAD_REQUEST);
+      expect(vaultDbServiceMock.getVaultsWithRoleAndSortingAndReportData).not.toHaveBeenCalled();
+    },
+  );
 
   it(`${HttpStatus.BAD_REQUEST}: invalid address`, async () => {
     const badAddress = '0x123';
@@ -92,7 +102,7 @@ describe('VaultsHttpController (e2e) - getVaultsByRoleAndAddress', () => {
   });
 
   it(`${HttpStatus.OK}: passes address and role`, async () => {
-    const role = 'vaults.Permissions.burn';
+    const role = 'burn';
     const resp = await request(app.getHttpServer()).get('/v1/vaults').query({ address: accountAddress, role });
 
     expect(resp.status).toBe(HttpStatus.OK);
