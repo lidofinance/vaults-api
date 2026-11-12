@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 describe('bootstrap logger RPC/CL credential masking', () => {
   const originalCl = process.env.CL_API_URLS;
   const originalEl = process.env.EL_RPC_URLS;
@@ -39,7 +41,7 @@ describe('bootstrap logger RPC/CL credential masking', () => {
   });
 
   it('redacts derived Basic Auth credentials from CL URLs', () => {
-    const password = 'fixture-password-0123456789';
+    const password = randomBytes(16).toString('hex');
     const token = Buffer.from(`client:${password}`).toString('base64');
     process.env.CL_API_URLS = `https://client:${password}@cl.example/endpoint`;
     process.env.EL_RPC_URLS = 'https://el.example/endpoint';
