@@ -108,7 +108,7 @@ export class VaultsHttpController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'The "address" must be provided when "role" is specified.',
+    description: 'Invalid "role", or missing "address" when "role" is specified.',
     type: ErrorResponseType,
   })
   @ApiResponse({

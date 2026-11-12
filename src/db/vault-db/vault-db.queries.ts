@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { EntityManager, SelectQueryBuilder } from 'typeorm';
 import { ReportEntity, ReportLeafEntity } from 'db/report-db/entities';
 import { DASHBOARD_OWNER_ROLE, LABEL_TO_ROLE } from 'vault/vault.constants';
@@ -19,6 +20,11 @@ export type VaultsBaseQueryOpts = {
 
 export function buildVaultsBaseQuery(manager: EntityManager, opts: VaultsBaseQueryOpts = {}): SelectQueryBuilder<any> {
   const { includeDisconnected = false, vaultAddress, memberAddress, memberRole } = opts;
+
+  // Reject unknown and inherited object-property names before binding the role to SQL.
+  if (memberRole && memberAddress && !Object.prototype.hasOwnProperty.call(LABEL_TO_ROLE, memberRole)) {
+    throw new BadRequestException(`Unsupported role: ${memberRole}`);
+  }
 
   const qb = manager.getRepository(VaultStateEntity).createQueryBuilder('state').innerJoin('state.vault', 'vault');
 
