@@ -29,6 +29,20 @@ const buildConfig = (overrides: Partial<EnvironmentVariables> = {}) =>
   } as Partial<EnvironmentVariables>);
 
 describe('ConfigService.secrets', () => {
+  it('includes CL and EL query credentials and Basic Auth tokens in the logger secrets', () => {
+    const clKey = 'fixture-cl-drpc-key-0123456789';
+    const elPassword = 'fixture-el-password-0123456789';
+    const basic = Buffer.from(`client:${elPassword}`).toString('base64');
+    const config = new ConfigService({
+      CL_API_URLS: [`https://cl.example/ogrpc?network=hoodi&dkey=${clKey}`],
+      EL_RPC_URLS: [`https://client:${elPassword}@el.example/endpoint`],
+      IPFS_GATEWAYS: ['https://ipfs.example.com'],
+    });
+
+    expect(config.secrets).toEqual(expect.arrayContaining([clKey, elPassword, basic]));
+    expect(config.secrets).not.toContain('hoodi');
+  });
+
   it('includes the Postgres password', () => {
     expect(buildConfig().secrets).toContain(maskedDbValue);
   });
