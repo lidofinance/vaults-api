@@ -1,10 +1,11 @@
 import { Transform, Type } from 'class-transformer';
-import { IsInt, Min, Max, IsOptional, IsEnum, IsString } from 'class-validator';
+import { IsInt, Min, Max, IsOptional, IsEnum, IsIn } from 'class-validator';
 import { getAddress } from 'viem';
 
 import { BadRequestException } from '@nestjs/common';
 
 import { SortFieldsEnum, DirectionEnum } from 'db/vault-db/enums';
+import { ALL_ROLE_VALUES } from 'vault/vault.constants';
 
 export const maxLimitQuery = 100;
 export const limitQueryDefault = 10;
@@ -35,7 +36,7 @@ export class GetVaultsByRoleAndAddressQueryDto {
   direction: DirectionEnum = defaultDirection;
 
   @IsOptional()
-  @IsString()
+  @IsIn(ALL_ROLE_VALUES)
   role?: string;
 
   @IsOptional()
